@@ -102,6 +102,19 @@ var hemJoint = {
 	}
 };
 
+var printedJoint = {
+	'name':'printed',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'hem offset': 8,
+		'hole diameter': 1.5,
+		'hole spacing': 10,
+		'printing area length': 200,
+		'printing area depth': 200,
+	}
+};
+
 var tabInsertJoint = {
 	'name':'tab insert',
 	'profile':'',
@@ -158,7 +171,9 @@ var noneJoint = {
 	}
 };
 
-var jointType = [loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
+var template = undefined;
+
+var jointType = [loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, printedJoint, noneJoint];
 
 var jointProfileList = [];
 
@@ -197,244 +212,434 @@ function removeJoint(s, p) {
 
 function generateJoint(index) {
 	
-	var shapeA, shapeB, pathA, pathB;
+	var req = $.getJSON('test.json');
+
+	req.success(function(response){
+		console.log({response:response});
+		console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
+		printTemplate = response;
+		var shapeA, shapeB, pathA, pathB;
+
+		if (joints[index]['m']==0) {
+			shapeA = joints[index]['0'].shape;
+			shapeB = joints[index]['1'].shape;
+			pathA = joints[index]['0'].path;
+			pathB = joints[index]['1'].path;
+		} else {
+			shapeA = joints[index]['1'].shape;
+			shapeB = joints[index]['0'].shape;
+			pathA = joints[index]['1'].path;
+			pathB = joints[index]['0'].path;
+		}
+		
+		shape[shapeA].children[pathA+'_joint'].removeChildren();
+		shape[shapeB].children[pathB+'_joint'].removeChildren();
+		
+		var jType;
+		var param;
+		for (i in jointProfileList) {
+			if (joints[index].profile==jointProfileList[i].profile) {
+				jType = jointProfileList[i].name;
+				param = $.extend(true,{},jointProfileList[i].param);
+				break;
+			}
+		}
 	
-	if (joints[index]['m']==0) {
-		shapeA = joints[index]['0'].shape;
-		shapeB = joints[index]['1'].shape;
-		pathA = joints[index]['0'].path;
-		pathB = joints[index]['1'].path;
-	} else {
-		shapeA = joints[index]['1'].shape;
-		shapeB = joints[index]['0'].shape;
-		pathA = joints[index]['1'].path;
-		pathB = joints[index]['0'].path;
+		var delta = shape[shapeA].children[pathA].length / shape[shapeB].children[pathB].length;
+		
+		if (delta > 1.01 || delta < 0.99) {
+			setMessage('<b>Cannot join</b>: paths have significantly different lengths', '#F80');
+		} else {
+			switch (jType) {
+				case 'loop insert (overlap)':
+					var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, true, false, Math.floor(param['hook count']));
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					break;
+					
+				case 'loop insert':
+					var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, false, false, Math.floor(param['hook count']));
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					break;
+	
+				case 'loop insert (surface)':
+					var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, false, true, Math.floor(param['hook count']));
+					if (childPath) {
+						shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+						shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+						shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					} else {
+						shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+						shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					}
+					break;
+					
+				case 'finger joint (90deg)':
+					var childPath = generateFingerJoint(index, shapeA, pathA, shapeB, pathB, param);
+					if (childPath) {
+						shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+						shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+						shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					} else {
+						shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+						shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					}
+					break;
+	
+				case 'finger joint (angle)':
+					var childPath = generateFingerJointA(index, shapeA, pathA, shapeB, pathB, param);
+					if (childPath) {
+						shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+						shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+						shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					} else {
+						shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+						shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					}
+					break;
+					
+				case 'hem':
+					var childPath = generateHemJoint(index, shapeA, pathA, shapeB, pathB, param);
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					break;
+	
+				case 'printed':
+					// var printTemplate = template;
+					console.log({printingCommands:printingCommands});
+					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					
+					var childPath = generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printTemplate);
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].gc = childPath.gc;
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					console.log({gcodesInReturn:g, gc:childPath.gc});
+					break;
+					
+				case 'tab insert':
+					var childPath = generateTabInsertJoint(index, shapeA, pathA, shapeB, pathB, param);
+					if (childPath) {
+						var g = new Group();
+						g.name = 'folds';
+						shape[shapeA].children[pathA+'_joint'].addChild(g);
+						shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+						shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+						shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+						shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+						var g2 = new Group();
+						g2.name = 'folds';
+						shape[shapeB].children[pathB+'_joint'].addChild(g2);
+						shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+						shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+						shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+						shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					} else {
+						shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+						shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					}
+					break;
+					
+				case 'interlocking':
+					var childPath = generateInterlockingJoint(index, shapeA, pathA, shapeB, pathB, param);
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					break;
+	
+				case 'flap':
+					var childPath = generateFlapJoint(index, shapeA, pathA, shapeB, pathB, param);
+					if (childPath) {
+						var g = new Group();
+						g.name = 'folds';
+						shape[shapeA].children[pathA+'_joint'].addChild(g);
+						shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+						shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+						shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+						shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+						var g2 = new Group();
+						g2.name = 'folds';
+						shape[shapeB].children[pathB+'_joint'].addChild(g2);
+						shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+						shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+						shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+						shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					} else {
+						shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+						shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+						shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+						shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					}
+					break;
+	
+				default:
+					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					break;
+			}
+		}
+		
+		refreshShapeDisplay();
+		activateDim(dimBool);
+	});
+}
+		
+
+function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printTemplate) {
+	var returnB = [];
+	var returnA = [];
+	var printA = [];
+	var returnAFold = [];
+	var returnBFold = [];
+	var G91 = printTemplate.G91Commands;
+
+	var totalLength = shape[shapeA].children[pathA].length;
+	// Get PCA --> principal length instead
+	// Divide into parts to fit printer
+	
+	shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+	shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
+	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
+	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
+
+	var pathOffsetA = offsetPath(edgeA, param['hem offset'], joints[index]['dirM']);
+	if (pathOffsetA[0].length < 4) return false;
+	else { // Remove connection to pase path
+		pathOffsetA[0].segments.pop();
+		pathOffsetA[0].segments.shift();
 	}
+
+	// for (path in pathOffsetA) {
+	// 	for (seg in path)
+	// 		returnA.push(pathOffsetA[i]);
+	// }
+
+	var offsetPathA = new Path(pathOffsetA[0].segments);
+
+	for (i in pathOffsetA) { // Why not offsetPathA?
+		returnA.push(pathOffsetA[i]);
+	}
+	var pathOffsetB = offsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
+	for (i in pathOffsetB) {
+		returnB.push(pathOffsetB[i]);
+	}
+	returnAFold.push(edgeA);
+	returnBFold.push(edgeB);
+
+
+	console.log({edgeA:edgeA, pathOffsetA:pathOffsetA[0], offsetPathA:offsetPathA});
+
+	let centerPoint;
+	let GCODES = [];
 	
+	if (param['hole diameter']>0 && param['hole spacing']>0) {
+		var holeCount = Math.floor(offsetPathA.length/param['hole spacing']);
+		var gapA = offsetPathA.length/holeCount;
+		var gapB = pathOffsetB.length/holeCount;
+		var GCODE = "";
+		for (var i=0; i<holeCount; i++) {
+			var ptA = offsetPathA.getPointAt(i*gapA+gapA/2);
+			var ptB = edgeB.getPointAt(i*gapB+gapB/2);
+			returnA.push(new Path.Circle(ptA, param['hole diameter']/2));
+			printA.push(new Path.Circle(ptA, param['hole diameter']/2));
+			returnB.push(new Path.Circle(ptB, param['hole diameter']/2));
+			console.log({ptA:ptA});
+			if (i == 0) {
+				centerPoint = ptA;
+			}
+			// GCODE += "X:" + ptA.x + " Y:" + ptA.y +";  \n";
+		}
+		// GCODES.push(GCODE);
+
+		console.log("🚀 ~ file: joints.js:561 ~ generatePrintedJoint ~ pathOffsetA", pathOffsetA.strokeBounds);
+		console.log("🚀 ~ file: joints.js:562 ~ generatePrintedJoint ~ offsetPathA", offsetPathA.strokeBounds);
+
+		let rotationDegs = 10;
+		let fullCircle = 0;
+		let longestW = {deg:0, width:0};
+		while (fullCircle < 360) {
+			offsetPathA.rotate(rotationDegs, new Point(offsetPathA.strokeBounds.x, offsetPathA.strokeBounds.y));
+			fullCircle += rotationDegs;
+			console.log("🚀 ~ file: joints.js:570 ~ generatePrintedJoint ~ offsetPathA", offsetPathA.strokeBounds);
+			if (offsetPathA.strokeBounds.width > longestW.width) {
+				longestW.width = offsetPathA.strokeBounds.width;
+				longestW.deg = fullCircle;
+			}
+		}
+
+		if (longestW.deg != 0) {
+			offsetPathA.rotate(longestW.deg, new Point(offsetPathA.strokeBounds.x, offsetPathA.strokeBounds.y));
+		}
+
+		if (offsetPathA.length > param['printing area length'])
+		{
+
+			console.log({totalLength:totalLength, offsetPathALength:offsetPathA.length});
+
+			let numberOfParts = Math.ceil(offsetPathA.length / param['printing area length']);
+			let partLength = offsetPathA.length / numberOfParts;
+			var parts = [offsetPathA];
+			for (let partNum = 0; numberOfParts < numberOfParts; partNum++) {
+				var pathPart = offsetPathA.splitAt(partLength);
+				parts.push(pathPart);
+				
+			}
+
+			console.log("🚀 ~ file: joints.js:586 ~ generatePrintedJoint ~ parts", parts);
+
+			for (const part of parts) {
+				var holeList = [];
+				var holeCount = Math.floor(part.length/param['hole spacing']);
+				var gapA = part.length/holeCount;
+				var startPoint = new Point(0.0, 0.0);
+				for (var i=0; i<holeCount; i++) {
+					var ptA = part.getPointAt(i*gapA+gapA/2);
+					console.log({ptA:ptA});
+					if (i == 0) {
+						startPoint = ptA;
+						holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
+					} else {
+						holeList.push(ptA - startPoint); // remaining points relative to start point
+					}
+					
+				}
+				GCODES.push({holeList:holeList, G91:G91});
+			}
+
+		} else {
+			var holeList = [];
+			var holeCount = Math.floor(offsetPathA.length/param['hole spacing']);
+			var gapA = offsetPathA.length/holeCount;
+			var startPoint = new Point(0.0, 0.0);
+			for (var i=0; i<holeCount; i++) {
+				var ptA = offsetPathA.getPointAt(i*gapA+gapA/2);
+				console.log({ptA:ptA});
+				if (i == 0) {
+					startPoint = ptA;
+					holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
+				} else {
+					holeList.push(new Point(ptA.x - startPoint.x, ptA.y - startPoint.y)); // remaining points relative to start point
+				}
+				
+			}
+			GCODES.push({holeList:holeList, G91:G91});
+		}	
+		
+	}
+		
+
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
 	shape[shapeB].children[pathB+'_joint'].removeChildren();
-	
-	var jType;
-	var param;
-	for (i in jointProfileList) {
-		if (joints[index].profile==jointProfileList[i].profile) {
-			jType = jointProfileList[i].name;
-			param = $.extend(true,{},jointProfileList[i].param);
-			break;
-		}
-	}
 
-	var delta = shape[shapeA].children[pathA].length / shape[shapeB].children[pathB].length;
-	
-	if (delta > 1.01 || delta < 0.99) {
-		setMessage('<b>Cannot join</b>: paths have significantly different lengths', '#F80');
-	} else {
-		switch (jType) {
-			case 'loop insert (overlap)':
-				var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, true, false, Math.floor(param['hook count']));
-				shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-				shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-				var g = new Group();
-				g.name = 'folds';
-				shape[shapeB].children[pathB+'_joint'].addChild(g);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-
-				shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-				shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				break;
-				
-			case 'loop insert':
-				var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, false, false, Math.floor(param['hook count']));
-				shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-				shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-				shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-				shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				break;
-
-			case 'loop insert (surface)':
-				var childPath = generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, false, true, Math.floor(param['hook count']));
-				if (childPath) {
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				} else {
-					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				}
-				break;
-				
-			case 'finger joint (90deg)':
-				var childPath = generateFingerJoint(index, shapeA, pathA, shapeB, pathB, param);
-				if (childPath) {
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				} else {
-					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				}
-				break;
-
-			case 'finger joint (angle)':
-				var childPath = generateFingerJointA(index, shapeA, pathA, shapeB, pathB, param);
-				if (childPath) {
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				} else {
-					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				}
-				break;
-				
-			case 'hem':
-				var childPath = generateHemJoint(index, shapeA, pathA, shapeB, pathB, param);
-				var g = new Group();
-				g.name = 'folds';
-				shape[shapeA].children[pathA+'_joint'].addChild(g);
-				shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-				shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-				shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-				shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-				var g2 = new Group();
-				g2.name = 'folds';
-				shape[shapeB].children[pathB+'_joint'].addChild(g2);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-
-				shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-				shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				break;
-				
-			case 'tab insert':
-				var childPath = generateTabInsertJoint(index, shapeA, pathA, shapeB, pathB, param);
-				if (childPath) {
-					var g = new Group();
-					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].addChild(g);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-					var g2 = new Group();
-					g2.name = 'folds';
-					shape[shapeB].children[pathB+'_joint'].addChild(g2);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				} else {
-					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				}
-				break;
-				
-			case 'interlocking':
-				var childPath = generateInterlockingJoint(index, shapeA, pathA, shapeB, pathB, param);
-				var g = new Group();
-				g.name = 'folds';
-				shape[shapeA].children[pathA+'_joint'].addChild(g);
-				shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-				shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-				shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-				shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-				
-				var g2 = new Group();
-				g2.name = 'folds';
-				shape[shapeB].children[pathB+'_joint'].addChild(g2);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-				shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-
-				shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-				shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				break;
-
-			case 'flap':
-				var childPath = generateFlapJoint(index, shapeA, pathA, shapeB, pathB, param);
-				if (childPath) {
-					var g = new Group();
-					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].addChild(g);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-
-					var g2 = new Group();
-					g2.name = 'folds';
-					shape[shapeB].children[pathB+'_joint'].addChild(g2);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				} else {
-					shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-					shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				}
-				break;
-
-			default:
-				shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
-				shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
-				shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
-				shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-				break;
-		}
-	}
-	
-	refreshShapeDisplay();
-	activateDim(dimBool);
+	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'gc':GCODES};
 }
+
 
 function generateFingerJointA(index, shapeA, pathA, shapeB, pathB, param) {
 	var returnA = [];
@@ -1578,6 +1783,22 @@ function lineIntersection(line1Start, line1End, line2Start, line2End) {
     return result;
 };
 
+async function getTemplate(templateName) {
+	console.log("🚀 ~ file: joints.js:1751 ~ getTemplate ~ template", template)
+	if (template == undefined) {
+		
+		$.getJSON(templateName, function(data){
+			console.log("🚀 ~ file: joints.js:1753 ~ $.getJSON ~ data", data)
+			template = data;
+			return data;
+		}).fail(function(){
+			console.error("Failed to load JSON template.");
+			return;
+		});
+	}
+	else return template;
+}
+
 function exportProject() {
 	emptyAll();
 	activateDim(false);
@@ -1610,6 +1831,8 @@ function exportProject() {
 						}
 					}
 				}
+				console.log({gottem:shape[i].children[j]});
+
 			}
 		}
 		var svgWidth = projectBounds.maxX;

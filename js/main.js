@@ -8,12 +8,14 @@ var highlight;
 var connectionLines;
 var shapeColor = [];
 var ctx;
+var printingCommands;
 
 function init() {
 	if (!initialized) {
 		initForms();
 	}
 	paper.install(window);
+	printingCommands = getJSONs("test.json");
 	var canvas = document.getElementById('paperCanvas');
 	$('#paperCanvas').css({'width':window.innerWidth, 'height':window.innerHeight});
 	$('#bgCanvas').attr({'width':window.innerWidth, 'height':window.innerHeight});
@@ -36,6 +38,16 @@ function init() {
 
 var minorLineCol = "#E8E8E8";
 var majorLineCol = "#DADADA";
+
+function getJSONs(jsonName) {
+	$.getJSON(jsonName, function(data){
+		console.log("🚀 ~ file: main.js:44 ~ $.getJSON ~ data", data)
+		return data;
+	}).fail(function(){
+		console.error("Failed to load JSON template.");
+		return;
+	});
+}
 
 function drawGrid() {
 	ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
