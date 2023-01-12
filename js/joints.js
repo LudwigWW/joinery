@@ -1801,7 +1801,30 @@ async function getTemplate(templateName) {
 	else return template;
 }
 
-function exportPreviousGcode(GCODE) {
+function addGCodePart(outString, placeList, commandObj, depthAdjustment) {
+	for (let place of placeList) {
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${place.x + 5 } Y${place.y+depthAdjustment} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
+	}
+	return outString;
+} 
+
+function exportPreviousGcode(GCODE, addedOutputs) {
+
+	
+	for (let output of addedOutputs) {
+		addGCodePart(GCODE, output.holeList, output.G91.spike, output.heightUsed);
+	}
+
+	GCODE += `\n Add pause printing code here \n`
+
+	for (let output of addedOutputs) {
+		if (false)
+		addGCodePart(GCODE, output.holeList, output.G91.roof, output.heightUsed);
+	}
+
 	console.log('ExportedGCODE: ', GCODE);
 	return;
 
@@ -1854,21 +1877,15 @@ function exportProject() {
 							break;
 						}
 						if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
-							exportPreviousGcode(GCODE);
+							exportPreviousGcode(GCODE, addedOutputs);
 							GCODE = "";
 							heightUsed = 0;
 							addedOutputs = [];
 						}
-						heightUsed += (outputHeight + 20);
-						addedOutputs.push(output);
+						heightUsed += (outputHeight + 20); // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
+						addedOutputs.push({output:output, heightUsed:heightUsed});
 
-						for (let hole of output.holeList) {
-							GCODE += `G1 Z${output.G91.base.zClearing} F3000\n`;
-							GCODE += `G1 X${hole.x + 5 } Y${hole.y+heightUsed} F7200\n`;
-							GCODE += `G1 Z${output.G91.base.zStart} F3000\n`;
-							GCODE += output.G91.base.gcode;
-							
-						}
+						addGCodePart(GCODE, output.holeList, output.G91.base, heightUsed) 
 					}
 				}
 
@@ -1876,7 +1893,7 @@ function exportProject() {
 		}
 
 		if (heightUsed > 0) {
-			exportPreviousGcode(GCODE);
+			exportPreviousGcode(GCODE, addedOutputs);
 			GCODE = "";
 			heightUsed = 0;
 			addedOutputs = [];
