@@ -605,11 +605,11 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 						startPoint = ptA;
 						holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
 					} else {
-						holeList.push(ptA - startPoint); // remaining points relative to start point
+						holeList.push(new Point((ptA.x - startPoint.x).toFixed(3), (ptA.y - startPoint.y).toFixed(3))); // remaining points relative to start point
 					}
 					
 				}
-				GCODES.push({holeList:holeList, G91:G91});
+				GCODES.push({holeList:holeList, G91:G91, sourcePath:part});
 			}
 
 		} else {
@@ -624,11 +624,13 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 					startPoint = ptA;
 					holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
 				} else {
-					holeList.push(new Point(ptA.x - startPoint.x, ptA.y - startPoint.y)); // remaining points relative to start point
+					holeList.push(new Point((ptA.x - startPoint.x).toFixed(3), (ptA.y - startPoint.y).toFixed(3))); // remaining points relative to start point
 				}
 				
 			}
-			GCODES.push({holeList:holeList, G91:G91});
+			var selectedBase = G91.dots;
+			var selectedSpikes = G91.spikes;
+			GCODES.push({holeList:holeList, G91:{base:selectedBase, spikes:selectedSpikes, top:null}, sourcePath:offsetPathA, usedParam:param});
 		}	
 		
 	}
@@ -1799,12 +1801,21 @@ async function getTemplate(templateName) {
 	else return template;
 }
 
+function exportPreviousGcode(GCODE) {
+	console.log('ExportedGCODE: ', GCODE);
+	return;
+
+}
+
 function exportProject() {
 	emptyAll();
 	activateDim(false);
 	paper.view.zoom = 1;
 	if (shape.length > 0) {
 		calProjectBounds();
+		var heightUsed = 0.0;
+		var addedOutputs = [];
+		var GCODE = "";
 		for (i in shape) {
 			for (j in shape[i].children) {
 				if (shape[i].children[j].className=='Path') {
@@ -1833,8 +1844,44 @@ function exportProject() {
 				}
 				console.log({gottem:shape[i].children[j]});
 
+				if (shape[i].children[j].gc) {
+					console.log('shape[i].children[j]: ', shape[i].children[j].gc);
+
+					for (let output of shape[i].children[j].gc) {
+						let outputHeight = output.sourcePath.strokeBounds.height;
+						if (outputHeight > output.usedParam["printing area depth"]) {
+							console.error({message:"Output height larger than available printing bed space", bedDepth:output.usedParam["printing area depth"], spaceNeeded:outputHeight});
+							break;
+						}
+						if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
+							exportPreviousGcode(GCODE);
+							GCODE = "";
+							heightUsed = 0;
+							addedOutputs = [];
+						}
+						heightUsed += (outputHeight + 20);
+						addedOutputs.push(output);
+
+						for (let hole of output.holeList) {
+							GCODE += `G1 Z${output.G91.base.zClearing} F3000\n`;
+							GCODE += `G1 X${hole.x + 5 } Y${hole.y+heightUsed} F7200\n`;
+							GCODE += `G1 Z${output.G91.base.zStart} F3000\n`;
+							GCODE += output.G91.base.gcode;
+							
+						}
+					}
+				}
+
 			}
 		}
+
+		if (heightUsed > 0) {
+			exportPreviousGcode(GCODE);
+			GCODE = "";
+			heightUsed = 0;
+			addedOutputs = [];
+		}
+
 		var svgWidth = projectBounds.maxX;
 		var svgHeight = projectBounds.maxY;
 		var svgContent = $(project.exportSVG()).html();
