@@ -1,4 +1,8 @@
+// import * as STLExports from '../js/lib/STLExport.js';
+// console.log('fromMesh: ', STLExports);
+
 var jointProfileCount = 0;
+var chosenPrinter = {};
 
 var paramInteger = [
 	'hook count'
@@ -217,6 +221,13 @@ function generateJoint(index) {
 	req.success(function(response){
 		console.log({response:response});
 		console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
+		
+		for (let printer of response.printerList) {
+			if (printer.name === "default") {
+				chosenPrinter = printer;
+			}
+		}
+		
 		printTemplate = response;
 		var shapeA, shapeB, pathA, pathB;
 
@@ -247,8 +258,9 @@ function generateJoint(index) {
 	
 		var delta = shape[shapeA].children[pathA].length / shape[shapeB].children[pathB].length;
 		
-		if (delta > 1.01 || delta < 0.99) {
-			setMessage('<b>Cannot join</b>: paths have significantly different lengths', '#F80');
+		if (delta > 1.5 || delta < 0.5) { // 1.01;0.99
+			console.log('delta: ', delta);
+			setMessage('<b>Cannot join</b>: paths have significantly different lengths ' + delta, '#F80');
 		} else {
 			switch (jType) {
 				case 'loop insert (overlap)':
@@ -363,7 +375,7 @@ function generateJoint(index) {
 					var childPath = generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printTemplate);
 					var g = new Group();
 					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].gc = childPath.gc;
+					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
 					shape[shapeA].children[pathA+'_joint'].addChild(g);
 					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
 					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
@@ -384,7 +396,7 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, gc:childPath.gc});
+					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 					
 				case 'tab insert':
@@ -489,7 +501,216 @@ function generateJoint(index) {
 		activateDim(dimBool);
 	});
 }
+
+function STLParse( scene ) {
+	var vector = new THREE.Vector3();
+	var normalMatrixWorld = new THREE.Matrix3();
+
+	var output = "";
+
+	output += "solid exported\n";
+
+	scene.traverse(function(object) {
+		if (object instanceof THREE.Mesh) {
+			var geometry = object.geometry;
+			console.log('geometry: ', geometry);
+			var matrixWorld = object.matrixWorld;
+			var mesh = object;
+
+			if (geometry instanceof THREE.BufferGeometry) {
+				var vertices = geometry.vertices;
+				var faces = geometry.faces;
+
+				normalMatrixWorld.getNormalMatrix(matrixWorld);
+
+				for (var i = 0, l = faces.length; i < l; i++) {
+					var face = faces[i];
+
+					vector
+					.copy(face.normal)
+					.applyMatrix3(normalMatrixWorld)
+					.normalize();
+
+					output +=
+					"\tfacet normal " +
+					vector.x +
+					" " +
+					vector.y +
+					" " +
+					vector.z +
+					"\n";
+					output += "\t\touter loop\n";
+
+					var indices = [face.a, face.b, face.c];
+
+					for (var j = 0; j < 3; j++) {
+						var vertexIndex = indices[j];
+						if (mesh.geometry.skinIndices.length == 0) {
+							vector
+							.copy(vertices[vertexIndex])
+							.applyMatrix4(matrixWorld);
+							output +=
+							"\t\t\tvertex " +
+							(+mesh.position.x + +vector.x) +
+							" " +
+							(+mesh.position.y + +vector.y) +
+							" " +
+							(+mesh.position.z + +vector.z) +
+							"\n";
+						} else {
+							vector.copy(vertices[vertexIndex]); //.applyMatrix4( matrixWorld );
+
+							// see https://github.com/mrdoob/three.js/issues/3187
+							const boneIndices = [];
+							boneIndices[0] = mesh.geometry.skinIndices[vertexIndex].x;
+							boneIndices[1] = mesh.geometry.skinIndices[vertexIndex].y;
+							boneIndices[2] = mesh.geometry.skinIndices[vertexIndex].z;
+							boneIndices[3] = mesh.geometry.skinIndices[vertexIndex].w;
+
+							const weights = [];
+							weights[0] = mesh.geometry.skinWeights[vertexIndex].x;
+							weights[1] = mesh.geometry.skinWeights[vertexIndex].y;
+							weights[2] = mesh.geometry.skinWeights[vertexIndex].z;
+							weights[3] = mesh.geometry.skinWeights[vertexIndex].w;
+
+							const inverses = [];
+							inverses[0] = mesh.skeleton.boneInverses[boneIndices[0]];
+							inverses[1] = mesh.skeleton.boneInverses[boneIndices[1]];
+							inverses[2] = mesh.skeleton.boneInverses[boneIndices[2]];
+							inverses[3] = mesh.skeleton.boneInverses[boneIndices[3]];
+
+							const skinMatrices = [];
+							skinMatrices[0] =
+							mesh.skeleton.bones[boneIndices[0]].matrixWorld;
+							skinMatrices[1] =
+							mesh.skeleton.bones[boneIndices[1]].matrixWorld;
+							skinMatrices[2] =
+							mesh.skeleton.bones[boneIndices[2]].matrixWorld;
+							skinMatrices[3] =
+							mesh.skeleton.bones[boneIndices[3]].matrixWorld;
+
+							var finalVector = new THREE.Vector4();
+							for (var k = 0; k < 4; k++) {
+								var tempVector = new THREE.Vector4(
+									vector.x,
+									vector.y,
+									vector.z
+								);
+								tempVector.multiplyScalar(weights[k]);
+								//the inverse takes the vector into local bone space
+								tempVector
+									.applyMatrix4(inverses[k])
+									//which is then transformed to the appropriate world space
+									.applyMatrix4(skinMatrices[k]);
+								finalVector.add(tempVector);
+							}
+							output +=
+							"\t\t\tvertex " +
+							finalVector.x +
+							" " +
+							finalVector.y +
+							" " +
+							finalVector.z +
+							"\n";
+						}
+					}
+				output += "\t\tendloop\n";
+				output += "\tendfacet\n";
+				}
+			}
+		}
+	});
+
+	output += "endsolid exported\n";
+
+	return output;
+}
+  
+
+function setPrintedMarkers(index, edgeA, edgeB, returnA, returnB, joints) {
+	var markerSTLOutlines = [];
+
+	var clonePath;
+	var ptA = edgeA.getPointAt(6);
+	var ptB = edgeB.getPointAt(6);
+
+	marker = new Path.Circle(ptA, 5);
+	markerB = new Path.Circle(ptB, 5);
+	var crossings = marker.getCrossings(edgeA);
+	var crossingsB = markerB.getCrossings(edgeB);
+	console.log('crossings: ', crossings);
+
+	if (crossings.length == 2) {
+		var openMarker = marker.split(crossings[0]);
+		var splitMarker = openMarker.split(crossings[1]);
+
 		
+		var tinyOffset = offsetPath(edgeA, 0.2, joints[index]['dirM']);
+		var tinyOffsetPath = new Path(tinyOffset[0].segments);
+		var openC = openMarker.getCrossings(tinyOffsetPath);
+		var splitC = splitMarker.getCrossings(tinyOffsetPath);
+
+		console.log("joints[index]['dirM']: ", joints[index]['dirM']);
+		
+		if (openC.length < splitC.length) {
+			clonePath = splitMarker.clone();
+			splitMarker.closePath();
+			splitMarker.lastCurve._segment1._handleOut._x = 0;
+			splitMarker.lastCurve._segment1._handleOut._y = 0;
+			splitMarker.lastCurve._segment2._handleIn._x = 0;
+			splitMarker.lastCurve._segment2._handleIn._y = 0;
+			markerSTLOutlines.push(splitMarker);
+		} else {
+			clonePath = openMarker.clone();
+			openMarker.closePath();
+			openMarker.lastCurve._segment1._handleOut._x = 0;
+			openMarker.lastCurve._segment1._handleOut._y = 0;
+			openMarker.lastCurve._segment2._handleIn._x = 0;
+			openMarker.lastCurve._segment2._handleIn._y = 0;
+			markerSTLOutlines.push(openMarker);
+		}
+		returnA.push(clonePath);
+
+	}
+	if (crossingsB.length == 2) {
+		var openMarker = markerB.split(crossingsB[0]);
+		var splitMarker = openMarker.split(crossingsB[1]);
+
+		var tinyOffset = offsetPath(edgeB, 0.2, joints[index]['dirF']);
+		var tinyOffsetPath = new Path(tinyOffset[0].segments);
+		var openC = openMarker.getCrossings(tinyOffsetPath);
+		var splitC = splitMarker.getCrossings(tinyOffsetPath);
+
+		console.log("joints[index]['dirF']: ", joints[index]['dirF']);
+		if (openC.length < splitC.length) {
+			clonePath = splitMarker.clone();
+			splitMarker.closePath();
+			// splitMarker.curves[splitMarker.curves.length-1].
+			// splitMarker.lastCurve._segment1._handleIn._x = 0;
+			// splitMarker.lastCurve._segment1._handleIn._y = 0;
+			splitMarker.lastCurve._segment1._handleOut._x = 0;
+			splitMarker.lastCurve._segment1._handleOut._y = 0;
+			splitMarker.lastCurve._segment2._handleIn._x = 0;
+			splitMarker.lastCurve._segment2._handleIn._y = 0;
+			// splitMarker.lastCurve._segment2._handleOut._x = 0;
+			// splitMarker.lastCurve._segment2._handleOut._y = 0;
+			console.log('splitMarker: ', splitMarker);
+		} else {
+			clonePath = openMarker.clone();
+			openMarker.closePath();
+			openMarker.lastCurve._segment1._handleOut._x = 0;
+			openMarker.lastCurve._segment1._handleOut._y = 0;
+			openMarker.lastCurve._segment2._handleIn._x = 0;
+			openMarker.lastCurve._segment2._handleIn._y = 0;
+			console.log('openMarker: ', openMarker);
+			
+		}
+		returnB.push(clonePath);
+	}
+
+	return markerSTLOutlines;
+	
+}
 
 function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printTemplate) {
 	var returnB = [];
@@ -498,6 +719,64 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 	var returnAFold = [];
 	var returnBFold = [];
 	var G91 = printTemplate.G91Commands;
+
+
+
+	// console.log({serverApplication:is_server()});
+	// console.log({THREE:THREE});
+
+	// const scene = new THREE.Scene();
+
+	// let p1 = new THREE.Vector2(0, 0);
+	// let p2 = new THREE.Vector2(10, 10);
+	// let p3 = new THREE.Vector2(0, 10);
+	// const heartShape = new THREE.Shape([p1, p2, p3, p1]);
+	// console.log({heartShape:heartShape});
+
+	// const geometry = new THREE.ExtrudeGeometry(heartShape, {
+	// 	depth: 20,
+	// 	bevelEnabled: false
+	// });
+
+	// console.log({geometry:geometry});
+
+	// const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+	// const mesh = new THREE.Mesh( geometry, material ) ;
+
+	// console.log({mesh:mesh});
+
+	// scene.add( mesh );
+
+	// var STLExporter = require('STLExporter');
+    // rulesEngine = new jsonRulesEngine();
+
+	// var exporter = new THREE.STLExporter();
+	// var str = exporter.parse( geometry ); // Export the scene
+
+	
+	// var str = STLParse( scene );
+	// var str = fromMesh ( mesh );
+	// console.log('fromMesh: ', fromMesh);
+	// console.log('str: ', str);
+
+
+
+	// var blob = new Blob( [str], { type : 'text/plain' } ); // Generate Blob from the string
+	// saveAs( blob, 'file.stl' ); //Save the Blob to file.stl
+
+
+
+
+	// const engine = new BABYLON.Engine(canvas);
+	// var scene2 = new BABYLON.Scene(engine);
+	// var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene2);
+	// console.log({BABYLON:BABYLON});
+	// var BabSTL = BABYLON.STLExport.CreateSTL([sphere],true);
+	
+	// console.log('BabSTL: ', BabSTL);
+
+	var marking = true;
+
 
 	var totalLength = shape[shapeA].children[pathA].length;
 	// Get PCA --> principal length instead
@@ -515,50 +794,63 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 		pathOffsetA[0].segments.shift();
 	}
 
+	var pathOffsetB = offsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
+	if (pathOffsetB[0].length < 4) return false;
+	else { // Remove connection to pase path
+		pathOffsetB[0].segments.pop();
+		pathOffsetB[0].segments.shift();
+	}
+
+
 	// for (path in pathOffsetA) {
 	// 	for (seg in path)
 	// 		returnA.push(pathOffsetA[i]);
 	// }
 
 	var offsetPathA = new Path(pathOffsetA[0].segments);
+	var offsetPathB = new Path(pathOffsetB[0].segments);
 
 	for (i in pathOffsetA) { // Why not offsetPathA?
-		returnA.push(pathOffsetA[i]);
+		// returnA.push(pathOffsetA[i]);
 	}
-	var pathOffsetB = offsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
 	for (i in pathOffsetB) {
-		returnB.push(pathOffsetB[i]);
+		// returnB.push(pathOffsetB[i]);
 	}
+
+	// var pathOffsetB = offsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
+	// for (i in pathOffsetB) {
+	// 	returnB.push(pathOffsetB[i]);
+	// }
 	returnAFold.push(edgeA);
 	returnBFold.push(edgeB);
 
 
 	console.log({edgeA:edgeA, pathOffsetA:pathOffsetA[0], offsetPathA:offsetPathA});
+	console.log({edgeB:edgeB, pathOffsetB:pathOffsetB[0], offsetPathB:offsetPathB});
 
 	let centerPoint;
-	let GCODES = [];
+	let centerPointB;
+	let printJobs = [];
 	
 	if (param['hole diameter']>0 && param['hole spacing']>0) {
 		var holeCount = Math.floor(offsetPathA.length/param['hole spacing']);
 		var gapA = offsetPathA.length/holeCount;
-		var gapB = pathOffsetB.length/holeCount;
+		var gapB = offsetPathB.length/holeCount;
 		var GCODE = "";
 		for (var i=0; i<holeCount; i++) {
 			var ptA = offsetPathA.getPointAt(i*gapA+gapA/2);
-			var ptB = edgeB.getPointAt(i*gapB+gapB/2);
+			var ptB = offsetPathB.getPointAt(i*gapB+gapB/2);
 			returnA.push(new Path.Circle(ptA, param['hole diameter']/2));
 			printA.push(new Path.Circle(ptA, param['hole diameter']/2));
 			returnB.push(new Path.Circle(ptB, param['hole diameter']/2));
-			console.log({ptA:ptA});
 			if (i == 0) {
 				centerPoint = ptA;
+				centerPointB = ptB;
 			}
 			// GCODE += "X:" + ptA.x + " Y:" + ptA.y +";  \n";
 		}
 		// GCODES.push(GCODE);
 
-		console.log("🚀 ~ file: joints.js:561 ~ generatePrintedJoint ~ pathOffsetA", pathOffsetA.strokeBounds);
-		console.log("🚀 ~ file: joints.js:562 ~ generatePrintedJoint ~ offsetPathA", offsetPathA.strokeBounds);
 
 		let rotationDegs = 10;
 		let fullCircle = 0;
@@ -566,7 +858,6 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 		while (fullCircle < 360) {
 			offsetPathA.rotate(rotationDegs, new Point(offsetPathA.strokeBounds.x, offsetPathA.strokeBounds.y));
 			fullCircle += rotationDegs;
-			console.log("🚀 ~ file: joints.js:570 ~ generatePrintedJoint ~ offsetPathA", offsetPathA.strokeBounds);
 			if (offsetPathA.strokeBounds.width > longestW.width) {
 				longestW.width = offsetPathA.strokeBounds.width;
 				longestW.deg = fullCircle;
@@ -577,39 +868,104 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 			offsetPathA.rotate(longestW.deg, new Point(offsetPathA.strokeBounds.x, offsetPathA.strokeBounds.y));
 		}
 
+
+		// Rotate to ensure Left To Right on print build plate
+		let startP = offsetPathA.getPointAt(0);
+		let endP = offsetPathA.getPointAt(offsetPathA.length);
+		if (endP.x < startP.x) {
+			offsetPathA.rotate(180, new Point(offsetPathA.strokeBounds.x, offsetPathA.strokeBounds.y));
+		}
+
+
 		if (offsetPathA.length > param['printing area length'])
 		{
 
-			console.log({totalLength:totalLength, offsetPathALength:offsetPathA.length});
-
 			let numberOfParts = Math.ceil(offsetPathA.length / param['printing area length']);
 			let partLength = offsetPathA.length / numberOfParts;
+			console.log({totalLength:totalLength, offsetPathALength:offsetPathA.length, numberOfParts:numberOfParts, areaLength:param['printing area length'], partLength:partLength});
 			var parts = [offsetPathA];
-			for (let partNum = 0; numberOfParts < numberOfParts; partNum++) {
-				var pathPart = offsetPathA.splitAt(partLength);
-				parts.push(pathPart);
+			for (let partNum = 1; partNum < numberOfParts; partNum++) {
+				
+				var clonePath = offsetPathA.clone();
+				clonePath.strokeWidth = 1.0;
+				
+				let splitP = offsetPathA.getPointAt(partLength);
+				var splitLocation = offsetPathA.getNearestLocation(splitP);
+
+				console.log({splitLocation1:splitLocation._segment1, splitLocation2:splitLocation._segment2});
+				let sliptIndex1 = splitLocation._segment1._index;
+				let sliptIndex2 = splitLocation._segment2._index;
+
+				console.log({offsetPathA:offsetPathA, clonePath:clonePath, location:splitLocation});
+
+				clonePath.removeSegments(sliptIndex2, clonePath.segments.length);
+				offsetPathA.removeSegments(0, sliptIndex1);
+
+				console.log({offsetPathA:offsetPathA, clonePath:clonePath, location:splitLocation});
+				// var pathPart = offsetPathA.splitAt(location);
+				parts.push(clonePath);
 				
 			}
 
-			console.log("🚀 ~ file: joints.js:586 ~ generatePrintedJoint ~ parts", parts);
-
 			for (const part of parts) {
+				console.log("strokeBoundHeight " + part.strokeBounds.height + " Width " + part.strokeBounds.width);
+				let rotationDegs = 10;
+				let fullCircle = 0;
+				let longestW = {deg:0, width:0};
+				while (fullCircle < 360) {
+					part.rotate(rotationDegs, new Point(part.strokeBounds.x, part.strokeBounds.y));
+					fullCircle += rotationDegs;
+					if (part.strokeBounds.width > longestW.width) {
+						longestW.width = part.strokeBounds.width;
+						longestW.deg = fullCircle;
+					}
+				}		
+
+				if (longestW.deg != 0) {
+					part.rotate(longestW.deg, new Point(part.strokeBounds.x, part.strokeBounds.y));
+
+					// Rotate to ensure Left To Right on print build plate
+					let startP = part.getPointAt(0);
+					let endP = part.getPointAt(part.length);
+					if (endP.x < startP.x) {
+						part.rotate(180, new Point(part.strokeBounds.x, part.strokeBounds.y));
+					}
+				}
+
+				console.log("strokeBoundHeightAfter " + part.strokeBounds.height + " Width " + part.strokeBounds.width );
+
+
+
+				var partRef = part;
+				
 				var holeList = [];
 				var holeCount = Math.floor(part.length/param['hole spacing']);
 				var gapA = part.length/holeCount;
 				var startPoint = new Point(0.0, 0.0);
+				var maxY = 0;
+				var minY = 0;
 				for (var i=0; i<holeCount; i++) {
 					var ptA = part.getPointAt(i*gapA+gapA/2);
-					console.log({ptA:ptA});
-					if (i == 0) {
+					// console.log({ptA:ptA});
+					if (i === 0) {
 						startPoint = ptA;
 						holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
 					} else {
-						holeList.push(new Point((ptA.x - startPoint.x).toFixed(3), (ptA.y - startPoint.y).toFixed(3))); // remaining points relative to start point
+						var relativeX = ptA.x - startPoint.x;
+						var relativeY = ptA.y - startPoint.y;
+						var realtiveP = new Point(relativeX, relativeY);
+						holeList.push(realtiveP); // remaining points relative to start point
+						if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
+						else if (minY > relativeY) minY = relativeY;
 					}
-					
 				}
-				GCODES.push({holeList:holeList, G91:G91, sourcePath:part});
+				var selectedBase = G91.dots;
+				var selectedSpikes = G91.spikes;
+				var selectedSpikesTop = G91.spikesTop;
+				var selectedTop = G91.dotsTop;
+
+				var markerSTLOutlines = [];
+				printJobs.push({holeList:holeList, G91:{base:selectedBase, spikes:selectedSpikes, spikesTop:selectedSpikesTop, top:selectedTop}, sourcePath:partRef, usedParam:param, relativeHeight:{max: maxY, min:minY}, markerSTLOutlines:markerSTLOutlines, handled:false});
 			}
 
 		} else {
@@ -617,29 +973,44 @@ function generatePrintedJoint(index, shapeA, pathA, shapeB, pathB, param, printT
 			var holeCount = Math.floor(offsetPathA.length/param['hole spacing']);
 			var gapA = offsetPathA.length/holeCount;
 			var startPoint = new Point(0.0, 0.0);
+			var maxY = 0;
+			var minY = 0;
 			for (var i=0; i<holeCount; i++) {
 				var ptA = offsetPathA.getPointAt(i*gapA+gapA/2);
-				console.log({ptA:ptA});
-				if (i == 0) {
+				// console.log({ptA:ptA});
+				if (i === 0) {
 					startPoint = ptA;
 					holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
 				} else {
-					holeList.push(new Point((ptA.x - startPoint.x).toFixed(3), (ptA.y - startPoint.y).toFixed(3))); // remaining points relative to start point
+					var relativeX = ptA.x - startPoint.x;
+					var relativeY = ptA.y - startPoint.y;
+					var realtiveP = new Point(relativeX, relativeY);
+					holeList.push(realtiveP); // remaining points relative to start point
+					if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
+					else if (minY > relativeY) minY = relativeY;
 				}
 				
 			}
+
+			var markerSTLOutlines = setPrintedMarkers(index, edgeA, edgeB, returnA, returnB, joints);
+
+			var payload = {markerSTLOutlines:markerSTLOutlines};
+			$.post( "http://127.0.0.1:5501/exportMarkersSTL?data="+JSON.stringify(payload), {contentType: 'application/json'}); //data : JSON.stringify(something), 
+
 			var selectedBase = G91.dots;
 			var selectedSpikes = G91.spikes;
-			GCODES.push({holeList:holeList, G91:{base:selectedBase, spikes:selectedSpikes, top:null}, sourcePath:offsetPathA, usedParam:param});
+			var selectedSpikesTop = G91.spikesTop;
+			var selectedTop = G91.dotsTop;
+			printJobs.push({holeList:holeList, G91:{base:selectedBase, spikes:selectedSpikes, spikesTop:selectedSpikesTop, top:selectedTop}, sourcePath:offsetPathA, usedParam:param, relativeHeight:{max: maxY, min:minY}, markerSTLOutlines:markerSTLOutlines, handled:false});
 		}	
 		
 	}
-		
+	
 
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
 	shape[shapeB].children[pathB+'_joint'].removeChildren();
 
-	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'gc':GCODES};
+	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':printJobs};
 }
 
 
@@ -1801,33 +2172,50 @@ async function getTemplate(templateName) {
 	else return template;
 }
 
-function addGCodePart(outString, placeList, commandObj, depthAdjustment) {
+function addGCodePart(outString, params, placeList, commandObj, depthAdjustment) {
+	console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
+	console.log("outString: " + outString.length);
 	for (let place of placeList) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${place.x + 5 } Y${place.y+depthAdjustment} F7200\n`; // XY positioning
+		outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
 	}
+	console.log("outStringAdded: " + outString.length);
 	return outString;
 } 
 
 function exportPreviousGcode(GCODE, addedOutputs) {
 
+	GCODE = chosenPrinter.startCode + GCODE;
 	
-	for (let output of addedOutputs) {
-		addGCodePart(GCODE, output.holeList, output.G91.spike, output.heightUsed);
+	for (let outputContainer of addedOutputs) {
+		console.log('output: ', outputContainer);
+		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed);
 	}
 
-	GCODE += `\n Add pause printing code here \n`
+	for (let outputContainer of addedOutputs) {
+		GCODE += chosenPrinter.pauseCode;
+		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikesTop, outputContainer.heightUsed);
 
-	for (let output of addedOutputs) {
-		if (false)
-		addGCodePart(GCODE, output.holeList, output.G91.roof, output.heightUsed);
+		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
 	}
+
+	GCODE += chosenPrinter.endCode;
 
 	console.log('ExportedGCODE: ', GCODE);
+
+	var blob = new Blob([GCODE], {type: 'text/plain'});
+	var d = new Date();
+	saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
+	refreshShapeDisplay();
+	setMessage('<b>GCODE Exported</b>', '#444');
 	return;
 
+}
+
+function is_server() {
+	return ! (typeof window != 'undefined' && window.document);
 }
 
 function exportProject() {
@@ -1843,8 +2231,13 @@ function exportProject() {
 			for (j in shape[i].children) {
 				if (shape[i].children[j].className=='Path') {
 					if (shape[i].children[j].name=='joint') {
-						shape[i].children[j].strokeWidth = 1.0;
-						shape[i].children[j].strokeColor = '#F00';
+						if (shape[i].children[j].printJobs) {
+							shape[i].children[j].strokeWidth = 1.0;
+							shape[i].children[j].strokeColor = '#0F0';
+						} else {
+							shape[i].children[j].strokeWidth = 1.0;
+							shape[i].children[j].strokeColor = '#F00';
+						}
 					} else {
 						shape[i].children[j].strokeColor = shapeColor[i][j];
 					}
@@ -1859,36 +2252,47 @@ function exportProject() {
 							shape[i].children[j].strokeColor = '#00F';
 							if (shape[i].children[j].children['folds']) {
 								shape[i].children[j].children['folds'].strokeColor = '#0FF';
+								if (shape[i].children[j].printJobs) {
+									shape[i].children[j].strokeColor = '#FF0';
+								} 
 							}
+							
 						} else {
 							//shape[i].children[j].strokeColor = '#F0F';
 						}
 					}
 				}
-				console.log({gottem:shape[i].children[j]});
 
-				if (shape[i].children[j].gc) {
-					console.log('shape[i].children[j]: ', shape[i].children[j].gc);
+				if (shape[i].children[j].printJobs) {
+					console.log('shape[i].children[j]: ', shape[i].children[j].printJobs);
 
-					for (let output of shape[i].children[j].gc) {
-						let outputHeight = output.sourcePath.strokeBounds.height;
-						if (outputHeight > output.usedParam["printing area depth"]) {
-							console.error({message:"Output height larger than available printing bed space", bedDepth:output.usedParam["printing area depth"], spaceNeeded:outputHeight});
-							break;
+					for (let output of shape[i].children[j].printJobs) {
+						if (output.handled === false) {
+							output.handled = true;
+							// let outputHeight = output.sourcePath.strokeBounds.height;
+							let outputHeight = output.relativeHeight.max - output.relativeHeight.min;
+							if (outputHeight > output.usedParam["printing area depth"]) {
+								console.error({message:"Output height larger than available printing bed space", bedDepth:output.usedParam["printing area depth"], spaceNeeded:outputHeight});
+								break;
+							}
+							if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
+								exportPreviousGcode(GCODE, addedOutputs);
+								GCODE = "";
+								heightUsed = 0;
+								addedOutputs = [];
+							}
+							
+							let localHeight = heightUsed - output.relativeHeight.min + 20;
+							console.log({relHeight:output.relativeHeight});
+							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
+							addedOutputs.push({output:output, heightUsed:localHeight, usedParam:output.usedParam});
+
+							// Add "Inject here" G-Code flag for printed markers?  
+
+							GCODE = addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
 						}
-						if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
-							exportPreviousGcode(GCODE, addedOutputs);
-							GCODE = "";
-							heightUsed = 0;
-							addedOutputs = [];
-						}
-						heightUsed += (outputHeight + 20); // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
-						addedOutputs.push({output:output, heightUsed:heightUsed});
-
-						addGCodePart(GCODE, output.holeList, output.G91.base, heightUsed) 
 					}
 				}
-
 			}
 		}
 

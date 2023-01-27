@@ -1,3 +1,5 @@
+// import * as THREE from './js/lib/three.js';
+
 var initialized = false;
 var shape = [];
 var cursorIcon;
@@ -9,6 +11,7 @@ var connectionLines;
 var shapeColor = [];
 var ctx;
 var printingCommands;
+
 
 function init() {
 	if (!initialized) {
@@ -34,6 +37,28 @@ function init() {
 	paperScale = 1.0;
 	drawGrid();
 	initialized = true;
+	console.log({THREE:THREE});
+	
+	// axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
+	// axios.post('http://127.0.0.1:5501/', {
+	// 	firstName: 'Fred',
+	// 	lastName: 'Flintstone'
+	//   })
+	//   .then(function (response) {
+	// 	console.log(response);
+	//   })
+	//   .catch(function (error) {
+	// 	console.log(error);
+	//   });
+
+	// axios({
+	// 	method: 'post',
+	// 	headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Access-Control-Allow-Origin':'*' },
+	// 	url: 'http://127.0.0.1:5501',
+	// 	data: { data : something }
+	//   }).then(function (response) {
+	// 	console.log(response.data);
+	//   });
 }
 
 var minorLineCol = "#E8E8E8";
@@ -747,7 +772,7 @@ function shapePathClick() {
 			}
 			if (jointMake.length==2) {
 				var delta = shape[jointMake[0].shape].children[jointMake[0].path].length / shape[jointMake[1].shape].children[jointMake[1].path].length;
-				if (delta < 1.01 && delta > 0.99) {
+				if (delta < 1.2 && delta > 0.8) {
 					var jointDetail = {'0':jointMake[0], '1':jointMake[1], 'profile':'none', 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1};
 					joints.push(jointDetail);
 					initJoint(jointDetail[0].shape, jointDetail[0].path);
@@ -762,7 +787,7 @@ function shapePathClick() {
 					setMessage('<b>Joint created</b>', '#444');
 					refreshJointList();
 				} else {
-					setMessage('<b>Cannot join</b>: paths have significantly different lengths', '#F80');
+					setMessage('<b>Cannot join</b>: paths have significantly different lengths ' + delta, '#F80');
 					jointMake = [];
 					tempLines.removeChildren();
 				}	
