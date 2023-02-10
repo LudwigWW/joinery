@@ -40,16 +40,19 @@ function init() {
 	console.log({THREE:THREE});
 	
 	// axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
-	// axios.post('http://127.0.0.1:5501/', {
-	// 	firstName: 'Fred',
-	// 	lastName: 'Flintstone'
-	//   })
-	//   .then(function (response) {
-	// 	console.log(response);
-	//   })
-	//   .catch(function (error) {
-	// 	console.log(error);
-	//   });
+
+	if(false)
+		axios.post('http://127.0.0.1:5501/exportMarkersSTL.cmd', {
+			points: [[0,0],[3,0],[3,3]],
+			height: 3,
+			max_dist: 30,
+			x: 125,
+			y: 125
+		}).then(function (response) {
+			console.log(response);
+		}).catch(function (error) {
+			console.log(error);
+		});
 
 	// axios({
 	// 	method: 'post',
