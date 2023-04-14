@@ -218,6 +218,11 @@ document.onkeyup = function(e) {
 			if (key==87) {  // 'w'
 				swapClick();
 			}
+
+			if (key==79) {  // 'o'
+				singlePathJointButton();
+			}
+
 			// if (key==67) { // 'c'
 			// 	for (var i=0; i<joints.length; i++) {
 			// 		for (j in joints[i]) {

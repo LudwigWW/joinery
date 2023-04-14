@@ -4,52 +4,52 @@
 
 <head>
 	<meta charset="utf-8">
-	<title>Joinery</title>
-	<meta name="description" content="Parametric joint generation for laser cutting">
-	<meta name="author" content="Clement Zheng (clementzheng.info)">
+	<title>Export</title>
+	<meta name="description" content="Export status">
+	<meta name="author" content="Ludwig W. Wall (ludwigwall.com)">
 	<link rel="shortcut icon" href="favicon.png">	
 
 	<!--CSS-->
 	<link href='https://fonts.googleapis.com/css?family=Roboto+Mono:400,300,300italic,400italic,500,500italic,700,700italic,100,100italic' rel='stylesheet' type='text/css'>
 	<link href='https://fonts.googleapis.com/css?family=Roboto:400,300,500,700,900,400italic,500italic' rel='stylesheet' type='text/css'>
-	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/export-style.css">
 	
 	<!--SCRIPTS-->
-	<script language="javascript" type="text/javascript" src="js/lib/FileSaver.js"></script>
-	<script language="javascript" type="text/javascript" src="js/lib/jquery-1.11.3.min.js"></script>
-	<script language="javascript" type="text/javascript" src="js/lib/jquery-ui.min.js"></script>
-	<script language="javascript" type="text/javascript" src="js/lib/paper-full.js"></script>
-	<!-- <script language="javascript" type="text/javascript" src="js/lib/three.module.js"></script> -->
-	<script type="module">
-		import * as THREE from '../js/lib/three.js'
-		// import STLExporter from '../js/lib/STLExporter.js'
-	</script>
-	<!-- <script language="javascript" type="text/javascript" src="js/lib/babylon.max.js"></script> -->
-	<script src="https://cdn.babylonjs.com/babylon.max.js"></script>
+	<script language="javascript" type="text/javascript" src="../js/lib/FileSaver.js"></script>
+	<script language="javascript" type="text/javascript" src="../js/lib/jquery-1.11.3.min.js"></script>
+	<script language="javascript" type="text/javascript" src="../js/lib/jquery-ui.min.js"></script>
+	<script language="javascript" type="text/javascript" src="../js/lib/paper-full.js"></script>
 	<canvas id="render-canvas"></canvas>
     <script>
       const canvas = document.getElementById("render-canvas");
       /* all our JavaScript code goes here */
     </script>
-	<script language="javascript" type="text/javascript" src="js/lib/STLExport.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-	<script language="javascript" type="text/javascript" src="js/main.js"></script>
+	<!-- <script language="javascript" type="text/javascript" src="js/main.js"></script>
 	<script language="javascript" type="text/javascript" src="js/joints.js"></script>
 	<script language="javascript" type="text/javascript" src="js/mousekey.js"></script>
-	<script language="javascript" type="text/javascript" src="js/menu.js"></script>
+	<script language="javascript" type="text/javascript" src="js/menu.js"></script> -->
+    <script language="javascript" type="text/javascript" src="../js/export-interaction.js"></script>
 	
 	
 </head>
 
 <body onload="init()">
 
-	<div>
+	<div id="flatListContainer"></div>
+
+	<div id="step1" class="stepholder"> <span>Step 1:</span> <input id="done1" class="checkbox" type="checkbox"> <span id="type1">Cut</span> <img src="../images/holeIcon2.svg" style="width:16px"><div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div> <div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div>much testing <span class="extraHigh"> <input id="dl1" class="checkbox" type="checkbox"> <br> download</span> 
+<br> <span>Image</span></div>
+<div id="step1" class="stepholder"> <span>Step 1:</span> <input id="done1" class="checkbox" type="checkbox"> <span id="type1">Cut</span> <img src="../images/holeIcon2.png" style="width:16px"><div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div> <div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div>much testing <span class="extraHigh"> <input id="dl1" class="checkbox" type="checkbox"> <br> download</span> 
+<br> <span>Image</span></div>
+	<!-- <div>
 		<canvas id="bgCanvas"></canvas>
 	</div>
 
 	<div>
 		<canvas id="paperCanvas"></canvas>
-	</div>
+	</div> 
 	
 	<div id="leftMenu" class="active menuStyle">
 		<div id="leftMenuFrame">
@@ -102,15 +102,44 @@
 		</div>
 		<div id="leftMenuCollapse2" class="collapse"  title="tools menu">&#x2039;</div>
 	</div>
+    -->
 	
 	<div id="topMessage">	
 	</div>
+
+    <ul class="tree" id="export-graph">
+        <li>
+          <details id="root" open>
+            <!-- <summary>Giant planets</summary>
+            <ul>
+              <li>
+                <details>
+                  <summary>Gas giants</summary>
+                  <ul>
+                    <li>Jupiter</li>
+                    <li>Saturn</li>
+                  </ul>
+                </details>
+              </li>
+              <li>
+                <details>
+                  <summary>Ice giants</summary>
+                  <ul>
+                    <li>Uranus</li>
+                    <li>Neptune</li>
+                  </ul>
+                </details>
+              </li>
+            </ul> -->
+          </details>
+        </li>
+      </ul>
 
 	<div id="jointImageDiv">
 		
 	</div>
 
-	<div id="rightMenu" class="active menuStyle">
+	<!-- <div id="rightMenu" class="active menuStyle">
 		<div id="rightMenuCollapse" class="collapse"  title="joint profiles">&#x203a;</div>
 		<div id="rightMenuFrame">
 			<div id="jointProfileDiv">
@@ -154,7 +183,7 @@
 				
 			</div>
 		</div>
-	</div>
+	</div> -->
 
 	<div id="contextMenu">
 		<li id="contextSet">set joints</li>
@@ -166,7 +195,7 @@
 	<div class="footer">
 		<div id="helpDiv"><a href="http://www.instructables.com/id/Joinery-Joints-for-Laser-Cut-Assemblies/" target="_BLANK">?</a></div>
 		&copy; Clement Zheng 2016
-		<div id="TestDiv"></div>
+        <div id="TestDiv"></div>
 	</div>
 	
 </body>

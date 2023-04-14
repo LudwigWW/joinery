@@ -126,7 +126,7 @@ const host = 'localhost';
 
 
 const app = express();
-const port = 5501;
+const port = 5505;
 
 function send_error_response(res, err) {
     res.writeHead(500, {'Content-Type': 'application/json'});
@@ -152,13 +152,14 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
         // res.end();
         var jscadText = STL.extrudePolygonJscad(geometry_data);
     
-        const jscadPath = '../../fabricfuse-data/jscad/geometry'+geometry_data.ID+'.jscad';
-        const stlPath = '../../fabricfuse-data/stl/geometry'+geometry_data.ID+'.stl';
-        const gcodePath = '../../fabricfuse-data/gcode/geometry'+geometry_data.ID+'.gcode';
+        const jscadPath = '../../fabricfuse-data/jscad/geo'+geometry_data.ID+'.jscad';
+        const stlPath = '../../fabricfuse-data/stl/geo'+geometry_data.ID+'.stl';
+        const gcodePath = '../../fabricfuse-data/gcode/geo'+geometry_data.ID+'.gcode';
         const configPath = './data/autoexport.ini';
         fs.writeFile(jscadPath, jscadText, function (er) {
             if (er) {
                 // throw err;
+                console.log(`File writeopen error: ${er}`);
                 scream = "FILE ERROR";
                 eventEmitter.emit('scream', scream);
                 send_error_response(res, er);
@@ -167,6 +168,7 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
 
             const jscadCmd = "jscad "+jscadPath+" -o "+stlPath;
             const stlCmd = "prusa-slicer-console.exe -g "+stlPath+" --load "+configPath+" --center "+geometry_data.x+","+geometry_data.y+" --output "+gcodePath;
+
             execAsync(jscadCmd, res, function() {
                 execAsync(stlCmd, res, function() {
                     fs.readFile(gcodePath, function(err, data) {
@@ -179,11 +181,36 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
                                 var start_index = lines.indexOf(";=====startF=====;");
                                 var end_index = lines.indexOf(";=====end=====;");
                                 lines = lines.slice(start_index+2, end_index); // cut off one extra at start (M107)
-                                var concatLines = "";
-                                lines.forEach(function (line) { 
-                                    concatLines += line;
-                                    concatLines += "\n";
-                                });
+
+                                // lines.unshift("\nG91;\n");
+                                // lines.push("\nG90;\n");
+
+                                // Remove intro line retractions
+                                for (lineIndex in lines) {
+                                    if (lines[lineIndex].search("E-1.5") >= 0) {
+                                        lines.splice(lineIndex, 1);
+                                        break;
+                                    }
+                                }
+
+                                for (lineIndex in lines) {
+                                    if (lines[lineIndex].search("E1.5") >= 0) {
+                                        lines.splice(lineIndex, 1);
+                                        break;
+                                    }
+                                }
+
+                                // Transform into G91
+                                var concatLines = STL.g91Conversion(lines);
+                                concatLines = "G91;\n" + concatLines; // First move is already in G91 style since slicing happened at 0/0
+
+
+                                // var concatLines = "";
+                                // lines.forEach(function (line) { 
+                                //     concatLines += line;
+                                //     concatLines += "\n";
+                                // });
+
                                 res.writeHead(200, {'Content-Type': 'application/json'});
                                 var responseGcode = {gcode:concatLines, ID:geometry_data.ID};
                                 var jsonGcode = JSON.stringify(responseGcode);

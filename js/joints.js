@@ -11,12 +11,23 @@ function mod(n, m) {
 }
 
 var paramInteger = [
-	'hook count'
+	'hook count',
+	'skip # holes',
+	'printing area width',
+	'printing area depth'
 ];
 
 var paramAngle = [
 	'interior angle',
-	'flap angle'
+	'flap angle',
+	// 'hole spacing',
+	// 'hole diameter',
+	// 'marker height',
+	// 'hem offset'
+];
+
+var paramBool = [
+	'pinking cut'
 ];
 
 var loopInsert = {
@@ -120,9 +131,12 @@ var printedRivets = {
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 10,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'skip # holes': 0,
+		'pinking cut': true,
 	}
 };
 
@@ -134,23 +148,43 @@ var printedRunning = {
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 10,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'pinking cut': false,
 	}
 };
 
 var printedBaste = {
 	'name':'printed baste stitch',
 	'profile':'',
-	'notes': 'notes',
+	'notes': 'Seam is easy to break by applying force or breaking printed stitches.',
 	'param': {
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 20,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'pinking cut': false,
+	}
+};
+
+var printedBastePull = {
+	'name':'pullable baste stitch',
+	'profile':'',
+	'notes': 'Seam can be undone just by pulling with a little force.',
+	'param': {
+		'hem offset': 8,
+		'hole diameter': 1.5,
+		'hole spacing': 20,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
+		'marker height': 3,
+		'pinking cut': false,
 	}
 };
 
@@ -163,9 +197,11 @@ var printedWhip = {
 		'pattern width': 5,
 		'hole diameter': 1.5,
 		'hole spacing': 9,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'pinking cut': false,
 	}
 };
 var printedZigZag = {
@@ -177,9 +213,27 @@ var printedZigZag = {
 		'pattern width': 5,
 		'hole diameter': 1.5,
 		'hole spacing': 9,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'pinking cut': false,
+	}
+};
+var printedCross = {
+	'name':'printed cross stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'hem offset': 8,
+		'pattern width': 5,
+		'hole diameter': 1.5,
+		'hole spacing': 7,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
+		'marker height': 3,
+		'pinking cut': false,
 	}
 };
 var printedDecorative = {
@@ -190,9 +244,11 @@ var printedDecorative = {
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 10,
-		'printing area width': 200,
-		'printing area depth': 200,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
 		'marker height': 3,
+		'pinking cut': false,
 	}
 };
 
@@ -254,7 +310,7 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedBaste, printedWhip, printedZigZag, printedDecorative, loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
+var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedDecorative, loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
 
@@ -449,36 +505,61 @@ function generateJoint(index) {
 					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.dots, 
-						spikes:printTemplate.G91Commands.spikes, 
+						spikes:printTemplate.G91Commands.spikesTall, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.dotsTop
 					};
 
-					var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+
+					console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
+
 					var g = new Group();
 					g.name = 'folds';
 					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
 					shape[shapeA].children[pathA+'_joint'].addChild(g);
 					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					var g2 = new Group();
 					g2.name = 'folds';
 					shape[shapeB].children[pathB+'_joint'].addChild(g2);
 					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
 	
 					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+
+					var gLaserA = new Group();
+					gLaserA.name = 'laser';
+					shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
+					shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
+
+					var gLaserB = new Group();
+					gLaserB.name = 'laser';
+					shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
+					shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
+
+					var gPrintA = new Group();
+					gPrintA.name = 'print';
+					shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
+					shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
+
+					var gPrintB = new Group();
+					gPrintB.name = 'print';
+					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
+					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
+					
 					break;
 					
 				case 'printed running stitch':
@@ -555,17 +636,18 @@ function generateJoint(index) {
 					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
-				case 'printed whip stitch':
+					
+				case 'pullable baste stitch':
 					// var printTemplate = template;
 					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
-					var G91 = {base:printTemplate.G91Commands.whip, 
+					var G91 = {base:printTemplate.G91Commands.bastePull, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
-						top:printTemplate.G91Commands.whipTop
+						top:printTemplate.G91Commands.bastePullTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
 					var g = new Group();
 					g.name = 'folds';
 					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
@@ -590,6 +672,129 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
 					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					break;
+
+
+				case 'printed decorative stitch':
+					// var printTemplate = template;
+					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					
+					var G91 = {base:printTemplate.G91Commands.spiral, 
+						spikes:printTemplate.G91Commands.spikes, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.spiralTop
+					};
+
+					var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					break;
+
+				case 'printed whip stitch':
+					// var printTemplate = template;
+					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					
+					var G91 = {base:printTemplate.G91Commands.whip, 
+						spikes:printTemplate.G91Commands.spikes, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.whipTop
+					};
+
+					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					// var g = new Group();
+					// g.name = 'folds';
+					// shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					// shape[shapeA].children[pathA+'_joint'].addChild(g);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// var g2 = new Group();
+					// g2.name = 'folds';
+					// shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					// shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// break;
+
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
+	
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+
+					var gLaserA = new Group();
+					gLaserA.name = 'laser';
+					shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
+					shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
+
+					var gLaserB = new Group();
+					gLaserB.name = 'laser';
+					shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
+					shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
+
+					var gPrintA = new Group();
+					gPrintA.name = 'print';
+					shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
+					shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
+
+					var gPrintB = new Group();
+					gPrintB.name = 'print';
+					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
+					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
+					
 					break;
 
 				case 'printed zig zag stitch':
@@ -628,7 +833,42 @@ function generateJoint(index) {
 	
 					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
+				case 'printed cross stitch':
+					// var printTemplate = template;
+					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					
+					var G91 = {base:printTemplate.G91Commands.cross, 
+						spikes:printTemplate.G91Commands.spikes, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.crossTop
+					};
 
+					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var g = new Group();
+					g.name = 'folds';
+					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					shape[shapeA].children[pathA+'_joint'].addChild(g);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					var g2 = new Group();
+					g2.name = 'folds';
+					shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					break;
 				case 'tab insert':
 					var childPath = generateTabInsertJoint(index, shapeA, pathA, shapeB, pathB, param);
 					if (childPath) {
@@ -856,140 +1096,315 @@ function STLParse( scene ) {
 	return output;
 }
 
-function doMarkers(job, index, edgeA, edgeB, returnA, returnB, joints, param) {
+function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
+	placeConnectionList = [];
+	placeBConnectionList = [];
+	svgHoleList = [];
+	svgBHoleList = [];
+	for (let laserHole of job.laserHoles) {
+		svgHoleList.push(laserHole.pointOrigin);
+		svgBHoleList.push(laserHole.bOrigin);
+	}
+	addGCodePart("", param, svgHoleList, commandObj.base, 0, false, placeConnectionList); // Just getting the order reference
+	addGCodePart("", param, svgBHoleList, commandObj.top, 0, false, placeBConnectionList);
+	console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
 
-	var markerParams = {size:5};
+	var placeConnLists = [placeConnectionList, placeBConnectionList];
 
-	let markerOffset = job.offset + 6; 
-	var markerObj = setPrintedMarkers(markerOffset, markerParams, index, edgeA, edgeB, returnA, returnB, joints);
-	markerOffset = job.offset + job.path.length - 6; 
-	markerObj = setPrintedMarkers(markerOffset, markerParams, index, edgeA, edgeB, returnA, returnB, joints);
+	for (let placeConnL of placeConnLists) {
+		for (let connection of placeConnL) {
+			console.log(connection.to !== null);
+			if (connection.to !== null) {
+				switch (commandObj.base.renderDetails.type) {
+					case "circle":
+						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
+						renderPath.name = 'printedCircle';
+						renderPath.renderWidth = 0;
+						returnAPrint.push(renderPath);
+						break;
+					case "line":
+						var renderPath = new Path([connection.from, connection.to]);
+						renderPath.name = 'printedLine';
+						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
+						console.log({dist:connection.from.getDistance(connection.to)});
+						renderPath.renderWidth = outWidth;
+						returnAPrint.push(renderPath);
+						console.log({renderPath:renderPath});
+						break;
+				}
+			} else {
+				switch (commandObj.base.renderDetails.type) {
+					case "circle":
+						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
+						renderPath.name = 'printedCircle';
+						renderPath.renderWidth = 0;
+						returnAPrint.push(renderPath);
+						console.log({rCircle:renderPath});
+						break;
+					case "line":
+						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.skipDiameter/2);
+						renderPath.name = 'printedCircle';
+						renderPath.renderWidth = 0;
+						returnAPrint.push(renderPath);
+						console.log({rCircle:renderPath});
+						break;
+				}
+			}
+		}
+	}
+	// commandObj.base.renderDetails
+}
+
+function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param) {
+
+	var markerParams = {size:1, type:"arrow"};
+	var markerParams = {size:2, type:"circle"};
+	if (param['markertype']) {
+		markerParams.type = param['markertype'];
+	}
+
+	console.log({job:job});
+
+	var markers = [];
+
+	let markerOffset = job.originSourceOffset + 6; // From start
+	let markerOffsetRotated = 6; // From part cut point
+	let rotatedPath = job.originSourcePathPart; 
+	// console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
+	
+	var markerObj;
+	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeB, returnBLaser, returnBPrint, joints, false);
+	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeA, returnALaser, returnAPrint, joints, true, rotatedPath);
+	if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObj, job, param)); // If there is something to print
+	
+
+	
+	let markerOffsetE = job.originSourceOffsetEnd - 6; 
+	let markerOffsetERotated = (job.originSourcePathPart.length - 6);
+	// console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
+
+	var markerObjEnd;
+	if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
+		console.log({status:"MarkingEnd"});
+		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeB, returnBLaser, returnBPrint, joints, false);
+		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeA, returnALaser, returnAPrint, joints, true, rotatedPath);
+		if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
+	}
+	
+	
+	console.log({markers:markers});
+	
+
+	
+	
+
+	function serverSlicing(markerObj, job, param) {
+		var currentID = requestCounter + 0;
+		requestCounter += 1;
+
+		console.log({markerObj:markerObj})
+
+		const markerDetails = getMarkerDetails(markerObj);
+	
+		const relVector = new Point(markerObj.targetPoint.x - job.laserHoles[0].point.x, markerObj.targetPoint.y - job.laserHoles[0].point.y);
+	
+		console.log({relVector:relVector, targetP:markerObj.targetPoint, startHole: job.laserHoles[0].point});
+	
+		console.log({markerDetails:markerDetails});
+		
+	
+		var returnObj = {details:markerDetails, sourceObj:markerObj, serverData:undefined};
+	
+		let markerHeight = param['marker height'];
+		if (!markerHeight) markerHeight = 3;
+		axios.post('http://127.0.0.1:5505/exportMarkersSTL.cmd', {
+			points: markerDetails.pointArray,
+			ID: currentID,
+			height: markerHeight,
+			max_dist: markerDetails.dist,
+			x: 0, //markerObj.targetPoint.x,
+			y: 0 //markerObj.targetPoint.y
+		}).then(function (response) {
+			// if (debug) console.log(response);
+			var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode, relVector:relVector} ;
+			console.log('markerGCode: ', markerGCode);
+			markerGCodes.push(markerGCode);
+	
+			returnObj.serverData = markerGCode;
+	
+		}).catch(function (error) {
+			console.log(error);
+		});	
+		return returnObj;
+	}
 
 	//
 	// TODO: Transfer multiple at once for rendering/slicing
 	//
-	console.log({targetPointx:markerObj.targetPoint.x, targetPointy:markerObj.targetPoint.y}) //startPoint:startPoint, 
-
-	const markerDetails = getMarkerDetails(markerObj);
-
-	const relX = markerObj.targetPoint.x - job.laserHoles[0].point.x;
-	const relY = markerObj.targetPoint.y - job.laserHoles[0].point.y;
-
-	console.log({markerDetails:markerDetails});
-	var currentID = requestCounter + 0;
-	requestCounter += 1;
-
-	let markerHeight = param['marker height'];
-	if (!markerHeight) markerHeight = 3;
-	axios.post('http://127.0.0.1:5501/exportMarkersSTL.cmd', {
-		points: markerDetails.pointArray,
-		ID: currentID,
-		height: markerHeight,
-		max_dist: markerDetails.dist,
-		x: relX,
-		y: relY
-	}).then(function (response) {
-		// if (debug) console.log(response);
-		var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode} ;
-		console.log('markerGCode: ', markerGCode);
-		markerGCodes.push(markerGCode);
-
-	}).catch(function (error) {
-		console.log(error);
-	});
-
-	var markers = [];
-	markers.push({details:markerDetails, sourceObj:markerObj});
+	// console.log({targetPointx:markerObj.targetPoint.x, targetPointy:markerObj.targetPoint.y}) //startPoint:startPoint, 
+	
 	return markers;
 }
 
-function setPrintedMarkers(offset, markerParams, index, edgeA, edgeB, returnA, returnB, joints) {
+function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, returnAB, returnABPrint, joints, isA, rotPath = undefined) {
 	var markerSTLOutlines = [];
 
 	var clonePath;
-	var ptA = edgeA.getPointAt(offset);
-	var ptB = edgeB.getPointAt(offset);
-
-	marker = new Path.Circle(ptA, markerParams.size);
-	markerB = new Path.Circle(ptB, markerParams.size);
-	var crossings = marker.getCrossings(edgeA);
-	var crossingsB = markerB.getCrossings(edgeB);
-
-	if (crossings.length == 2) {
-		var openMarker = marker.split(crossings[0]);
-		var splitMarker = openMarker.split(crossings[1]);
-
-		
-		var tinyOffset = offsetPath(edgeA, 0.2, joints[index]['dirM']);
-		var tinyOffsetPath = new Path(tinyOffset[0].segments);
-		var openC = openMarker.getCrossings(tinyOffsetPath);
-		var splitC = splitMarker.getCrossings(tinyOffsetPath);
-
-		// console.log("joints[index]['dirM']: ", joints[index]['dirM']);
-		
-		if (openC.length < splitC.length) {
-			clonePath = splitMarker.clone();
-			splitMarker.closePath();
-			splitMarker.lastCurve._segment1._handleOut._x = 0;
-			splitMarker.lastCurve._segment1._handleOut._y = 0;
-			splitMarker.lastCurve._segment2._handleIn._x = 0;
-			splitMarker.lastCurve._segment2._handleIn._y = 0;
-			markerSTLOutlines.push(splitMarker);
-		} else {
-			clonePath = openMarker.clone();
-			openMarker.closePath();
-			openMarker.lastCurve._segment1._handleOut._x = 0;
-			openMarker.lastCurve._segment1._handleOut._y = 0;
-			openMarker.lastCurve._segment2._handleIn._x = 0;
-			openMarker.lastCurve._segment2._handleIn._y = 0;
-			markerSTLOutlines.push(openMarker);
-		}
-		returnA.push(clonePath);
-
+	var ptAB = edgeAB.getPointAt(offset);
+	var ptAB2;
+	if (rotPath) {
+		ptAB2 = rotPath.getPointAt(rotOffset);
 	}
-	if (crossingsB.length == 2) {
-		var openMarker = markerB.split(crossingsB[0]);
-		var splitMarker = openMarker.split(crossingsB[1]);
 
-		var tinyOffset = offsetPath(edgeB, 0.2, joints[index]['dirF']);
-		var tinyOffsetPath = new Path(tinyOffset[0].segments);
-		var openC = openMarker.getCrossings(tinyOffsetPath);
-		var splitC = splitMarker.getCrossings(tinyOffsetPath);
+	if (markerParams.type == "circle") {
+		var marker = new Path.Circle(ptAB, markerParams.size);
+		var crossings = marker.getCrossings(edgeAB);
+		// var crossingsB = markerB.getCrossings(edgeB);
 
-		// console.log("joints[index]['dirF']: ", joints[index]['dirF']);
-		if (openC.length < splitC.length) {
-			clonePath = splitMarker.clone();
-			splitMarker.closePath();
-			// splitMarker.curves[splitMarker.curves.length-1].
-			// splitMarker.lastCurve._segment1._handleIn._x = 0;
-			// splitMarker.lastCurve._segment1._handleIn._y = 0;
-			splitMarker.lastCurve._segment1._handleOut._x = 0;
-			splitMarker.lastCurve._segment1._handleOut._y = 0;
-			splitMarker.lastCurve._segment2._handleIn._x = 0;
-			splitMarker.lastCurve._segment2._handleIn._y = 0;
-			// splitMarker.lastCurve._segment2._handleOut._x = 0;
-			// splitMarker.lastCurve._segment2._handleOut._y = 0;
-			// console.log('splitMarker: ', splitMarker);
-		} else {
-			clonePath = openMarker.clone();
-			openMarker.closePath();
-			openMarker.lastCurve._segment1._handleOut._x = 0;
-			openMarker.lastCurve._segment1._handleOut._y = 0;
-			openMarker.lastCurve._segment2._handleIn._x = 0;
-			openMarker.lastCurve._segment2._handleIn._y = 0;
-			// console.log('openMarker: ', openMarker);
+		console.log({ptAB:ptAB, markerParams:markerParams});
+
+		// First, add laser paths
+		if (crossings.length == 2) {
+			var openMarker = marker.split(crossings[0]);
+			var splitMarker = openMarker.split(crossings[1]);
+
+			var tinyOffset;
+			if (isA) {
+				tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
+			}
+			else {
+				tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
+			}
+			var tinyOffsetPath = new Path(tinyOffset[0].segments);
+			var openC = openMarker.getCrossings(tinyOffsetPath);
+			var splitC = splitMarker.getCrossings(tinyOffsetPath);
+
+			// console.log("joints[index]['dirM']: ", joints[index]['dirM']);
 			
+			if (openC.length < splitC.length) {
+				clonePath = splitMarker.clone();
+				splitMarker.closePath();
+				splitMarker.lastCurve._segment1._handleOut._x = 0;
+				splitMarker.lastCurve._segment1._handleOut._y = 0;
+				splitMarker.lastCurve._segment2._handleIn._x = 0;
+				splitMarker.lastCurve._segment2._handleIn._y = 0;
+				// markerSTLOutlines.push(splitMarker); // Only 
+			} else {
+				clonePath = openMarker.clone();
+				openMarker.closePath();
+				openMarker.lastCurve._segment1._handleOut._x = 0;
+				openMarker.lastCurve._segment1._handleOut._y = 0;
+				openMarker.lastCurve._segment2._handleIn._x = 0;
+				openMarker.lastCurve._segment2._handleIn._y = 0;
+				// markerSTLOutlines.push(openMarker);
+			}
+			clonePath.name = 'cut';
+			returnAB.push(clonePath);
+
+			var ouputClone = clonePath.clone();
+			ouputClone.name = 'printedMarker';
+			returnABPrint.push(ouputClone); // Add printed area to display output
 		}
-		returnB.push(clonePath);
+	
+		// Then, add print paths at rotated path piece
+		if (isA && rotPath.length > (rotOffset+markerParams.size)) {
+			
+
+			var marker2 = new Path.Circle(ptAB2, markerParams.size);
+			var crossings2 = marker2.getCrossings(rotPath);
+
+			console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
+
+			
+			markerSTLOutlines.push(marker2); // Add print output
+
+			// Only doesn't work for perfectly straight lines..........
+			// if (crossings2.length == 2) {
+			// 	var openMarker2 = marker2.split(crossings[0]); // This doesn't work, BUT WHY
+			// 	var splitMarker2 = openMarker2.split(crossings[1]);
+
+			// 	var tinyOffset2 = offsetPath(rotPath, 0.2, joints[index]['dirM']);
+
+			// 	var tinyOffsetPath2 = new Path(tinyOffset2[0].segments);
+			// 	var openC2 = openMarker2.getCrossings(tinyOffsetPath2);
+			// 	var splitC2 = splitMarker2.getCrossings(tinyOffsetPath2);
+
+			// 	// console.log("joints[index]['dirM']: ", joints[index]['dirM']);
+				
+			// 	if (openC2.length < splitC2.length) {
+			// 		splitMarker.closePath();
+			// 		splitMarker.lastCurve._segment1._handleOut._x = 0;
+			// 		splitMarker.lastCurve._segment1._handleOut._y = 0;
+			// 		splitMarker.lastCurve._segment2._handleIn._x = 0;
+			// 		splitMarker.lastCurve._segment2._handleIn._y = 0;
+			// 		markerSTLOutlines.push(splitMarker2);
+			// 	} else {
+			// 		openMarker.closePath();
+			// 		openMarker.lastCurve._segment1._handleOut._x = 0;
+			// 		openMarker.lastCurve._segment1._handleOut._y = 0;
+			// 		openMarker.lastCurve._segment2._handleIn._x = 0;
+			// 		openMarker.lastCurve._segment2._handleIn._y = 0;
+			// 		markerSTLOutlines.push(openMarker2);
+			// 	}
+			// }
+		}
+	} else if (markerParams.type == "arrow") {
+		var halfOffsetPath;
+		var fullOffsetPath;
+		if (isA) {
+			halfOffsetPath = disconnectedOffsetPath(edgeAB, 8, joints[index]['dirM']);
+			fullOffsetPath = disconnectedOffsetPath(edgeAB, 20, joints[index]['dirM']);
+		}
+		else {
+			halfOffsetPath = disconnectedOffsetPath(edgeAB, 8, joints[index]['dirF']);
+			fullOffsetPath = disconnectedOffsetPath(edgeAB, 20, joints[index]['dirF']);
+		}
+
+		const offsetPercentage = (offset / edgeAB.length);
+		const targetOffsetHalf = offsetPercentage * halfOffsetPath.length; // Angles arrows for curved lines // Through horrible workaround since normals don't exist
+		const targetOffsetFull = offsetPercentage * fullOffsetPath.length;
+
+		var longArrowP = fullOffsetPath.getPointAt(targetOffsetFull);
+		var halfArrowP1 = halfOffsetPath.getPointAt((targetOffsetHalf + 4));
+		var halfArrowP2 = halfOffsetPath.getPointAt((targetOffsetHalf - 4));
+
+		
+		var arrowPoints = [longArrowP, ptAB, halfArrowP1, halfArrowP2, ptAB];
+		console.log({offsetPercentage:offsetPercentage, offset:offset, targetOffsetHalf:targetOffsetHalf, targetOffsetFull:targetOffsetFull, edgeAB:edgeAB.length, halfOffsetPath:halfOffsetPath.length, fullOffsetPath:fullOffsetPath.length});
+		var arrowPath = new Path(arrowPoints);
+		// arrowPath.color = new Color(1, 0, 0);
+		// arrowPath.strokeColor = '#F00';
+		arrowPath.name = 'mark';
+		returnAB.push(arrowPath);
+
+
+		// CIRLCE!
+		// Then, add print paths at rotated path piece
+		// TODO: Add printed arrow/text
+		if (isA && rotPath.length > (rotOffset+markerParams.size)) {
+		
+
+			var marker2 = new Path.Circle(ptAB2, markerParams.size);
+			var crossings2 = marker2.getCrossings(rotPath);
+
+			console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
+
+			// markerSTLOutlines.push(marker2);
+		}
 	}
 
-	return {outlines:markerSTLOutlines, targetPoint:ptA};
-	
+
+
+	return {outlines:markerSTLOutlines, targetPoint:ptAB2};
 }
 
 function getMarkerDetails(markerObj) {
 	console.log({markerObj:markerObj});
 	var outline = dividePath(markerObj.outlines[0], 20);
+	// Make relative points for print generation
+	const xOrigin = markerObj.targetPoint.x; //markerObj.outlines[0].firstSegment.point.x;
+	const yOrigin = markerObj.targetPoint.y; //markerObj.outlines[0].firstSegment.point.y;
+
 	var max_dist = 0;
 	var curveless_points = [];
 	var first = true;
@@ -1000,7 +1415,7 @@ function getMarkerDetails(markerObj) {
 		}
 		const dist = markerObj.targetPoint.getDistance(shortPath.firstSegment.point);
 		if (dist > max_dist) max_dist = dist;
-		curveless_points.push(new Point(shortPath.firstSegment.point.x, shortPath.firstSegment.point.y));
+		curveless_points.push(new Point(shortPath.firstSegment.point.x - xOrigin, shortPath.firstSegment.point.y - yOrigin));
 	}
 	max_dist += 0.1;
 	return {pointArray:curveless_points, dist:max_dist};
@@ -1027,9 +1442,12 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var returnBFold = [];
 	// var G91 = printTemplate.G91Commands;
 	var G91Obj = G91;
+	var skipHoles = Math.floor(param['skip # holes']);
 
-	console.log({G91Obj:G91Obj});
+	console.log({warning:"Deprecated"});
+	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':{}};
 
+	
 	var marking = true;
 
 	var mOrF = false;
@@ -1077,11 +1495,19 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	// for (i in pathOffsetB) {
 	// 	returnB.push(pathOffsetB[i]);
 	// }
+
+	if (joints[index]['selfJoining'] == 1) {
+		edgeA.dashArray = [4, 4];
+	}
+
 	returnAFold.push(edgeA);
 	returnBFold.push(edgeB);
 
 	console.log({edgeA:edgeA, pathOffsetA:pathOffsetA[0], offsetPathA:offsetPathA});
 	console.log({edgeB:edgeB, pathOffsetB:pathOffsetB[0], offsetPathB:offsetPathB});
+
+
+
 
 	let centerPoint;
 	let centerPointB;
@@ -1100,14 +1526,25 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		for (var i=0; i<holeCount; i++) {
 			var ptA = offsetPathA.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderA/2);
 			var ptB = offsetPathB.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderB/2);
-			returnA.push(new Path.Circle(ptA, param['hole diameter']/2));
+
+			let cutCircle = new Path.Circle(ptA, param['hole diameter']/2)
+			// cutCircle.strokeColor = new Color(1, 0, 0);
+			cutCircle.strokeColor = '#F00';
+
+			returnA.push(cutCircle);
 			returnB.push(new Path.Circle(ptB, param['hole diameter']/2));
+			returnB[returnB.length-1].strokeColor = '#900';
 			if (i == 0) {
 				centerPoint = ptA;
 				centerPointB = ptB;
 			}
 			const offsetA = i*param['hole spacing']+param['hole spacing']/2+remainderA/2;
-			laserHoleList.push({point:ptA, offset:offsetA, type:"on-line"});
+
+			if (skipHoles >= 1) {
+				skipHoles -= 1;
+			} else {
+				laserHoleList.push({pointOrigin:ptA, offset:offsetA, type:"on-line"});
+			}
 		}
 
 
@@ -1150,6 +1587,8 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
 			
+			var laserPoint = lastJob.path.getPointAt(laserHoleList[endIndex].offset - lastJob.offset);
+			laserHoleList[endIndex].point = laserPoint;
 			lastJob.laserHoles.push(laserHoleList[endIndex]); // point reference
 			testPoints.push(laserHoleList[endIndex].point); // "Segment" list for temporary path generation
 			
@@ -1192,26 +1631,36 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 			// Rotate job for Left to Right printing
 			let rotationDegs = 10;
-			let fullCircle = 0;
-			let longestW = {deg:0, width:0};
-			while (fullCircle < 360) {
-				job.path.rotate(rotationDegs, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
-				fullCircle += rotationDegs;
-				if (job.path.strokeBounds.width > longestW.width) {
-					longestW.width = job.path.strokeBounds.width;
-					longestW.deg = fullCircle;
+			let fullCircleLocal = 0;
+			let longestWLocal = {deg:0, width:0};
+			while (fullCircleLocal < 360) {
+				// job.path.rotate(rotationDegs, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+				job.path.rotate(rotationDegs);
+				fullCircleLocal += rotationDegs;
+				if (job.path.strokeBounds.width > longestWLocal.width) {
+					longestWLocal.width = job.path.strokeBounds.width;
+					longestWLocal.deg = fullCircleLocal;
 				}
 			}		
 
-			if (longestW.deg != 0) {
-				job.path.rotate(longestW.deg, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+			if (longestWLocal.deg != 0) {
+				// job.path.rotate(longestWLocal.deg, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+				job.path.rotate(longestWLocal.deg);
 
 				// Rotate to ensure Left To Right on print build plate
 				let startP = job.path.getPointAt(0);
 				let endP = job.path.getPointAt(job.path.length);
 				if (endP.x < startP.x) {
-					job.path.rotate(180, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+					job.path.rotate(180);
+					// job.path.rotate(180, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
 				}
+			}
+
+			// Rotate to ensure Left To Right on print build plate
+			let startP = job.path.getPointAt(0);
+			let endP = job.path.getPointAt(job.path.length);
+			if (endP.x < startP.x) {
+				job.path.rotate(180);
 			}
 
 			console.log("strokeBoundHeightAfter " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width );
@@ -1235,7 +1684,7 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 					var realtiveP = new Point(relativeX, relativeY);
 					holeList.push(realtiveP); // remaining points relative to start point
 					if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
-					else if (minY > relativeY) minY = relativeY;
+					if (minY > relativeY) minY = relativeY;
 				}
 			}
 
@@ -1326,7 +1775,7 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 						var realtiveP = new Point(relativeX, relativeY);
 						holeList.push(realtiveP); // remaining points relative to start point
 						if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
-						else if (minY > relativeY) minY = relativeY;
+						if (minY > relativeY) minY = relativeY;
 					}
 				}
 				// var selectedBase = G91.dots;
@@ -1358,7 +1807,7 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 					var realtiveP = new Point(relativeX, relativeY);
 					holeList.push(realtiveP); // remaining points relative to start point
 					if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
-					else if (minY > relativeY) minY = relativeY;
+					if (minY > relativeY) minY = relativeY;
 				}
 				
 			}
@@ -1456,8 +1905,33 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var returnA = [];
 	var returnAFold = [];
 	var returnBFold = [];
+	var returnBLaser = [];
+	var returnALaser = [];
+	var returnBPrint = [];
+	var returnAPrint = [];
 	var G91Obj = G91;
+	var skipHoles = Math.floor(param['skip # holes']);
 
+	// Handling for simple case (non-)patterns
+	let patternWidth;
+	let holePattern;
+	let holePatternOffset;
+
+	if (param['pattern width'] == undefined) {
+		patternWidth = 1;
+	} else {
+		patternWidth = param['pattern width'];
+	}
+	if (G91Obj.base.upDownPattern == undefined) {
+		holePattern = [0];
+	} else {
+		holePattern = G91Obj.base.upDownPattern;
+	}
+	if (G91Obj.base.upDownOffset == undefined) {
+		holePatternOffset = [0];
+	} else {
+		holePatternOffset = G91Obj.base.upDownOffset;
+	}
 	var mOrF = false;
 	if (joints[index]['dirM']) mOrF = true;
 
@@ -1466,19 +1940,92 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
 
-	if (param['hem offset'] < param['pattern width']) {
+	if (param['hem offset'] < patternWidth) {
 		console.error({message:"hem offset must be larger than pattern width"});
 	}
+
+	console.log({Pink:param['pinking cut']});
+
+	if (param['pinking cut'] == true) {
+		console.log({status:"Pinking"});
+		const pinkingDepth = 3;
+		const pinkingDist = pinkingDepth * 0.75;
+
+		var pinkingPathA = getOffsetPath(edgeA, (-pinkingDepth), joints[index]['dirM']);
+		var pinkingPathB = getOffsetPath(edgeB, (-pinkingDepth), joints[index]['dirF']);
+		var pinkingCountA = Math.floor(edgeA.length/(pinkingDist));
+		var pinkingCountB = Math.floor(edgeB.length/(pinkingDist));
+		const remainderA = edgeA.length-(pinkingCountA*pinkingDist);
+		const remainderB = edgeB.length-(pinkingCountB*pinkingDist);
+
+		var pathAStart = shape[shapeA].children[pathA].firstSegment.point;
+		var pathAEnd = shape[shapeA].children[pathA].lastSegment.point;
+		var pathBStart = shape[shapeB].children[pathB].firstSegment.point;
+		var pathBEnd = shape[shapeB].children[pathB].lastSegment.point;
+
+		var pinkedPointsA = [edgeA.firstSegment.point];
+		var pinkedPointsB = [edgeB.firstSegment.point];
+
+		var alternate = true;
+		for (var i=0; i<pinkingCountA; i++) {
+			
+			const pOffsetA = (i*pinkingDist)+remainderA/2;
+
+			if (alternate) {
+				const offsetPercentageA = (pOffsetA / edgeA.length);
+				const targetOffsetA = offsetPercentageA * pinkingPathA.length;
+				var pt = pinkingPathA.getPointAt(targetOffsetA);
+				pinkedPointsA.push(pt);
+				
+			} else {
+				var pt = edgeA.getPointAt(pOffsetA);
+				pinkedPointsA.push(pt);
+			}
+			alternate = !alternate;
+		}
+		pinkedPointsA.push(edgeA.lastSegment.point);
+
+		alternate = true;
+		for (var i=0; i<pinkingCountA; i++) {
+			
+			const pOffsetB = (i*pinkingDist)+remainderB/2;
+
+			if (alternate) {
+				const offsetPercentageB = (pOffsetB / edgeB.length);
+				const targetOffsetB = offsetPercentageB * pinkingPathB.length;
+				var pt = pinkingPathB.getPointAt(targetOffsetB);
+				pinkedPointsB.push(pt);
+				
+			} else {
+				var pt = edgeB.getPointAt(pOffsetB);
+				pinkedPointsB.push(pt);
+			}
+			alternate = !alternate;
+		}
+		pinkedPointsB.push(edgeB.lastSegment.point);
+
+
+		var pinkedA = new Path({segments:pinkedPointsA, closed:false});
+		var pinkedB = new Path({segments:pinkedPointsB, closed:false});
+		pinkedA.name = 'cut';
+		pinkedB.name = 'cut';
+
+		returnALaser.push(pinkedA);
+		returnBLaser.push(pinkedB);
+	}
+
 
 	var targetingPathA = getOffsetPath(edgeA, (param['hem offset']+1), joints[index]['dirM']);
 	var targetingPathB = getOffsetPath(edgeB, (param['hem offset']+1), joints[index]['dirF']);
 	var holePathFarA = getOffsetPath(edgeA, (param['hem offset']), joints[index]['dirM']);
 	var holePathFarB = getOffsetPath(edgeB, (param['hem offset']), joints[index]['dirF']);
-	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-param['pattern width']), joints[index]['dirM']);
-	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-param['pattern width']), joints[index]['dirF']);
+	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-patternWidth), joints[index]['dirM']);
+	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-patternWidth), joints[index]['dirF']);
 
 	var aLines = [holePathFarA, holePathNearA];
 	var bLines = [holePathFarB, holePathNearB];
+
+	var edgeACopy = edgeA.clone();
 
 	returnAFold.push(edgeA);
 	returnBFold.push(edgeB);
@@ -1486,6 +2033,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	let centerPoint;
 	let centerPointB;
 	let printJobs = [];
+
 	var laserHoleList = [];
 	
 	if (param['hole diameter']>0 && param['hole spacing']>0) {
@@ -1499,15 +2047,21 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		var patternIndex = 0;
 				
 		for (var i=0; i<holeCount; i++) {
-			const sourceOffsetA = i*param['hole spacing']+param['hole spacing']/2+remainderA/2;
-			const sourceOffsetB = i*param['hole spacing']+param['hole spacing']/2+remainderB/2;
+			
+			const sourceOffsetA = (i+holePatternOffset[patternIndex])*param['hole spacing']+param['hole spacing']/2+remainderA/2;
+			const sourceOffsetB = (i+holePatternOffset[patternIndex])*param['hole spacing']+param['hole spacing']/2+remainderB/2;
 			var ptA = aLines[0].getPointAt(sourceOffsetA);
 			var ptB = bLines[0].getPointAt(sourceOffsetB);
 			var offsetA = sourceOffsetA;
 
-			if (patternIndex == 0) {
-				returnA.push(new Path.Circle(ptA, param['hole diameter']/2));
-				returnB.push(new Path.Circle(ptB, param['hole diameter']/2));
+			const sourceOffsetPercentageA = (sourceOffsetA / aLines[0].length);
+			const originSourceOffsetA = sourceOffsetPercentageA * edgeA.length;
+
+			var circleA;
+			var circleB;
+
+			if (holePattern[patternIndex] == 0) { //TODO: This should probably just be merged with the other cases
+				
 				if (i == 0) {
 					centerPoint = ptA;
 					centerPointB = ptB;
@@ -1515,68 +2069,135 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			} else { // Normals don't exist, so we use percentage of the offset instead
 				const offsetPercentageA = (sourceOffsetA / aLines[0].length);
 				const offsetPercentageB = (sourceOffsetB / bLines[0].length);
-				const targetOffsetA = offsetPercentageA * aLines[patternIndex].length;
-				const targetOffsetB = offsetPercentageB * bLines[patternIndex].length;
+				const targetOffsetA = offsetPercentageA * aLines[holePattern[patternIndex]].length;
+				const targetOffsetB = offsetPercentageB * bLines[holePattern[patternIndex]].length;
 
-				ptA = aLines[patternIndex].getPointAt(targetOffsetA);
-				ptB = bLines[patternIndex].getPointAt(targetOffsetB);
-				returnA.push(new Path.Circle(ptA, param['hole diameter']/2));
-				returnB.push(new Path.Circle(ptB, param['hole diameter']/2));
-				offsetA = aLines[patternIndex].getOffsetOf(ptA);
+				ptA = aLines[holePattern[patternIndex]].getPointAt(targetOffsetA);
+				ptB = bLines[holePattern[patternIndex]].getPointAt(targetOffsetB);
+				offsetA = aLines[holePattern[patternIndex]].getOffsetOf(ptA);
 			}
-			const patternIndexRef = patternIndex + 0;
-			laserHoleList.push({point:ptA, offset:offsetA, type:"on-line", lineIndex:patternIndexRef});
 
-			patternIndex += 1;
-			if (patternIndex >= G91Obj.base.upDownPattern.length) patternIndex = 0;
 
+			if (skipHoles >= 1) {
+				skipHoles -= 1;
+			} else {
+				const patternIndexRef = patternIndex + 0;
+				laserHoleList.push({pointOrigin:ptA, bOrigin:ptB, offset:offsetA, offsetOrigin:sourceOffsetA, offsetOriginSource:originSourceOffsetA, type:"on-line", lineIndex:patternIndexRef});
+
+				patternIndex += 1;
+				if (patternIndex >= holePattern.length) patternIndex = 0;
+
+				circleA = new Path.Circle(ptA, param['hole diameter']/2);
+				circleB = new Path.Circle(ptB, param['hole diameter']/2);
+				circleA.name = 'cut';
+				circleB.name = 'cut';
+				returnALaser.push(circleA);
+				returnBLaser.push(circleB);
+			}
 		}
 
 		// Leave original path in place, use copy
-		var copyPath = new Path({segments:aLines[0].segments, closed:false});
+		var copyPaths = [];
+		for (let onePath of aLines) {
+			var copyP = new Path({segments:onePath.segments, closed:false});
+			copyPaths.push(copyP);
+		}
+		// copyPath = new Path({segments:aLines[0].segments, closed:false});
+		copyPath = copyPaths[0];
+
+
+		var pathsGroup = new Group(copyPaths);
+		console.log({pathsGroup:pathsGroup});
+		pathsGroup.children.push(edgeACopy);
+		var laserPointSet = [];
+		for (let laserHole of laserHoleList) {
+			laserPointSet.push(laserHole.pointOrigin);
+		}
+		var laserPointsPath = new Path(laserPointSet);
+		var laserPointsPathUnchanged = new Path(laserPointSet);
+
+		for (let laserHole of laserHoleList) {
+			const patternedOffset = laserPointsPath.getOffsetOf(laserHole.pointOrigin);
+			laserHole.patternedOffset = patternedOffset;
+			laserHole.laserPointsPath = laserPointsPath;
+		}
 
 
 		// Align entire path width-wise (printing build plate left/right-wise)
 		let rotationDegs = 10;
 		let fullCircle = 0;
 		let longestW = {deg:0, width:0};
+		let rotP = new Point(laserPointsPath.strokeBounds.x, laserPointsPath.strokeBounds.y);
 		while (fullCircle < 360) {
-			copyPath.rotate(rotationDegs);
+			pathsGroup.rotate(rotationDegs, rotP);
+			// for (let onePath of copyPaths) {
+			// 	onePath.rotate(rotationDegs);
+			// }
+			// copyPath.rotate(rotationDegs);
+			laserPointsPath.rotate(rotationDegs, rotP);
 			fullCircle += rotationDegs;
-			if (copyPath.strokeBounds.width > longestW.width) {
-				longestW.width = copyPath.strokeBounds.width;
+			if (laserPointsPath.strokeBounds.width > longestW.width) {
+				longestW.width = laserPointsPath.strokeBounds.width;
 				longestW.deg = fullCircle;
 			}
 		}
 
 		if (longestW.deg != 0) {
-			copyPath.rotate(longestW.deg);
+			pathsGroup.rotate(longestW.deg, rotP);
+			// for (let onePath of copyPaths) {
+			// 	onePath.rotate(longestW.deg);
+			// }
+			// copyPath.rotate(longestW.deg);
+			laserPointsPath.rotate(longestW.deg, rotP);
 		}
 
 
 		// Rotate to ensure Left To Right on print build plate
-		let startP = copyPath.getPointAt(0);
-		let endP = copyPath.getPointAt(copyPath.length);
+		let startP = laserPointsPath.getPointAt(0);
+		let endP = laserPointsPath.getPointAt(laserPointsPath.length);
 		if (endP.x < startP.x) {
-			copyPath.rotate(180);
+			pathsGroup.rotate(180, rotP);
+			// for (let onePath of copyPaths) {
+			// 	onePath.rotate(180);
+			// }
+			// copyPath.rotate(180);
+			laserPointsPath.rotate(180, rotP);
 		}
+
+		returnAFold.push(laserPointsPath);
 
 
 		let startIndex = 0;
 		let endIndex = 0;
 		testPoints = [];
+		var offsets = [];
+		for (let onePath of copyPaths) {
+			offsets.push(0);
+		}
+
+		console.log({laserHoleList:laserHoleList});
 
 		// Separate into print jobs
-		var jobs = [{path:copyPath, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA}];
+		var jobs = [{path:laserPointsPath, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
+
+			console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
 			
+			var laserPoint = lastJob.path.getPointAt((Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000));
+			// console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: (Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000)});
+			laserHoleList[endIndex].point = laserPoint;
 			lastJob.laserHoles.push(laserHoleList[endIndex]); // point reference
 			testPoints.push(laserHoleList[endIndex].point); // "Segment" list for temporary path generation
+			console.log('testPoints: ', testPoints);
 			
 			const testPath = new Path({segments:testPoints, closed:false});
 			if (((testPath.strokeBounds.width+10) > param['printing area width'])) {
-				let splitPointLength = (laserHoleList[endIndex-1].offset + laserHoleList[endIndex].offset)/2;
+				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
+
+				// const originSourceSplitPL = laserHoleList[endIndex].offsetOriginSource; // Why? offsetOriginSource not far along enough somehow?
+				const originSourceSplitPL = (laserHoleList[endIndex].offsetOriginSource + laserHoleList[endIndex+1].offsetOriginSource)/2;
+				const originSourcePartSplitPL = originSourceSplitPL - lastJob.originSourcePartOffset;
 				
 				splitPointLength -= lastJob.offset;
 
@@ -1592,7 +2213,11 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				newJobPath = lastJob.path.split(splitPointLocation);
 				let newOffset = lastJob.path.length + lastJob.offset;
 
-				jobs.push({path:newJobPath, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA});
+				var originSourcePathPart = lastJob.originSourcePathPart.split(originSourcePartSplitPL);//lastJob.originSourcePathPart.getLocationOf(originSourcePartSplitPL));
+
+				returnAFold.push(originSourcePathPart);
+
+				jobs.push({path:newJobPath, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
 
 				// console.log({newJobL:jobs[jobs.length-1].path.length, lastJobl:lastJob.path.length, jobs:jobs, newJob:jobs[jobs.length-1], lastJob:lastJob});
 
@@ -1606,8 +2231,18 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			}		
 		}
 
-		// handle split jobs (laser+printed markers, printed stitches)
+		let lastJ = undefined;
 		for (const job of jobs) {
+			if (lastJ) {
+				lastJ.originSourceOffsetEnd = job.originSourceOffset;
+			}
+			lastJ = job;
+		}
+		jobs[jobs.length-1].originSourceOffsetEnd = jobs[jobs.length-1].originSourcePath.length;
+
+
+		// handle split jobs (laser+printed markers, printed stitches)
+		for (let job of jobs) {
 			
 			console.log("strokeBoundHeight " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width);
 
@@ -1615,8 +2250,11 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			let rotationDegs = 10;
 			let fullCircle = 0;
 			let longestW = {deg:0, width:0};
+			let rotPoint = new Point(job.path.strokeBounds.x, job.path.strokeBounds.y);
 			while (fullCircle < 360) {
-				job.path.rotate(rotationDegs, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+				console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
+				job.originSourcePathPart.rotate(rotationDegs, rotPoint);
+				job.path.rotate(rotationDegs, rotPoint);
 				fullCircle += rotationDegs;
 				if (job.path.strokeBounds.width > longestW.width) {
 					longestW.width = job.path.strokeBounds.width;
@@ -1625,13 +2263,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			}		
 
 			if (longestW.deg != 0) {
-				job.path.rotate(longestW.deg, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
-
+				job.path.rotate(longestW.deg, rotPoint);
+				job.originSourcePathPart.rotate(longestW.deg, rotPoint);
 				// Rotate to ensure Left To Right on print build plate
 				let startP = job.path.getPointAt(0);
 				let endP = job.path.getPointAt(job.path.length);
 				if (endP.x < startP.x) {
-					job.path.rotate(180, new Point(job.path.strokeBounds.x, job.path.strokeBounds.y));
+					job.path.rotate(180, rotPoint);
+					job.originSourcePathPart.rotate(180, rotPoint);
 				}
 			}
 
@@ -1647,7 +2286,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			var minY = 0;
 			for (var i=0; i<holeCount; i++) {
 				var ptA = job.laserHoles[i].point; //job.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderA/2);
-				console.log({ptA:ptA});
+				// console.log({ptA:ptA});
 				if (i === 0) {
 					startPoint = ptA;
 					holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
@@ -1656,14 +2295,23 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 					var relativeY = ptA.y - startPoint.y;
 					var realtiveP = new Point(relativeX, relativeY);
 					holeList.push(realtiveP); // remaining points relative to start point
+					console.log({realtiveP:realtiveP});
 					if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
-					else if (minY > relativeY) minY = relativeY;
+					if (minY > relativeY) minY = relativeY;
 				}
 			}
 
-			var markers = doMarkers(job, index, edgeA, edgeB, returnA, returnB, joints, param);
+			var laserHolesRef = [];
+			for (let laserHole of jobRef.laserHoles) {
+				laserHolesRef.push(laserHole.pointOrigin);
+			}
+			var laserHolesRefPath = new Path(laserHolesRef);
 
-			printJobs.push({holeList:holeList, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, handled:false});
+			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param);
+
+			printJobs.push({holeList:holeList, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
+
+			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
 		}
 		
 	}
@@ -1672,7 +2320,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
 	shape[shapeB].children[pathB+'_joint'].removeChildren();
 
-	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':printJobs};
+	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':printJobs, 'returnALaser':returnALaser, 'returnAPrint':returnAPrint, 'returnBLaser':returnBLaser, 'returnBPrint':returnBPrint};
 }
 
 function generateFingerJointA(index, shapeA, pathA, shapeB, pathB, param) {
@@ -2693,6 +3341,23 @@ function generateLoopInsert(index, shapeA, pathA, shapeB, pathB, param, softBool
 	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold};
 }
 
+
+function disconnectedOffsetPath(path, offset, dir) {
+	var dOffsetPath = offsetPath(path, offset, dir);
+
+	if (dOffsetPath.length != 1) {
+		console.warn("Not n == 1 path created for offsetPath");
+	}
+	if (dOffsetPath[0].segments.length < 4) {
+		console.warn("Offset path with less than 4 segments created");
+	}
+	dOffsetPath[0].segments.pop();
+	dOffsetPath[0].segments.shift();
+	var returnPath = new Path(dOffsetPath[0].segments);
+	return returnPath;
+}
+
+
 function dividePath(p, n) {
 	var path = p;
 	var segment = [];
@@ -2840,7 +3505,8 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 	const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
 	lengthFactor = length / patternDefaultLength;
 	var rad = Math.atan2(deltaY, deltaX); // In radians
-	if (Math.abs(rad) > 0.001) {
+	// if (Math.abs(rad) > 0.001) {
+	if (true) {
 		var originP = new Point(0.0, 0.0);
 		var lines = gcode.split('\n');
 		for (let line of lines) {
@@ -2900,52 +3566,146 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 	
 }
 
-function addGCodePart(outString, params, placeList, commandObj, depthAdjustment) {
+// Combination of printed needle and thread
+function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustment, reverse=false) {
 	// console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// console.log("outString: " + outString.length);
+
+	commandObj = commandObjs[0];
+	needleObj = commandObjs[1];
+	
+	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
+		let addString = "";
+		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		addString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		addString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		
+		if (onlyAim) {
+			return addString;
+		}
+		if (skip) {
+			addString += commandObj.skipGCode;
+		}
+		else {
+			addString += commandObj.gcode;
+		}
+		return addString;
+	}
+	
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
-	for (let place of placeList) {
-		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
-		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+	// for (let i = -5; i < 5; i++) { 
+	// 	console.log(mod(i, commandObj.pattern.length));
+	// }
+
+	let pattern = [...commandObj.pattern];
+	// console.log('pattern: ', pattern);
+
+	let placeListLocal = [...placeList];
+
+	let handledList = [...placeList];
+
+	if (pattern.length == 0) {
+		// pattern = [1];
+	}
+	if (reverse) {
+		pattern = pattern.reverse();
+		placeListLocal = placeListLocal.reverse();
+	}
+
+	for (let place of placeListLocal) {
+		place.handled = false;
+	}
+
+	for (let place of placeListLocal) {
+		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		// outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
-		if (commandObj.pattern[patternIndex] == 0) {
-			// If following pattern spots would connect to this, but line ends early, add skip-gcode
-			for (let i = 0; i < (commandObj.pattern.length); i++) {  // check whole pattern
-				if ((lastPlace.length+i+1) > placeList.length) { // only parts of the pattern that would come after line ends 
-					if ((commandObj.pattern[i] > 0)) { // Only if the pattern actually connects to something
-						if (mod((i - commandObj.pattern[i]), commandObj.pattern.length) == patternIndex)  { // Check if it connects to the current point
-							outString += commandObj.skipGCode;
+		if (commandObj.directional == false) {
+			if (pattern[patternIndex] !== 0) {
+				// outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
+				outString += produceCode(needleObj, place, depthAdjustment);
+				outString += produceCode(commandObj, place, depthAdjustment, false);
+			}
+		}
+		else {
+			if (Math.abs(pattern[patternIndex]) == 0) {
+				// If following pattern spots would connect to this, but line ends early, add skip-gcode
+				for (let i = patternIndex; i < (patternIndex+pattern.length); i++) {  // check whole pattern
+					const patternPlace = mod(i, pattern.length);
+					if (((placeCounter+i-patternIndex+1) > placeList.length)) { // only parts of the pattern that would come after line ends 
+						if ((Math.abs(pattern[patternPlace]) > 0.5)) { // Only if the pattern actually connects to something
+							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
+								// outString += commandObj.skipGCode;
+								if (place.handled == false) {
+									outString += produceCode(needleObj, place, depthAdjustment);
+									place.handled = true;
+								}
+								outString += produceCode(commandObj, place, depthAdjustment, true);
+								break;
+							}
 						}
 					}
 				}
-			}
-			// if ((placeCounter+1) == placeList.length) { // edge case, print counter on last hole when hole would normally be skipped
-			// 	outString += commandObj.skipGCode;
-			// }
-		} else { 
-			if (commandObj.directional == false) {
-				outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
-			}
-			else {
-				if (commandObj.pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+				// if ((placeCounter+1) == placeList.length) { // edge case, print counter on last hole when hole would normally be skipped
+				// 	outString += commandObj.skipGCode;
+				// }
+
+			} else if (pattern[patternIndex] == 0.5) {
+				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
+					// outString += commandObj.skipGCode;
+					if (place.handled == false) {
+						outString += produceCode(needleObj, place, depthAdjustment);
+						place.handled = true;
+					}
+					outString += produceCode(commandObj, place, depthAdjustment, true);
+				}
+
+			} else { 
+				
+				if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
 					let noOut = true;
-					for (let i = 0; i < (commandObj.pattern.length); i++) { // check whole pattern
-						if ((commandObj.pattern[i] > 0) && (mod((i - commandObj.pattern[i]), commandObj.pattern.length) == patternIndex)) {
+					for (let i = patternIndex; i < (patternIndex+pattern.length); i++) { // check whole pattern
+						const patternPlace = mod(i, pattern.length);
+						if ((Math.abs(pattern[patternPlace]) > 0.5) && (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)) {
 							noOut = false;
 						}
 					}
-					if (noOut) outString += commandObj.skipGCode;
+					if (noOut)  {
+						// outString += commandObj.skipGCode;
+						if (place.handled == false) {
+							outString += produceCode(needleObj, place, depthAdjustment);
+							place.handled = true;
+						}
+						outString += produceCode(commandObj, place, depthAdjustment, true);
+					}
 				}
-
+				// else if () {
+	
+				// }
+	
 				// "Default" outcome (for rotation variant patterns)
-				else outString += aimGCodePart(place, lastPlace[lastPlace.length-commandObj.pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+				
+				else {
+					if (place.handled == false) {
+						outString += produceCode(needleObj, place, depthAdjustment);
+						place.handled = true;
+					}
+					if (lastPlace[lastPlace.length-pattern[patternIndex]].handled == false) {
+						outString += produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment);
+						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
+					}
+					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+				}
 			}
 		}
+
+
 		patternIndex += 1;
-		if (patternIndex >= commandObj.pattern.length) patternIndex = 0;
+		if (patternIndex >= pattern.length) patternIndex = 0;
 
 		lastPlace.push(place);
 		placeCounter += 1;
@@ -2954,20 +3714,119 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment)
 	return outString;
 } 
 
-function exportPreviousGcode(GCODE, addedOutputs) {
+function addGCodePart(outString, params, placeList, commandObj, depthAdjustment, reverse=false, memoryList=[], memoryObj={}) {
+	var connectionMemoryList = [];
+	// console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
+	// console.log("outString: " + outString.length);
+	var lastPlace = [];
+	var patternIndex = 0;
+	let placeCounter = 0;
+	// for (let i = -5; i < 5; i++) { 
+	// 	console.log(mod(i, commandObj.pattern.length));
+	// }
+
+	let pattern = [...commandObj.pattern];
+	// console.log('pattern: ', pattern);
+
+	let placeListLocal = [...placeList];
+	if (pattern.length == 0) {
+		// pattern = [1];
+	}
+	if (reverse) {
+		pattern = pattern.reverse();
+		placeListLocal = placeListLocal.reverse();
+	}
+
+	memoryObj.placeList = placeListLocal;
+
+	for (let place of placeListLocal) {
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		
+		if (commandObj.directional == false) {
+			if (pattern[patternIndex] !== 0) {
+				outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
+				memoryList.push({from:place, to:null});
+			}
+		}
+		else {
+			if (Math.abs(pattern[patternIndex]) == 0) {
+				// If following pattern spots would connect to this, but line ends early, add skip-gcode
+				for (let i = patternIndex; i < (patternIndex+pattern.length); i++) {  // check whole pattern
+					const patternPlace = mod(i, pattern.length);
+					if (((placeCounter+i-patternIndex+1) > placeList.length)) { // only parts of the pattern that would come after line ends 
+						if ((Math.abs(pattern[patternPlace]) > 0.5)) { // Only if the pattern actually connects to something
+							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
+								outString += commandObj.skipGCode;
+								memoryList.push({from:place, to:null});
+								break;
+							}
+						}
+					}
+				}
+				// if ((placeCounter+1) == placeList.length) { // edge case, print counter on last hole when hole would normally be skipped
+				// 	outString += commandObj.skipGCode;
+				// }
+
+			} else if (pattern[patternIndex] == 0.5) {
+				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
+					outString += commandObj.skipGCode;
+					memoryList.push({from:place, to:null});
+				}
+
+			} else { 
+				
+				if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+					let noOut = true;
+					for (let i = patternIndex; i < (patternIndex+pattern.length); i++) { // check whole pattern
+						const patternPlace = mod(i, pattern.length);
+						if ((Math.abs(pattern[patternPlace]) > 0.5) && (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)) {
+							noOut = false;
+						}
+					}
+					if (noOut) outString += commandObj.skipGCode;
+				}
+				// else if () {
+	
+				// }
+	
+				// "Default" outcome (for rotation variant patterns)
+				else outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place});
+			}
+		}
+
+
+		patternIndex += 1;
+		if (patternIndex >= pattern.length) patternIndex = 0;
+
+		lastPlace.push(place);
+		placeCounter += 1;
+	}
+	// console.log("outStringAdded: " + outString.length);
+	return outString;
+} 
+
+function exportPreviousGcode(GCODE, addedOutputs, addedShapes) {
 
 	GCODE = chosenPrinter.startCode + GCODE;
 	
 	for (let outputContainer of addedOutputs) {
 		console.log('output: ', outputContainer);
+		GCODE += outputContainer.output.G91.spikes.precode;
 		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed);
 	}
 
 	for (let outputContainer of addedOutputs) {
 		GCODE += chosenPrinter.pauseCode;
-		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikesTop, outputContainer.heightUsed);
+		// GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikesTop, outputContainer.heightUsed, true);
 
-		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
+		// GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
+
+		let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
+		GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, true);
+
 	}
 
 	GCODE += chosenPrinter.endCode;
@@ -2979,8 +3838,62 @@ function exportPreviousGcode(GCODE, addedOutputs) {
 	saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
 	refreshShapeDisplay();
 	setMessage('<b>GCODE Exported</b>', '#444');
-	return;
 
+	var printShapes = [...addedOutputs];
+	var printObj = {relevantShapes:addedShapes, printedThreads:printShapes};
+	return printObj;
+}
+
+
+function calcBounds(relevantShapes) {
+	var localBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};
+	if (relevantShapes.length > 0) {
+		var corners = [];
+		for (i in relevantShapes) {
+			var rect = relevantShapes[i].bounds;
+			corners.push({'x':rect.x, 'y':rect.y});
+			corners.push({'x':rect.x+rect.width, 'y':rect.y+rect.height});
+		}
+		corners.sort(function(a, b) {
+			return a.x - b.x;
+		});
+		localBounds.minX = corners[0].x;
+		localBounds.maxX = corners[corners.length-1].x;
+		corners.sort(function(a, b) {
+			return a.y - b.y;
+		});
+		localBounds.minY = corners[0].y;
+		localBounds.maxY = corners[corners.length-1].y;
+		localBounds.y = (localBounds.maxY+localBounds.minY)/2;
+		localBounds.x = (localBounds.maxX+localBounds.minX)/2;
+	}
+	return localBounds;
+}
+
+function getLaserPreview(relevantShapes) {
+	localBounds = calcBounds(relevantShapes);
+	console.log({localBoundsLaser:localBounds});
+	var localSVG = $(project.exportSVG({bounds:'content'})).html();
+	const localWidth = localBounds.maxX-localBounds.minX;
+	const localHeight = localBounds.maxY-localBounds.minY;
+	var localSvgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+localWidth+'mm" height="'+localHeight+'mm" viewBox="'+localBounds.minX+' '+localBounds.minY+' '+localWidth+' '+localHeight+'">'+localSVG+'</svg>';
+	var blob = new Blob([localSvgString], {type: 'image/svg+xml'});
+	const imageData = {blob:blob, width:localWidth, height:localHeight, svgString:localSvgString};
+	return imageData;
+}
+
+function getPrintPreview(relevantShapes) {
+	localBounds = calcBounds(relevantShapes);
+	console.log({localBounds:localBounds});
+	var localSVG = $(project.exportSVG({bounds:'content'})).html();
+	localBounds.minX -= 5;
+	localBounds.minY -= 5;
+	const localWidth = localBounds.maxX-localBounds.minX+5;
+	const localHeight = localBounds.maxY-localBounds.minY+5;
+	var localSvgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+localWidth+'mm" height="'+localHeight+'mm" viewBox="'+localBounds.minX+' '+localBounds.minY+' '+localWidth+' '+localHeight+'">'+localSVG+'</svg>';
+	var blob = new Blob([localSvgString], {type: 'image/svg+xml'});
+	const imageData = {blob:blob, width:localWidth, height:localHeight, svgString:localSvgString};
+	return imageData;
 }
 
 function is_server() {
@@ -2991,12 +3904,20 @@ function exportProject() {
 	emptyAll();
 	activateDim(false);
 	paper.view.zoom = 1;
+	var prints = [];
+	var allShapeIDs = new Set();
+
+
+	console.log({markerGCodesExport:markerGCodes});
+
 	if (shape.length > 0) {
 		calProjectBounds();
 		var heightUsed = 0.0;
 		var addedOutputs = [];
+		var addedShapes = [];
 		var GCODE = "";
 		for (i in shape) {
+			console.log({theshape:shape[i]});
 			for (j in shape[i].children) {
 				if (shape[i].children[j].className=='Path') {
 					if (shape[i].children[j].name=='joint') {
@@ -3033,6 +3954,7 @@ function exportProject() {
 				}
 
 				if (shape[i].children[j].printJobs) {
+					console.log({thePrintJobs:shape[i].children[j].printJobs});
 					for (let output of shape[i].children[j].printJobs) {
 						if (output.handled === false) {
 							output.handled = true;
@@ -3043,19 +3965,38 @@ function exportProject() {
 								break;
 							}
 							if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
-								exportPreviousGcode(GCODE, addedOutputs);
+								prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes));
 								GCODE = "";
 								heightUsed = 0;
 								addedOutputs = [];
+								addedShapes = [];
 							}
+
+							console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
 							
 							let localHeight = heightUsed - output.relativeHeight.min + 20;
 							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
 							addedOutputs.push({output:output, heightUsed:localHeight, usedParam:output.usedParam});
+							addedShapes.push({shape: shape[i], ID:i});
+							allShapeIDs.add(i);
+							console.log({allShapeIDs:allShapeIDs, i:i});
 
 							// Add "Inject here" G-Code flag for printed markers?  
 
-							GCODE = addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
+							for (let marker of output.markers) {
+
+								console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
+
+								let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
+								outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + 5).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+								outString += `G1 Z${0.2} F3000\n`; // Z positioning
+
+								GCODE += outString;
+
+								GCODE += marker.serverData.markerGC;
+							}
+
+							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
 						}
 					}
 				}
@@ -3063,22 +4004,75 @@ function exportProject() {
 		}
 
 		if (heightUsed > 0) {
-			exportPreviousGcode(GCODE, addedOutputs);
+			prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes));
 			GCODE = "";
 			heightUsed = 0;
 			addedOutputs = [];
+			addedShapes = [];
 		}
 
-		var svgWidth = projectBounds.maxX;
-		var svgHeight = projectBounds.maxY;
-		var svgContent = $(project.exportSVG()).html();
-		var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+0+' '+0+' '+svgWidth+' '+svgHeight+'">'+svgContent+'</svg>';
+
+
+		
+		var laserObjects = [];
+		for (shapeID of allShapeIDs) {
+			const shapeList = [shape[shapeID]];
+			console.log({shapeID:shapeID, shapeList:shapeList});
+			var imageData = getLaserPreview(shapeList);
+			laserObjects.push({ID:shapeID, imageData:imageData});
+		}
+
+		console.log({laserObjects:laserObjects});
+		
+
+		for (let print of prints) {
+			var printList = [];
+			for (let printedThread of print.printedThreads) {
+				printList.push(printedThread.output.laserHolesRefPath);
+
+			}
+			
+			console.log({printList:printList});
+			var imageData = getPrintPreview(printList);
+			// laserObjects.push({ID:"5", imageData:imageData});
+
+			print.imageData = imageData;
+
+
+		}
+
+		var svgWidth = projectBounds.maxX-projectBounds.minX;
+		var svgHeight = projectBounds.maxY-projectBounds.minY;
+		console.log({svgWidth:svgWidth, svgHeight:svgHeight});
+		var svgContent = $(project.exportSVG({bounds:'content'})).html();
+		var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+projectBounds.minX+' '+projectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+svgContent+'</svg>';
 		
 		var blob = new Blob([svgString], {type: 'image/svg+xml'});
 		var d = new Date();
 		saveAs(blob, 'joinery_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
 		refreshShapeDisplay();
 		setMessage('<b>SVG Exported</b>', '#444');
+
+		const url = URL.createObjectURL(blob);
+		const image = document.createElement('img');
+		image.addEventListener('load', () => URL.revokeObjectURL(url), {once: true});
+		image.src = url;
+		image.width = 100;
+		console.log({url:url, image:image});
+		var urlString = url.substring(5);
+		var imgHtml = "<img source=\""+urlString+"\" target=\"_BLANK\">";
+		$("#TestDiv").append(image);
+		var exportWindow = window.open("pages/export-status.html?"+"none", "Export", "width=800,height=600");// "width=200,height=100");
+		exportWindow.prints = prints;
+		exportWindow.laserObjects = laserObjects;
+		exportWindow.allShapeIDs = allShapeIDs;
+		exportWindow.svgContent = svgContent;
+		exportWindow["myVar"] = "Hello World";
+		// exportWindow.window.imageList = [image, "no"];
+		// exportWindow.window["myVar"] = "Hello World2";
+		//myWindow.document.write("<p>This is 'MsgWindow'. I am 200px wide and 100px tall!</p>");
+
+	
 	} else {
 		setMessage('<b>No drawings to export</b>', '#F80');
 	}

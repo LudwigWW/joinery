@@ -415,8 +415,13 @@ function createJointProfileMenu(i, ic, id) {
 			html = html+'<li class="param"><label>'+j+'</label><span></span><input type="number" step="1" name="'+j+'"></li>';
 		} else if (paramAngle.indexOf(j) >= 0) {
 			html = html+'<li class="param"><label>'+j+'</label><span>deg</span><input type="number" step="0.1" name="'+j+'"></li>';
+		} else if (paramBool.indexOf(j) >= 0) {
+			html = html+'<li class="param"><label>'+j+'</label><span></span><input type="checkbox"';
+			if (jointProfileList[i].param[j]) html = html+' checked';
+			html = html+' name="'+j+'"></li>';
 		} else if (docUnits=='mm') {
 			html = html+'<li class="param"><label>'+j+'</label><span>mm</span><input type="number" step="0.1" name="'+j+'"></li>';
+		
 		} else {
 			html = html+'<li class="param"><label>'+j+'</label><span>in</span><input type="number" step="0.0625" name="'+j+'"></li>';
 		}
@@ -560,6 +565,12 @@ function setJointValue(idString) {
 						} else {
 							jointProfileList[j].param[k] = parseFloat(val);
 						}
+					}
+				}
+				else {
+					if (paramBool.indexOf(k)>=0) {
+						const checked = $('#'+idString+' input[name="'+k+'"]')[0].checked;
+						jointProfileList[j].param[k] = checked;
 					}
 				}
 			}

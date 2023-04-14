@@ -11,7 +11,8 @@ var connectionLines;
 var shapeColor = [];
 var ctx;
 var printingCommands;
-
+const laserColor = '#F00';
+const laserWidth = 0.1;
 
 function init() {
 	if (!initialized) {
@@ -764,6 +765,121 @@ function checkPathJoint(s, p) {
 	return type;
 }
 
+function singlePathJointButton() {
+	// if (pathSelected.shape > -1 && pathSelected.path > -1) {
+	if (jointMake.length==1) {
+		console.log({checkPathJoint:checkPathJoint(jointMake[0].shape, jointMake[0].path)});
+		if (checkPathJoint(jointMake[0].shape, jointMake[0].path)=='jointMake' && mode=='set') {
+			var jointDetail = {'0':jointMake[0], '1':jointMake[0], 'profile':'none', 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1, 'selfJoining': 1};
+				joints.push(jointDetail);
+				initJoint(jointDetail[0].shape, jointDetail[0].path);
+				// initJoint(jointDetail[1].shape, jointDetail[1].path);
+				generateJoint(joints.length-1);
+				generateJointLines();
+				displayJointLines();
+				generateEdgeNormals();
+				displayFlipLines();
+				jointMake = [];
+				tempLines.removeChildren();
+				setMessage('<b>Joint created</b>', '#444');
+				refreshJointList();
+		}
+	} else {
+		setMessage('<b>Joint NOT created</b>', '#444');
+		return;
+	}
+	return;
+	if (checkPathJoint(pathSelected.shape, pathSelected.path)=='noJoint' && mode=='set') {
+		if (jointMake.length<2) {
+			jointMake.push($.extend(true,{},pathSelected));
+			tempLines.addChild(shape[pathSelected.shape].children[pathSelected.path].clone());
+			tempLines.strokeColor = "#0AF";
+			tempLines.strokeWidth = 3;
+		}
+		if (jointMake.length==2) {
+			var delta = shape[jointMake[0].shape].children[jointMake[0].path].length / shape[jointMake[1].shape].children[jointMake[1].path].length;
+			if (delta < 1.2 && delta > 0.8) {
+				var jointDetail = {'0':jointMake[0], '1':jointMake[1], 'profile':'none', 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1};
+				joints.push(jointDetail);
+				initJoint(jointDetail[0].shape, jointDetail[0].path);
+				initJoint(jointDetail[1].shape, jointDetail[1].path);
+				generateJoint(joints.length-1);
+				generateJointLines();
+				displayJointLines();
+				generateEdgeNormals();
+				displayFlipLines();
+				jointMake = [];
+				tempLines.removeChildren();
+				setMessage('<b>Joint created</b>', '#444');
+				refreshJointList();
+			} else {
+				setMessage('<b>Cannot join</b>: paths have significantly different lengths ' + delta, '#F80');
+				jointMake = [];
+				tempLines.removeChildren();
+			}	
+		}
+	} else if (checkPathJoint(pathSelected.shape, pathSelected.path).joint) {
+		var index = checkPathJoint(pathSelected.shape, pathSelected.path).index;
+		var edgeIndex = checkPathJoint(pathSelected.shape, pathSelected.path).edge;
+		if (pasteJointProfile.bool) {
+			joints[index].profile = jointProfileList[pasteJointProfile.index].profile;
+			$('#joint_'+index+'_'+joints[index][0].shape+'-'+joints[index][0].path+'_'+joints[index][1].shape+'-'+joints[index][1].path+' .jointOptions select > option').each(function () {
+				if ($(this).val()==joints[index].profile) {
+					$(this).prop('selected', true);
+				}
+			});
+			generateJoint(index);
+		} else if (mode=='reverse') {
+			shape[joints[index][edgeIndex].shape].children[joints[index][edgeIndex].path].reverse();
+			if (edgeIndex==0) {
+				joints[index].revA = joints[index].revA*-1;
+			} else {
+				joints[index].revB = joints[index].revB*-1;
+			}
+			generateJointLines();
+			displayJointLines();
+			generateEdgeNormals();
+			displayFlipLines();	
+			generateJoint(index);
+			setMessage('<b>Path reversed</b>', '#444');
+		} else if (mode=='flip') {
+			if (joints[index].m==edgeIndex) {
+				joints[index].dirM = joints[index].dirM * -1;
+			} else {
+				joints[index].dirF = joints[index].dirF * -1;
+			}
+			generateJoint(index);
+			generateJointLines();
+			displayJointLines();
+			generateEdgeNormals();
+			displayFlipLines();	
+			setMessage('<b>Joint flipped</b>', '#444');
+		} else if (mode=='swap') {
+			joints[index].m = (joints[index].m+1)%2;
+			joints[index].f = (joints[index].f+1)%2;
+			joints[index].dirM = joints[index].dirM*-1;
+			joints[index].dirF = joints[index].dirF*-1;
+			generateJoint(index);
+			generateJointLines();
+			displayJointLines();
+			generateEdgeNormals();
+			displayFlipLines();	
+			setMessage('<b>Swapped male and female</b>', '#444');
+		}
+	} else {
+		jointMake = [];
+		tempLines.removeChildren();
+	}
+	// } else {
+	// 	jointMake = [];
+	// 	tempLines.removeChildren();
+	// }
+
+	// if (!checkPathJoint(pathSelected.shape, pathSelected.path).joint && mode!='set' && pathSelected.shape!=-1 && pathSelected.path!=-1) {
+	// 	setMessage('<b>Not a joint.</b> please set joints', '#F80');
+	// }
+}
+
 function shapePathClick() {
 	if (pathSelected.shape > -1 && pathSelected.path > -1) {
 		if (checkPathJoint(pathSelected.shape, pathSelected.path)=='noJoint' && mode=='set') {
@@ -1009,8 +1125,6 @@ function setMessage(s, c) {
 	}, 3500);
 }
 
-
-
 function refreshShapeDisplay() {
 	for (i in shape) {
 		for (j in shape[i].children) {
@@ -1024,14 +1138,52 @@ function refreshShapeDisplay() {
 			if (shape[i].children[j].className=='Path') {
 				shape[i].children[j].strokeColor = '#000';
 				if (shape[i].children[j].name=='joint') {
-					shape[i].children[j].strokeWidth = 0;
+					shape[i].children[j].strokeWidth = 0; //0
 				} else {
 					shape[i].children[j].strokeWidth = 0.5;
 				}
 			} else if (shape[i].children[j].className=='Group') {
-				shape[i].children[j].strokeWidth = 0.5;
+				let elses = true;
 				if (shape[i].children[j].children['folds']) {
+					elses = false;
 					shape[i].children[j].children['folds'].strokeColor = '#AAA';
+				} 
+
+				if (shape[i].children[j].children['laser']) {
+					elses = false;
+					for (laserChild of shape[i].children[j].children.laser.children) {
+						if (laserChild.name == 'cut') {
+							laserChild.strokeWidth = laserWidth;
+							laserChild.strokeColor = laserColor;
+						}
+						else {
+							laserChild.strokeWidth = laserWidth;
+							laserChild.strokeColor = '#00F';
+						}
+					}
+					
+				}
+
+				if (shape[i].children[j].children['print']) {
+					elses = false;
+					shape[i].children[j].children['print'].strokeColor = '#02B';
+					shape[i].children[j].children['print'].strokeWidth = 0;
+					shape[i].children[j].children['print'].fillColor = '#02B';
+					shape[i].children[j].children['print'].opacity = 0.25;
+					for (printChild of shape[i].children[j].children.print.children) {
+						console.log({name:printChild.name});
+						if (printChild.name == 'printedCircle') {
+							printChild.strokeWidth = 0;
+						}
+						else if (printChild.name == 'printedLine') {
+							printChild.strokeWidth = printChild.renderWidth;
+							printChild.strokeColor = '#02B';
+							console.log({printChild:printChild});
+						}
+					}
+				}
+				if (elses) {
+					shape[i].children[j].strokeWidth = 0.5;
 				}
 			}
 		}
