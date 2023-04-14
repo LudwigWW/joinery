@@ -1106,13 +1106,15 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 		svgBHoleList.push(laserHole.bOrigin);
 	}
 	addGCodePart("", param, svgHoleList, commandObj.base, 0, false, placeConnectionList); // Just getting the order reference
-	addGCodePart("", param, svgBHoleList, commandObj.top, 0, false, placeBConnectionList);
+	addGCodePart("", param, svgBHoleList, commandObj.top, 0, true, placeBConnectionList);
 	console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
 
 	var placeConnLists = [placeConnectionList, placeBConnectionList];
 
 	for (let placeConnL of placeConnLists) {
+		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
+			console.log({connection:connection});
 			console.log(connection.to !== null);
 			if (connection.to !== null) {
 				switch (commandObj.base.renderDetails.type) {
@@ -3793,7 +3795,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 	
 				// "Default" outcome (for rotation variant patterns)
 				else outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
-				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place});
+				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); //TODO: Check for undefined in from spot here
 			}
 		}
 
