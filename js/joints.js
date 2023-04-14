@@ -3795,7 +3795,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 	
 				// "Default" outcome (for rotation variant patterns)
 				else outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
-				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); //TODO: Check for undefined in from spot here
+				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); //TODO: Check for undefined in from spot here // Perhaps only if reverse is missing but needed
 			}
 		}
 
