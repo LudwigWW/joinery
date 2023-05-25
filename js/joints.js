@@ -5,10 +5,12 @@ var jointProfileCount = 0;
 var chosenPrinter = {};
 var requestCounter = 0;
 var markerGCodes = [];
+var printCounter = 799; // Starts at A
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
 
 const defaultLineLength = 10;
-const defaultLineGCode = "G1 E0.8 F2100 \n M204 S800 \n G1 F900 \n G1 X9.600 Y0.000 E0.28504 \n G1 F8640 \n G1 X-3.291 Y0.000 E-0.76 \n G1 E-0.04 F2100 \n G1 Z0.400 F720";
+const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
@@ -1169,7 +1171,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	// commandObj.base.renderDetails
 }
 
-function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param) {
+function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, fabID) {
 
 	var markerParams = {size:1, type:"arrow"};
 	var markerParams = {size:2, type:"circle"};
@@ -1188,8 +1190,8 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	var startHole = job.laserHoles[0].point;
 	
 	var markerObj;
-	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
-	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
 	if (markerObj.outlines.length > 0) { // If there is something to print // TODO: Or if only text is printed
 		markers.push(serverSlicing(markerObj, job, param)); 
 	}
@@ -1202,8 +1204,8 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	var markerObjEnd;
 	if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
 		console.log({status:"MarkingEnd"});
-		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
-		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
 		if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
 	}
 
@@ -1265,7 +1267,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	return markers;
 }
 
-function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, returnAB, returnABPrint, renderRefAB, joints, isA, rotPath = undefined) {
+function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB, returnAB, returnABPrint, renderRefAB, joints, isA, rotPath = undefined) {
 	var markerSTLOutlines = [];
 
 	var clonePath;
@@ -1434,7 +1436,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, retur
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 	console.log(rad)
 
-	var textGroup = generateAsciiPolygons("Text", startP.x, startP.y, rad, 10); // TODO: Just use PointText instead here (these are visual only so far)
+	var textGroup = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20); // TODO: Just use PointText instead here (these are visual only so far)
 	console.log({textGroup:textGroup})
 	for (let childpath of textGroup.children) {
 		returnABPrint.push(childpath); // TODO: Make these "printed render lines" outline lines only, instead of filled
@@ -1460,14 +1462,15 @@ function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, retur
 		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 		console.log(rad)
 
-		var textGroupPrint = generateAsciiPolygons("Text", startP.x, startP.y, rad, 10);
+		var textGroupPrint = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
 		// For each Path, for each pair of points (sliding window of size 2), do add aimed gcode generation
 		// Add this to the return, similar to the server-made marker gcode 
 
 		console.log({textGroupPrint:textGroupPrint});
 		var printedText = [];
 		for (let path of textGroupPrint.children) {
-			const relVector = new Point(ptAB2.x - path.segments[0].point.x, ptAB2.y - path.segments[0].point.y);
+			console.log({ptAB2:ptAB2, point:path.segments[0].point});
+			const relVector = new Point(path.segments[0].point.x - ptAB2.x, path.segments[0].point.y - ptAB2.y);
 			var onePrintedText = {relVector:relVector, lines:[]};
 			for (let segIndex = 0; segIndex < path.segments.length -1; segIndex++) {
 				onePrintedText.lines.push({start:path.segments[segIndex].point, end:path.segments[segIndex+1].point})
@@ -2342,6 +2345,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			
 			console.log("strokeBoundHeight " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width);
 
+			var printJobID = (parseInt(shapeA)+1).toString() + "+" + (parseInt(shapeB)+1).toString() + getAlphaID(printCounter);
+			printCounter++;
+
 			// Rotate job for Left to Right printing
 			let rotationDegs = 10;
 			let fullCircle = 0;
@@ -2403,17 +2409,17 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			}
 			var laserHolesRefPath = new Path(laserHolesRef);
 
-			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param);
+			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, printJobID);
 
 			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
 
-			printJobs.push({holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
+			printJobs.push({fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
 
 		}
 		
 	}
 
-	var testPath = generateAsciiPolygons("Test TEST HELLO", projectBounds.minX, projectBounds.minY, 45, 10);
+	var testPath = generateAsciiPolygons(printJobID, projectBounds.minX, projectBounds.minY, 45, 10);
 	console.log({testPath:testPath});
 	returnA.push(testPath);
 	
@@ -3604,7 +3610,9 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;
 	const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
+	
 	lengthFactor = length / patternDefaultLength;
+	console.log({length:length, lengthFactor:lengthFactor});
 	var rad = Math.atan2(deltaY, deltaX); // In radians
 	// if (Math.abs(rad) > 0.001) {
 	if (true) {
@@ -3616,6 +3624,7 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 			if (preCommentLine.length > 0) {
 				var parts = preCommentLine.split(' ');
 				if (parts[0] === 'G0' || parts[0] === 'G1' || parts[0] === 'g0' || parts[0] === 'g1') {
+					var skipped1 = false;
 					let xLen = 0.0;
 					let yLen = 0.0;
 					let zLen = 0.0;
@@ -3636,7 +3645,12 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 
 						// remaining parts that need no handling
 						else {
-							remainingPartString = remainingPartString + ' ' + part;
+							if (skipped1) {
+								remainingPartString = remainingPartString + ' ' + part;
+							}
+							else {
+								skipped1 = true;
+							}
 						}
 					});
 
@@ -3945,6 +3959,24 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 	return printObj;
 }
 
+function getAlphaID(number) {
+	var alpha = "";
+	function printLetter(number) {
+		var charIndex = number % alphabet.length
+		var quotient = number / alphabet.length
+		if (charIndex - 1 == -1) {
+			charIndex = alphabet.length
+			quotient--;
+		}
+		alpha = alphabet.charAt(charIndex - 1) + alpha;
+		if (quotient >= 1) {
+			printLetter(parseInt(quotient));
+		}
+	}
+
+	printLetter(number);
+	return alpha;
+}
 
 function calcBounds(relevantShapes) {
 	var localBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};

@@ -1171,7 +1171,7 @@ function refreshShapeDisplay() {
 				if (shape[i].children[j].children['print']) {
 					elses = false;
 					shape[i].children[j].children['print'].strokeColor = '#02B';
-					shape[i].children[j].children['print'].strokeWidth = 0;
+					shape[i].children[j].children['print'].strokeWidth = 0.1;
 					shape[i].children[j].children['print'].fillColor = '#02B';
 					shape[i].children[j].children['print'].opacity = 0.25;
 					for (printChild of shape[i].children[j].children.print.children) {
