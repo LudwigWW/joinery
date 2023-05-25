@@ -13,6 +13,10 @@ var ctx;
 var printingCommands;
 const laserColor = '#F00';
 const laserWidth = 0.1;
+const laserColorDone = '#D33';
+const printColor = '#05D';
+const printColorDone = '#339';
+var noColor;
 
 function init() {
 	if (!initialized) {
@@ -39,6 +43,7 @@ function init() {
 	drawGrid();
 	initialized = true;
 	console.log({THREE:THREE});
+	noColor = new Color(0, 0, 0, 0);
 	
 	// axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
 
@@ -1161,7 +1166,6 @@ function refreshShapeDisplay() {
 							laserChild.strokeColor = '#00F';
 						}
 					}
-					
 				}
 
 				if (shape[i].children[j].children['print']) {
@@ -1171,14 +1175,12 @@ function refreshShapeDisplay() {
 					shape[i].children[j].children['print'].fillColor = '#02B';
 					shape[i].children[j].children['print'].opacity = 0.25;
 					for (printChild of shape[i].children[j].children.print.children) {
-						console.log({name:printChild.name});
 						if (printChild.name == 'printedCircle') {
 							printChild.strokeWidth = 0;
 						}
 						else if (printChild.name == 'printedLine') {
 							printChild.strokeWidth = printChild.renderWidth;
 							printChild.strokeColor = '#02B';
-							console.log({printChild:printChild});
 						}
 					}
 				}
@@ -1189,6 +1191,40 @@ function refreshShapeDisplay() {
 		}
 	}
 	paper.view.draw();
+}
+
+function grayOutShapes() {
+	for (i in shape) {
+		for (j in shape[i].children) {
+			shape[i].children[j].strokeWidth = 0.1;
+			shape[i].children[j].strokeCap = 'round';
+			if (shape[i].children[j].className=='Group') {
+				if (shape[i].children[j].children['print']) {
+					shape[i].children[j].children['print'].opacity = 0.25;
+					shape[i].children[j].children['print'].strokeWidth = 0.5;
+					shape[i].children[j].children['print'].fillColor = '#BBB';
+					shape[i].children[j].children['print'].strokeColor = '#999';
+				} else if (shape[i].children[j].children['laser']) {
+					shape[i].children[j].children['laser'].strokeColor = laserColorDone;
+
+				}
+			}
+		}
+
+	}
+	// paper.view.draw();
+}
+
+function colorForLaser(thisShape) {
+		for (j in thisShape.children) {
+			if (thisShape.children[j].className=='Group') {
+				if (thisShape.children[j].children['laser']) {
+					thisShape.children[j].children['laser'].strokeColor = laserColor;
+					thisShape.children[j].children['laser'].strokeWidth = 0.1;
+				}
+			}
+		}
+
 }
 
 var dimBool = false;

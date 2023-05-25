@@ -25,9 +25,9 @@ function init() {
     // console.log({query:query, qs:qs});
 	if (!export_ready) {
 		initButtons();
-        var [tempO, tempF] = createOrderList(window.prints, window.laserObjects, window.allShapeIDs);
-		order = tempO;
-		flat = tempF;
+        // var [tempO, tempF] = createOrderList(window.prints, window.laserObjects, window.allShapeIDs);
+		order = window.order; //tempO;
+		flat = window.flat; //tempF
 	}
 	// printingCommands = getJSONs("test.json");
     paper.install(window);
@@ -117,112 +117,116 @@ function initButtons() {
 	});
 }
 
-function createOrderList(prints, shapes, shapeIDs) {
-    var handledPrints = [];
-    var handledShapes = [];
+// function createOrderList(prints, shapes, shapeIDs) {
+//     var handledPrints = [];
+//     var handledShapes = [];
 
-    console.log({prints:prints, shapes:shapes, shapeIDs:shapeIDs});
-    var remainingShapeIDs = [...shapeIDs];
-    var remainingPrints = [...prints];
-    var orderList = [];
-	var flatList = [];
-	var counter = 0;
+//     console.log({prints:prints, shapes:shapes, shapeIDs:shapeIDs});
+//     var remainingShapeIDs = [...shapeIDs];
+//     var remainingPrints = [...prints];
+//     var orderList = [];
+// 	var flatList = [];
+// 	var counter = 0;
     
-    console.log({remainingPrints:remainingPrints, remainingShapeIDs:remainingShapeIDs});
+//     console.log({remainingPrints:remainingPrints, remainingShapeIDs:remainingShapeIDs});
     
 
-    // let three = 0;
+//     // let three = 0;
 
-    while (handledPrints.length < remainingPrints.length) {
-    // while (three < 3) {
-        // three+=1;
-        var currentObj = {};
-        var nextShapeID = -1;
+//     while (handledPrints.length < remainingPrints.length) {
+//     // while (three < 3) {
+//         // three+=1;
+//         var currentObj = {};
+//         var nextShapeID = -1;
 
-        // select hubs first --> cut shape with most connections first
-        var maxCount = 0;
-        for (let shapeID of remainingShapeIDs) {
-            // Count occurrrences in prints
-            var usedCount = 0;
-            for (let print of remainingPrints) {
-                if (print.relevantShapes.includes(shapeID)) usedCount++;
-            }
-            if (usedCount >= maxCount) {
-                maxCount = usedCount;
-                nextShapeID = shapeID;
-            }
-        }
+//         // select hubs first --> cut shape with most connections first
+//         var maxCount = 0;
+//         for (let shapeID of remainingShapeIDs) {
+//             // Count occurrrences in prints
+//             var usedCount = 0;
+//             for (let print of remainingPrints) {
+//                 if (print.relevantShapes.includes(shapeID)) usedCount++;
+//             }
+//             if (usedCount >= maxCount) {
+//                 maxCount = usedCount;
+//                 nextShapeID = shapeID;
+//             }
+//         }
 
-        console.log({nextShapeID:nextShapeID});
+//         console.log({nextShapeID:nextShapeID});
 
-        // mark shape handled
-        for (let shape of shapes) {
-            console.log({shape:shape, shapeID:shape.ID});
-            if (shape.ID == nextShapeID) {
-                console.log({status:"FoundShape"});
-                currentObj.parentShape = shape;
-                handledShapes.push(shape.ID);
-                var index = remainingShapeIDs.indexOf(shape.ID);
-                console.log({index:index});
-                if (index !== -1) {
-                    remainingShapeIDs.splice(index, 1);
-                }
-				const typeObj = {detail:0, string:"Cut"};
-				const stepNr = counter + 0;
-				counter += 1;
-				var flatObj = {listID:stepNr, type:typeObj, imageData:shape.imageData};
-				flatList.push(flatObj);
-                break;
-            }
-        }
+//         // mark shape handled
+//         for (let shape of shapes) {
+//             console.log({shape:shape, shapeID:shape.ID});
+//             if (shape.ID == nextShapeID) {
+//                 console.log({status:"FoundShape"});
+//                 currentObj.parentShape = shape;
+//                 handledShapes.push(shape.ID);
+//                 var index = remainingShapeIDs.indexOf(shape.ID);
+//                 console.log({index:index});
+//                 if (index !== -1) {
+//                     remainingShapeIDs.splice(index, 1);
+//                 }
+// 				const typeObj = {detail:0, string:"Cut"};
+// 				const stepNr = counter + 0;
+// 				counter += 1;
+// 				var flatObj = {listID:stepNr, type:typeObj, imageData:shape.imageData};
+// 				flatList.push(flatObj);
+//                 break;
+//             }
+//         }
 
-        console.log({handledShapes:handledShapes, remainingShapeIDs:remainingShapeIDs});
+//         console.log({handledShapes:handledShapes, remainingShapeIDs:remainingShapeIDs});
 
-        currentObj.childPrints = [];
-        for (let printIndex = remainingPrints.length-1; printIndex >= 0; printIndex--) {
-            let good = true;
-            for (let relShape of remainingPrints[printIndex].relevantShapes) {
-                if (handledShapes.indexOf(relShape.ID) == -1) {
-                    good = false; 
-                    console.log({Status:"Print can not be added yet, lasershape not handled", print:remainingPrints[printIndex]});
-                    break;
-                }
-            }
-            if (good) {
-                currentObj.childPrints.push(remainingPrints[printIndex]);
-                handledPrints.push(remainingPrints[printIndex]);
-                var index = remainingPrints.indexOf(remainingPrints[printIndex]);
-				var theImageData = remainingPrints[printIndex].imageData;
-                if (index !== -1) {
-                    remainingPrints.splice(index, 1);
-                }
-				const typeObj = {detail:1, string:"Print"};
-				const stepNr = counter + 0;
-				counter += 1;
-				var flatObj = {listID:stepNr, type:typeObj, imageData:theImageData};
-				flatList.push(flatObj);
-            }
-        }
-        orderList.push(currentObj);
-    }
+//         currentObj.childPrints = [];
+//         for (let printIndex = remainingPrints.length-1; printIndex >= 0; printIndex--) {
+//             let good = true;
+//             for (let relShape of remainingPrints[printIndex].relevantShapes) {
+//                 if (handledShapes.indexOf(relShape.ID) == -1) {
+//                     good = false; 
+//                     console.log({Status:"Print can not be added yet, lasershape not handled", print:remainingPrints[printIndex]});
+//                     break;
+//                 }
+//             }
+//             if (good) {
+//                 currentObj.childPrints.push(remainingPrints[printIndex]);
+//                 handledPrints.push(remainingPrints[printIndex]);
+//                 var index = remainingPrints.indexOf(remainingPrints[printIndex]);
+// 				var theImageData = remainingPrints[printIndex].imageData;
+//                 if (index !== -1) {
+//                     remainingPrints.splice(index, 1);
+//                 }
+// 				const typeObj = {detail:1, string:"Print"};
+// 				const stepNr = counter + 0;
+// 				counter += 1;
+// 				var flatObj = {listID:stepNr, type:typeObj, imageData:theImageData};
+// 				flatList.push(flatObj);
+//             }
+//         }
+//         orderList.push(currentObj);
+//     }
 
-    console.log({orderList:orderList, flatList:flatList});
-    return [orderList, flatList];
-}
+//     console.log({orderList:orderList, flatList:flatList});
+//     return [orderList, flatList];
+// }
 
-function makeImage(imageData, width=100) {
+function makeImage(imageData, width=200, height=150) {
     var blob = new Blob([imageData.svgString], {type: 'image/svg+xml'});
 
     const url = URL.createObjectURL(blob);
     const image = document.createElement('img');
     image.addEventListener('load', () => URL.revokeObjectURL(url), {once: true});
     image.src = url;
-    image.width = width;
+    // image.width = width;
+	image.style.width = "100%";
+    image.style.maxWidth = width.toString()+"px";
+	image.style.height = "100%";
+    image.style.maxHeight = height.toString()+"px";
     $("#TestDiv").append(image);
     return image.outerHTML;
 }
 
-function addListBox(id, type, imageData, completed) {
+function addListBox(id, type, imageDatas, completed) {
 	let html = '<div id="step'+id.toString()+'box" class="stepholder"> <span>Step '+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
 	if (completed) {
 		html += ' checked';
@@ -242,9 +246,14 @@ function addListBox(id, type, imageData, completed) {
 
 	html += '" style="width:16px"><div class="buttonExport"><label for="export'+id.toString()+'" class="button2" onclick="downloadFile(\'exp'+id.toString()+'\')">Start</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
 	html += '<br>';
-	if (imageData) {
-		let image = makeImage(imageData);
-		html += image;
+	console.log(imageDatas.length)
+	console.log(imageDatas)
+	if (imageDatas.length > 0) {
+		for (let imageData of imageDatas) {
+			console.log(imageData);
+			let image = makeImage(imageData);
+			html += image;
+		}
 	}
 	html += '</div>';
 	return html;
@@ -255,7 +264,7 @@ function addStepsHTML(flatList) {
 	var html = "";
     if (flatList.length > 0) {
 		for (let listItem of flatList) {
-			html += addListBox(listItem.listID, listItem.type, listItem.imageData, false);
+			html += addListBox(listItem.listID, listItem.type, listItem.imageDatas, false);
 			html += '<br>';
 		}
 	}
@@ -266,7 +275,7 @@ function flattenList(orderList, stepCounter, outList) {
 	if (orderList.length > 0) {
 		var stepNr = stepCounter + 0;
 		const typeObj = {detail:0, string:"Cut"};
-		outList.append({listID:stepNr, type:typeObj, image:orderList[0].parentShape.imageData});
+		outList.append({listID:stepNr, type:typeObj, image:orderList[0].parentShape.imageData[0]});
         stepCounter += 1;
         if (orderList.length > 1 || orderList[0].childPrints.length > 0) {
             html += "<ul>\n";

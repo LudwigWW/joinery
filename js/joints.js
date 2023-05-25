@@ -5,6 +5,10 @@ var jointProfileCount = 0;
 var chosenPrinter = {};
 var requestCounter = 0;
 var markerGCodes = [];
+const constXShift = 5;
+
+const defaultLineLength = 10;
+const defaultLineGCode = "G1 E0.8 F2100 \n M204 S800 \n G1 F900 \n G1 X9.600 Y0.000 E0.28504 \n G1 F8640 \n G1 X-3.291 Y0.000 E-0.76 \n G1 E-0.04 F2100 \n G1 Z0.400 F720";
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
@@ -1111,6 +1115,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 
 	var placeConnLists = [placeConnectionList, placeBConnectionList];
 
+	returnList = returnAPrint;
+	returnRef = job.renderRef.a;
 	for (let placeConnL of placeConnLists) {
 		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
@@ -1122,7 +1128,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
-						returnAPrint.push(renderPath);
+						returnList.push(renderPath);
+						returnRef.printOutlines.push(renderPath);
 						break;
 					case "line":
 						var renderPath = new Path([connection.from, connection.to]);
@@ -1130,7 +1137,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
 						console.log({dist:connection.from.getDistance(connection.to)});
 						renderPath.renderWidth = outWidth;
-						returnAPrint.push(renderPath);
+						returnList.push(renderPath);
+						returnRef.printLines.push(renderPath);
 						console.log({renderPath:renderPath});
 						break;
 				}
@@ -1140,19 +1148,23 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
-						returnAPrint.push(renderPath);
+						returnList.push(renderPath);
+						returnRef.printOutlines.push(renderPath);
 						console.log({rCircle:renderPath});
 						break;
 					case "line":
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.skipDiameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
-						returnAPrint.push(renderPath);
+						returnList.push(renderPath);
+						returnRef.printOutlines.push(renderPath);
 						console.log({rCircle:renderPath});
 						break;
 				}
 			}
 		}
+		returnList = returnBPrint;
+		returnRef = job.renderRef.b;
 	}
 	// commandObj.base.renderDetails
 }
@@ -1173,13 +1185,15 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	let markerOffsetRotated = 6; // From part cut point
 	let rotatedPath = job.originSourcePathPart; 
 	// console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
+	var startHole = job.laserHoles[0].point;
 	
 	var markerObj;
-	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeB, returnBLaser, returnBPrint, joints, false);
-	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeA, returnALaser, returnAPrint, joints, true, rotatedPath);
-	if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObj, job, param)); // If there is something to print
+	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+	if (markerObj.outlines.length > 0) { // If there is something to print // TODO: Or if only text is printed
+		markers.push(serverSlicing(markerObj, job, param)); 
+	}
 	
-
 	
 	let markerOffsetE = job.originSourceOffsetEnd - 6; 
 	let markerOffsetERotated = (job.originSourcePathPart.length - 6);
@@ -1188,10 +1202,13 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	var markerObjEnd;
 	if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
 		console.log({status:"MarkingEnd"});
-		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeB, returnBLaser, returnBPrint, joints, false);
-		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeA, returnALaser, returnAPrint, joints, true, rotatedPath);
+		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
 		if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
 	}
+
+	
+
 	
 	
 	console.log({markers:markers});
@@ -1248,7 +1265,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	return markers;
 }
 
-function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, returnAB, returnABPrint, joints, isA, rotPath = undefined) {
+function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, returnAB, returnABPrint, renderRefAB, joints, isA, rotPath = undefined) {
 	var markerSTLOutlines = [];
 
 	var clonePath;
@@ -1302,10 +1319,12 @@ function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, retur
 			}
 			clonePath.name = 'cut';
 			returnAB.push(clonePath);
+			renderRefAB.laserLines.push(clonePath);
 
 			var ouputClone = clonePath.clone();
 			ouputClone.name = 'printedMarker';
 			returnABPrint.push(ouputClone); // Add printed area to display output
+			renderRefAB.printOutlines.push(ouputClone);
 		}
 	
 		// Then, add print paths at rotated path piece
@@ -1395,9 +1414,70 @@ function setPrintedMarkers(offset, rotOffset, markerParams, index, edgeAB, retur
 		}
 	}
 
+	// Set text markers
+	const textOffset = 22;
+	var textOffsetPath;
+	var startOffset = 4;
+	if (isA) {
+		textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirM']);
+	}
+	else {
+		textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirF']);
+		startOffset = -4;
+	}
+	const offsetPercentage = (offset / edgeAB.length);
+	const targetOffset = offsetPercentage * textOffsetPath.length;
+
+	const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
+	const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
+	
+	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
+	console.log(rad)
+
+	var textGroup = generateAsciiPolygons("Text", startP.x, startP.y, rad, 10); // TODO: Just use PointText instead here (these are visual only so far)
+	console.log({textGroup:textGroup})
+	for (let childpath of textGroup.children) {
+		returnABPrint.push(childpath); // TODO: Make these "printed render lines" outline lines only, instead of filled
+	}
+
+	// Pprint text markers
+	if (rotPath) {
+
+		if (isA) {
+			textOffsetPath = disconnectedOffsetPath(rotPath, textOffset, joints[index]['dirM']);
+		}
+		else {
+			textOffsetPath = disconnectedOffsetPath(rotPath, textOffset, joints[index]['dirF']);
+			startOffset = -4;
+		}
+
+		const offsetPercentage = (offset / edgeAB.length);
+		const targetOffset = offsetPercentage * textOffsetPath.length;
+	
+		const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
+		const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
+		
+		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
+		console.log(rad)
+
+		var textGroupPrint = generateAsciiPolygons("Text", startP.x, startP.y, rad, 10);
+		// For each Path, for each pair of points (sliding window of size 2), do add aimed gcode generation
+		// Add this to the return, similar to the server-made marker gcode 
+
+		console.log({textGroupPrint:textGroupPrint});
+		var printedText = [];
+		for (let path of textGroupPrint.children) {
+			const relVector = new Point(ptAB2.x - path.segments[0].point.x, ptAB2.y - path.segments[0].point.y);
+			var onePrintedText = {relVector:relVector, lines:[]};
+			for (let segIndex = 0; segIndex < path.segments.length -1; segIndex++) {
+				onePrintedText.lines.push({start:path.segments[segIndex].point, end:path.segments[segIndex+1].point})
+			}
+			printedText.push(onePrintedText);
+		}
+	}
 
 
-	return {outlines:markerSTLOutlines, targetPoint:ptAB2};
+	return {outlines:markerSTLOutlines, targetPoint:ptAB2, printedText:printedText};
 }
 
 function getMarkerDetails(markerObj) {
@@ -2011,6 +2091,12 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		var pinkedB = new Path({segments:pinkedPointsB, closed:false});
 		pinkedA.name = 'cut';
 		pinkedB.name = 'cut';
+		pinkedA.strokeColor = laserColor;
+		pinkedA.strokeWidth = laserWidth;
+		pinkedB.strokeColor = laserColor;
+		pinkedB.strokeWidth = laserWidth;
+		pinkedA.fillColor = noColor;
+		pinkedB.fillColor = noColor;
 
 		returnALaser.push(pinkedA);
 		returnBLaser.push(pinkedB);
@@ -2093,6 +2179,12 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				circleB = new Path.Circle(ptB, param['hole diameter']/2);
 				circleA.name = 'cut';
 				circleB.name = 'cut';
+				circleA.strokeColor = laserColor;
+				circleB.strokeColor = laserColor;
+				circleA.strokeWidth = laserWidth;
+				circleB.strokeWidth = laserWidth;
+				circleA.fillColor = noColor;
+				circleB.fillColor = noColor;
 				returnALaser.push(circleA);
 				returnBLaser.push(circleB);
 			}
@@ -2180,7 +2272,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		console.log({laserHoleList:laserHoleList});
 
 		// Separate into print jobs
-		var jobs = [{path:laserPointsPath, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
+		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
+		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
 
@@ -2218,8 +2311,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				var originSourcePathPart = lastJob.originSourcePathPart.split(originSourcePartSplitPL);//lastJob.originSourcePathPart.getLocationOf(originSourcePartSplitPL));
 
 				returnAFold.push(originSourcePathPart);
+				var renderRef = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 
-				jobs.push({path:newJobPath, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
+				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
 
 				// console.log({newJobL:jobs[jobs.length-1].path.length, lastJobl:lastJob.path.length, jobs:jobs, newJob:jobs[jobs.length-1], lastJob:lastJob});
 
@@ -2311,12 +2405,17 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param);
 
-			printJobs.push({holeList:holeList, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
-
 			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
+
+			printJobs.push({holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
+
 		}
 		
 	}
+
+	var testPath = generateAsciiPolygons("Test TEST HELLO", projectBounds.minX, projectBounds.minY, 45, 10);
+	console.log({testPath:testPath});
+	returnA.push(testPath);
 	
 
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
@@ -3579,7 +3678,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
 		let addString = "";
 		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		addString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		addString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		addString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (onlyAim) {
@@ -3622,7 +3721,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 
 	for (let place of placeListLocal) {
 		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		// outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		// outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
@@ -3743,7 +3842,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 
 	for (let place of placeListLocal) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${(place.x + 5 + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
@@ -3810,7 +3909,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 	return outString;
 } 
 
-function exportPreviousGcode(GCODE, addedOutputs, addedShapes) {
+function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 
 	GCODE = chosenPrinter.startCode + GCODE;
 	
@@ -3842,7 +3941,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes) {
 	setMessage('<b>GCODE Exported</b>', '#444');
 
 	var printShapes = [...addedOutputs];
-	var printObj = {relevantShapes:addedShapes, printedThreads:printShapes};
+	var printObj = {relevantShapes:addedShapes, printedThreads:printShapes, printJobs:addedPrintJobs};
 	return printObj;
 }
 
@@ -3917,6 +4016,7 @@ function exportProject() {
 		var heightUsed = 0.0;
 		var addedOutputs = [];
 		var addedShapes = [];
+		var addedPrintJobs = [];
 		var GCODE = "";
 		for (i in shape) {
 			console.log({theshape:shape[i]});
@@ -3956,7 +4056,8 @@ function exportProject() {
 				}
 
 				if (shape[i].children[j].printJobs) {
-					console.log({thePrintJobs:shape[i].children[j].printJobs});
+					var thePrintJobs = shape[i].children[j].printJobs;
+					console.log({thePrintJobs:thePrintJobs});
 					for (let output of shape[i].children[j].printJobs) {
 						if (output.handled === false) {
 							output.handled = true;
@@ -3967,11 +4068,12 @@ function exportProject() {
 								break;
 							}
 							if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
-								prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes));
+								prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs));
 								GCODE = "";
 								heightUsed = 0;
 								addedOutputs = [];
 								addedShapes = [];
+								addedPrintJobs = [];
 							}
 
 							console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
@@ -3980,23 +4082,40 @@ function exportProject() {
 							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
 							addedOutputs.push({output:output, heightUsed:localHeight, usedParam:output.usedParam});
 							addedShapes.push({shape: shape[i], ID:i});
+							addedPrintJobs.push(output);
 							allShapeIDs.add(i);
 							console.log({allShapeIDs:allShapeIDs, i:i});
 
 							// Add "Inject here" G-Code flag for printed markers?  
-
-							for (let marker of output.markers) {
-
-								console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
-
-								let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
-								outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + 5).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
-								outString += `G1 Z${0.2} F3000\n`; // Z positioning
-
-								GCODE += outString;
-
-								GCODE += marker.serverData.markerGC;
+							console.log({output:output, printedTextsOutput:output.markers[0].sourceObj.printedText});
+							if (output.markers[0].sourceObj.printedText[0]) {
+								for (let marker of output.markers) {
+									for (let pT of marker.sourceObj.printedText) {
+										let outString = `G1 Z1.00 F3000\n`; // Safety lift
+										outString += `G1 X${(output.holeList[0].x + pT.relVector.x + constXShift).toFixed(3)} Y${(pT.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+										outString += `G1 Z${0.2} F3000\n`; // Z positioning
+										GCODE += outString;
+										for (let line of pT.lines) {
+											GCODE += aimGCodePart(line.start, line.end, defaultLineLength, defaultLineGCode);
+										}
+									}
+								}
 							}
+
+							if (output.markers[0].serverData)
+								for (let marker of output.markers) {
+
+									console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
+
+									let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
+									outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + constXShift).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+									outString += `G1 Z${0.2} F3000\n`; // Z positioning
+
+									GCODE += outString;
+
+									GCODE += marker.serverData.markerGC;
+								}
+							else console.log({Warning:"Server marker data unavailable"});
 
 							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
 						}
@@ -4006,14 +4125,20 @@ function exportProject() {
 		}
 
 		if (heightUsed > 0) {
-			prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes));
+			prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs));
 			GCODE = "";
 			heightUsed = 0;
 			addedOutputs = [];
 			addedShapes = [];
+			addedPrintJobs = [];
 		}
 
+		var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
+		text.fillColor = 'black';
+		text.content = projectBounds.minX + ' ' + projectBounds.minY;
 
+		var testPath = generateAsciiPolygons("T", projectBounds.minX, projectBounds.minY, 45, 10);
+		console.log({testPath:testPath});
 
 		
 		var laserObjects = [];
@@ -4022,26 +4147,65 @@ function exportProject() {
 			console.log({shapeID:shapeID, shapeList:shapeList});
 			var imageData = getLaserPreview(shapeList);
 			laserObjects.push({ID:shapeID, imageData:imageData});
+			shape[shapeID].imageData = imageData;
+			shape[shapeID].ID = shapeID;
 		}
 
 		console.log({laserObjects:laserObjects});
 		
+		grayOutShapes();
 
 		for (let print of prints) {
 			var printList = [];
+			var threadList = [];
+			var shapeImages = [];
 			for (let printedThread of print.printedThreads) {
 				printList.push(printedThread.output.laserHolesRefPath);
-
+				threadList.push(printedThread);
 			}
 			
-			console.log({printList:printList});
+			
+
+			for (let printJob of print.printJobs) {
+				for (let printOutline of printJob.renderRef.a.printOutlines) {
+					printOutline.strokeColor = '#02B';
+					printOutline.strokeWidth = 0;
+					printOutline.fillColor = '#F1D';
+					printOutline.opacity = 0.25;
+				}
+				for (let printOutline of printJob.renderRef.b.printOutlines) {
+					printOutline.strokeColor = '#02B';
+					printOutline.strokeWidth = 0;
+					printOutline.fillColor = '#F1D';
+					printOutline.opacity = 0.25;
+				}
+			}
+
+			// TODO: Make all the color mods, then get picture of relevantShapes (laserPreview)
+
+			for (let thisShape of print.relevantShapes) {
+				console.log({thisShape:thisShape});
+				colorForLaser(thisShape.shape);
+				const shapeList = [thisShape.shape];
+				var imageData = getLaserPreview(shapeList);
+				shapeImages.push(imageData);
+			}
+
+
 			var imageData = getPrintPreview(printList);
 			// laserObjects.push({ID:"5", imageData:imageData});
 
 			print.imageData = imageData;
+			print.shapeImages = shapeImages;
 
+			console.log({shapeImages:shapeImages});
+			console.log({printList:printList, threadList:threadList, prints:prints});
+
+			grayOutShapes();
 
 		}
+
+
 
 		var svgWidth = projectBounds.maxX-projectBounds.minX;
 		var svgHeight = projectBounds.maxY-projectBounds.minY;
@@ -4069,11 +4233,18 @@ function exportProject() {
 		exportWindow.laserObjects = laserObjects;
 		exportWindow.allShapeIDs = allShapeIDs;
 		exportWindow.svgContent = svgContent;
+
 		exportWindow["myVar"] = "Hello World";
+		
 		// exportWindow.window.imageList = [image, "no"];
 		// exportWindow.window["myVar"] = "Hello World2";
 		//myWindow.document.write("<p>This is 'MsgWindow'. I am 200px wide and 100px tall!</p>");
 
+		var fabOrder = generateFabricationOrder(prints, laserObjects, allShapeIDs, svgContent);
+		exportWindow.flat = fabOrder.flattened;
+		exportWindow.order = fabOrder.order;
+
+		console.log(fabOrder);
 	
 	} else {
 		setMessage('<b>No drawings to export</b>', '#F80');
