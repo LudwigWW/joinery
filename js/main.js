@@ -1182,6 +1182,11 @@ function refreshShapeDisplay() {
 							printChild.strokeWidth = printChild.renderWidth;
 							printChild.strokeColor = '#02B';
 						}
+						else if (printChild.name == 'printedText') {
+							printChild.strokeWidth = printChild.renderWidth;
+							printChild.strokeColor = '#02B';
+							printChild.fillColor = new Color(0,0,0,0);
+						}
 					}
 				}
 				if (elses) {

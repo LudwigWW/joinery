@@ -1436,11 +1436,22 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 	console.log(rad)
 
-	var textGroup = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20); // TODO: Just use PointText instead here (these are visual only so far)
-	console.log({textGroup:textGroup})
+	var textGroup = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
+	console.log({textGroup:textGroup});
 	for (let childpath of textGroup.children) {
-		returnABPrint.push(childpath); // TODO: Make these "printed render lines" outline lines only, instead of filled
+		childpath.name = 'printedText'
+		returnABPrint.push(childpath);
 	}
+
+		// PointText replacement (would have to match font and size...)
+	// var text = new PointText(new Point(startP.x, startP.y));
+	// 	text.fontSize = 8;
+	// 	text.fillColor = 'black';
+	// 	text.content = fabID;
+	// 	text.rotate(rad, startP);
+	// 	returnAB.push(text);
+	
+
 
 	// Pprint text markers
 	if (rotPath) {
@@ -2419,10 +2430,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		
 	}
 
-	var testPath = generateAsciiPolygons(printJobID, projectBounds.minX, projectBounds.minY, 45, 10);
+	var testPath = generateAsciiPolygons(".PB", projectBounds.minX, projectBounds.minY, -90, 10);
 	console.log({testPath:testPath});
 	returnA.push(testPath);
-	
+	var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
+	text.fillColor = 'black';
+	text.content = Math.round(projectBounds.minX) + ' ' + Math.round(projectBounds.minY);
+	text.fontSize = 4.2;
+	returnA.push(text);
 
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
 	shape[shapeB].children[pathB+'_joint'].removeChildren();
