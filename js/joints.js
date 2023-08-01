@@ -12,6 +12,8 @@ const constXShift = 5;
 const defaultLineLength = 10;
 const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
+const emptyIDs = true;
+
 function mod(n, m) {
 	return ((n % m) + m) % m;
 }
@@ -578,31 +580,79 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.alternatingLineTop
 					};
 
-					var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					// var g = new Group();
+					// g.name = 'folds';
+					// shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					// shape[shapeA].children[pathA+'_joint'].addChild(g);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// var g2 = new Group();
+					// g2.name = 'folds';
+					// shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					// shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.2;
+
+					console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
+
 					var g = new Group();
 					g.name = 'folds';
 					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
 					shape[shapeA].children[pathA+'_joint'].addChild(g);
 					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					var g2 = new Group();
 					g2.name = 'folds';
 					shape[shapeB].children[pathB+'_joint'].addChild(g2);
 					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
 	
 					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+
+
+					var gLaserA = new Group();
+					gLaserA.name = 'laser';
+					shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
+					shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
+
+					var gLaserB = new Group();
+					gLaserB.name = 'laser';
+					shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
+					shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
+
+					var gPrintA = new Group();
+					gPrintA.name = 'print';
+					shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
+					shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
+
+					var gPrintB = new Group();
+					gPrintB.name = 'print';
+					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
+					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
 				case 'printed baste stitch':
@@ -2293,14 +2343,21 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 			console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
 			
-			var laserPoint = lastJob.path.getPointAt((Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000));
-			// console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: (Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000)});
+			var theOffset = (Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000);
+			if (lastJob.path.length < theOffset) {
+				console.warn("offset longer than path. Setting to path length. Difference was: ", (theOffset - lastJob.path.length), lastJob.path.length, theOffset);
+				theOffset = lastJob.path.length;
+			}
+
+			var laserPoint = lastJob.path.getPointAt(theOffset);
+			console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: theOffset});
 			laserHoleList[endIndex].point = laserPoint;
 			lastJob.laserHoles.push(laserHoleList[endIndex]); // point reference
 			testPoints.push(laserHoleList[endIndex].point); // "Segment" list for temporary path generation
 			console.log('testPoints: ', testPoints);
 			
 			const testPath = new Path({segments:testPoints, closed:false});
+			console.log({testPath:testPath});
 			if (((testPath.strokeBounds.width+10) > param['printing area width'])) {
 				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
 
@@ -2357,6 +2414,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			console.log("strokeBoundHeight " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width);
 
 			var printJobID = (parseInt(shapeA)+1).toString() + "+" + (parseInt(shapeB)+1).toString() + getAlphaID(printCounter);
+
+			if (emptyIDs) printJobID = "";
 			printCounter++;
 
 			// Rotate job for Left to Right printing
@@ -2430,14 +2489,16 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		
 	}
 
-	var testPath = generateAsciiPolygons(".PB", projectBounds.minX, projectBounds.minY, -90, 10);
-	console.log({testPath:testPath});
-	returnA.push(testPath);
-	var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
-	text.fillColor = 'black';
-	text.content = Math.round(projectBounds.minX) + ' ' + Math.round(projectBounds.minY);
-	text.fontSize = 4.2;
-	returnA.push(text);
+	if (!emptyIDs) {
+		var testPath = generateAsciiPolygons(".PB", projectBounds.minX, projectBounds.minY, -90, 10);
+		console.log({testPath:testPath});
+		returnA.push(testPath);
+		var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
+		text.fillColor = 'black';
+		text.content = Math.round(projectBounds.minX) + ' ' + Math.round(projectBounds.minY);
+		text.fontSize = 4.2;
+		returnA.push(text);
+	}
 
 	shape[shapeA].children[pathA+'_joint'].removeChildren();
 	shape[shapeB].children[pathB+'_joint'].removeChildren();
@@ -4180,9 +4241,9 @@ function exportProject() {
 			addedPrintJobs = [];
 		}
 
-		var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
-		text.fillColor = 'black';
-		text.content = projectBounds.minX + ' ' + projectBounds.minY;
+		// var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
+		// text.fillColor = 'black';
+		// text.content = projectBounds.minX + ' ' + projectBounds.minY;
 
 		var testPath = generateAsciiPolygons("T", projectBounds.minX, projectBounds.minY, 45, 10);
 		console.log({testPath:testPath});
