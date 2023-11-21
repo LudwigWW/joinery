@@ -28,9 +28,19 @@ var saveAs = saveAs || (function(view) {
 		, save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
 		, can_use_save_link = "download" in save_link
 		, click = function(node) {
-			var event = new MouseEvent("click");
+			var event = new MouseEvent("click", 
+			{
+				"view": window,
+				"bubbles": true,
+				"cancelable": false
+			});
 			node.dispatchEvent(event);
 		}
+		// , click = function(node) {
+		// 	var event = document.createEvent("Event");
+		// 	event.initEvent("click", true, false);
+		// 	node.dispatchEvent(event);
+		// }
 		, is_safari = /constructor/i.test(view.HTMLElement)
 		, is_chrome_ios =/CriOS\/[\d]+/.test(navigator.userAgent)
 		, throw_outside = function(ex) {

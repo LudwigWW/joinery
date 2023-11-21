@@ -2099,10 +2099,55 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 		var pinkingPathA = getOffsetPath(edgeA, (-pinkingDepth), joints[index]['dirM']);
 		var pinkingPathB = getOffsetPath(edgeB, (-pinkingDepth), joints[index]['dirF']);
+
+		console.log({pinkingPathA:pinkingPathA, pinkingPathB:pinkingPathB});
+
+
+		function getPointOnNormal(path, offset, distance, direction) {
+			var pointOnPath = path.getPointAt(offset);
+			var normalVector = path.getNormalAt(offset);
+			var offsetVector = normalVector.normalize(distance); 
+			// console.log(direction);
+			// if (direction == false) {
+				offsetVector = offsetVector.multiply(direction);
+			// }
+			var pointDistAway = pointOnPath.add(offsetVector);
+			return pointDistAway;
+		}
+
+		// Get a point on the path
+		var pointOnPath = edgeA.getPointAt(10);
+
+		// Get the normal vector at that point
+		var normalVector = edgeA.getNormalAt(10);
+
+		// Define the distance (in points or mm)
+		var distance = 3; // assuming your path is defined in points, change accordingly
+
+		// Scale the normal vector by the distance
+		var offsetVector = normalVector.normalize(distance);
+
+		// Calculate the point 3mm away from the original point along the normal
+		var point3mmAway = pointOnPath.add(offsetVector);
+
+		console.log({pointOnPath:pointOnPath, normalVector:normalVector, offsetVector:offsetVector, point3mmAway:point3mmAway});
+
+
+		console.log("edgeAP");
+		for (let seg of edgeA.segments) {
+			console.log({x:seg._point._x, y:seg._point._y});
+		}
+		console.log("edgeBP");
+		for (let seg of edgeB.segments) {
+			console.log({x:seg._point._x, y:seg._point._y});
+		}
+
 		var pinkingCountA = Math.floor(edgeA.length/(pinkingDist));
 		var pinkingCountB = Math.floor(edgeB.length/(pinkingDist));
 		const remainderA = edgeA.length-(pinkingCountA*pinkingDist);
 		const remainderB = edgeB.length-(pinkingCountB*pinkingDist);
+
+		console.log({pinkingCountA:pinkingCountA, pinkingCountB:pinkingCountB, remainderA:remainderA, remainderB:remainderB});
 
 		var pathAStart = shape[shapeA].children[pathA].firstSegment.point;
 		var pathAEnd = shape[shapeA].children[pathA].lastSegment.point;
@@ -2111,17 +2156,23 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 		var pinkedPointsA = [edgeA.firstSegment.point];
 		var pinkedPointsB = [edgeB.firstSegment.point];
+		// var pinkedPointsA = [pathAStart];
+		// var pinkedPointsB = [pathBStart];
 
 		var alternate = true;
 		for (var i=0; i<pinkingCountA; i++) {
 			
-			const pOffsetA = (i*pinkingDist)+remainderA/2;
+			const pOffsetA = (i*pinkingDist)+remainderA;
 
 			if (alternate) {
 				const offsetPercentageA = (pOffsetA / edgeA.length);
 				const targetOffsetA = offsetPercentageA * pinkingPathA.length;
 				var pt = pinkingPathA.getPointAt(targetOffsetA);
-				pinkedPointsA.push(pt);
+				
+				var nPt = getPointOnNormal(edgeA, pOffsetA, -pinkingDepth, joints[index]['dirM']);
+				console.log({nPtX:nPt.x, nPtY:nPt.y});
+				console.log({ptX:pt.x, ptY:pt.y});
+				pinkedPointsA.push(nPt);
 				
 			} else {
 				var pt = edgeA.getPointAt(pOffsetA);
@@ -2132,15 +2183,19 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		pinkedPointsA.push(edgeA.lastSegment.point);
 
 		alternate = true;
-		for (var i=0; i<pinkingCountA; i++) {
+		for (var i=0; i<pinkingCountB; i++) {
 			
-			const pOffsetB = (i*pinkingDist)+remainderB/2;
+			const pOffsetB = (i*pinkingDist)+remainderB;
 
 			if (alternate) {
 				const offsetPercentageB = (pOffsetB / edgeB.length);
 				const targetOffsetB = offsetPercentageB * pinkingPathB.length;
 				var pt = pinkingPathB.getPointAt(targetOffsetB);
-				pinkedPointsB.push(pt);
+				
+				var nPt = getPointOnNormal(edgeB, pOffsetB, -pinkingDepth, joints[index]['dirF']);
+				console.log({nPtX:nPt.x, nPtY:nPt.y});
+				console.log({ptX:pt.x, ptY:pt.y});
+				pinkedPointsB.push(nPt);
 				
 			} else {
 				var pt = edgeB.getPointAt(pOffsetB);
@@ -2150,9 +2205,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		}
 		pinkedPointsB.push(edgeB.lastSegment.point);
 
+		console.log({pinkedPointsA:pinkedPointsA, pinkedPointsB:pinkedPointsB});
+
 
 		var pinkedA = new Path({segments:pinkedPointsA, closed:false});
 		var pinkedB = new Path({segments:pinkedPointsB, closed:false});
+
+		var offsetPA = new Path({segments:pinkingPathA, closed:false});
+		var offsetPB = new Path({segments:pinkingPathB, closed:false});
 		pinkedA.name = 'cut';
 		pinkedB.name = 'cut';
 		pinkedA.strokeColor = laserColor;
@@ -2164,6 +2224,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 		returnALaser.push(pinkedA);
 		returnBLaser.push(pinkedB);
+
+		returnA.push(offsetPA);
+		returnB.push(offsetPB);
 	}
 
 
@@ -4321,6 +4384,8 @@ function exportProject() {
 		var svgContent = $(project.exportSVG({bounds:'content'})).html();
 		var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+projectBounds.minX+' '+projectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+svgContent+'</svg>';
 		
+		// console.log(svgString);
+
 		var blob = new Blob([svgString], {type: 'image/svg+xml'});
 		var d = new Date();
 		saveAs(blob, 'joinery_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
