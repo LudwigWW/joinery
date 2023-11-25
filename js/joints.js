@@ -332,6 +332,8 @@ function createJointProfile(n) {
 }
 
 function initJoint(s, p) {
+	console.log("CC ~ file: joints.js:335 ~ initJoint ~ s, p:", s, p);
+
 	var g = new Group();
 	g.name = p+'_joint';
 	shape[s].addChild(g);
@@ -733,7 +735,7 @@ function generateJoint(index) {
 
 				case 'printed decorative stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					console.log("🚀 ~ file: joints.js:736 ~ req.success ~ printTemplate:", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.spiral, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -2081,7 +2083,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var mOrF = false;
 	if (joints[index]['dirM']) mOrF = true;
 
-	shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone());
+	shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone()); // Adds a copy of the path to the joint
 	shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
@@ -2114,24 +2116,6 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			var pointDistAway = pointOnPath.add(offsetVector);
 			return pointDistAway;
 		}
-
-		// Get a point on the path
-		var pointOnPath = edgeA.getPointAt(10);
-
-		// Get the normal vector at that point
-		var normalVector = edgeA.getNormalAt(10);
-
-		// Define the distance (in points or mm)
-		var distance = 3; // assuming your path is defined in points, change accordingly
-
-		// Scale the normal vector by the distance
-		var offsetVector = normalVector.normalize(distance);
-
-		// Calculate the point 3mm away from the original point along the normal
-		var point3mmAway = pointOnPath.add(offsetVector);
-
-		console.log({pointOnPath:pointOnPath, normalVector:normalVector, offsetVector:offsetVector, point3mmAway:point3mmAway});
-
 
 		console.log("edgeAP");
 		for (let seg of edgeA.segments) {
@@ -2225,8 +2209,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		returnALaser.push(pinkedA);
 		returnBLaser.push(pinkedB);
 
-		returnA.push(offsetPA);
-		returnB.push(offsetPB);
+		// returnA.push(offsetPA);
+		// returnB.push(offsetPB);
 	}
 
 
@@ -2242,8 +2226,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 	var edgeACopy = edgeA.clone();
 
-	returnAFold.push(edgeA);
-	returnBFold.push(edgeB);
+	// returnAFold.push(edgeA);
+	// returnBFold.push(edgeB);
 
 	let centerPoint;
 	let centerPointB;
@@ -2385,7 +2369,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			laserPointsPath.rotate(180, rotP);
 		}
 
-		returnAFold.push(laserPointsPath);
+		// returnAFold.push(laserPointsPath);
 
 
 		let startIndex = 0;
@@ -2444,7 +2428,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 				var originSourcePathPart = lastJob.originSourcePathPart.split(originSourcePartSplitPL);//lastJob.originSourcePathPart.getLocationOf(originSourcePartSplitPL));
 
-				returnAFold.push(originSourcePathPart);
+				// returnAFold.push(originSourcePathPart);
 				var renderRef = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 
 				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});

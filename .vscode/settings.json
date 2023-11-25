@@ -1,3 +1,7 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "turboConsoleLog.insertEnclosingClass": false,
+    "turboConsoleLog.addSemicolonInTheEnd": true,
+    "turboConsoleLog.logMessagePrefix": "CC",
+    "turboConsoleLog.insertEnclosingFunction": true
 }
