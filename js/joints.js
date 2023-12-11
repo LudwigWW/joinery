@@ -145,6 +145,7 @@ var printedRivets = {
 		'marker height': 3,
 		'skip # holes': 0,
 		'pinking cut': true,
+		'total seam width' : 4.75
 	}
 };
 
@@ -362,8 +363,8 @@ function generateJoint(index) {
 	var req = $.getJSON('test.json');
 
 	req.success(function(response){
-		console.log({response:response});
-		console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
+		// console.log({response:response});
+		// console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
 		
 		for (let printer of response.printerList) {
 			if (printer.name === "default") {
@@ -569,6 +570,7 @@ function generateJoint(index) {
 					gPrintB.name = 'print';
 					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
 					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
+					console.log("CC ~ file: joints.js:572 ~ req.success ~ childPath:", childPath);
 					
 					break;
 					
@@ -1025,6 +1027,13 @@ function generateJoint(index) {
 			}
 		}
 		
+		console.log('jointLines: ', jointLines);
+		console.log('tempLines: ', tempLines);
+		console.log('flipLines: ', flipLines);
+		console.log('highlight: ', highlight);
+		console.log('shape: ', shape);
+		
+
 		refreshShapeDisplay();
 		activateDim(dimBool);
 	});
@@ -1174,7 +1183,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	for (let placeConnL of placeConnLists) {
 		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
-			console.log({connection:connection});
+			// console.log({connection:connection});
 			console.log(connection.to !== null);
 			if (connection.to !== null) {
 				switch (commandObj.base.renderDetails.type) {
@@ -1189,11 +1198,11 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						var renderPath = new Path([connection.from, connection.to]);
 						renderPath.name = 'printedLine';
 						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
-						console.log({dist:connection.from.getDistance(connection.to)});
+						// console.log({dist:connection.from.getDistance(connection.to)});
 						renderPath.renderWidth = outWidth;
 						returnList.push(renderPath);
 						returnRef.printLines.push(renderPath);
-						console.log({renderPath:renderPath});
+						// console.log({renderPath:renderPath});
 						break;
 				}
 			} else {
@@ -1204,7 +1213,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
 						returnRef.printOutlines.push(renderPath);
-						console.log({rCircle:renderPath});
+						// console.log({rCircle:renderPath});
 						break;
 					case "line":
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.skipDiameter/2);
@@ -1212,7 +1221,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
 						returnRef.printOutlines.push(renderPath);
-						console.log({rCircle:renderPath});
+						// console.log({rCircle:renderPath});
 						break;
 				}
 			}
@@ -2083,6 +2092,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var mOrF = false;
 	if (joints[index]['dirM']) mOrF = true;
 
+
+	// TODO: Avoid adding a clone to the shape
+	// Avoid cloning the path, make new copy of segments
 	shape[shapeA].children[pathA+'_joint'].addChild(shape[shapeA].children[pathA].clone()); // Adds a copy of the path to the joint
 	shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
@@ -2117,14 +2129,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			return pointDistAway;
 		}
 
-		console.log("edgeAP");
-		for (let seg of edgeA.segments) {
-			console.log({x:seg._point._x, y:seg._point._y});
-		}
-		console.log("edgeBP");
-		for (let seg of edgeB.segments) {
-			console.log({x:seg._point._x, y:seg._point._y});
-		}
+		// console.log("edgeAP");
+		// for (let seg of edgeA.segments) {
+		// 	console.log({x:seg._point._x, y:seg._point._y});
+		// }
+		// console.log("edgeBP");
+		// for (let seg of edgeB.segments) {
+		// 	console.log({x:seg._point._x, y:seg._point._y});
+		// }
 
 		var pinkingCountA = Math.floor(edgeA.length/(pinkingDist));
 		var pinkingCountB = Math.floor(edgeB.length/(pinkingDist));
@@ -2154,8 +2166,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				var pt = pinkingPathA.getPointAt(targetOffsetA);
 				
 				var nPt = getPointOnNormal(edgeA, pOffsetA, -pinkingDepth, joints[index]['dirM']);
-				console.log({nPtX:nPt.x, nPtY:nPt.y});
-				console.log({ptX:pt.x, ptY:pt.y});
+				// console.log({nPtX:nPt.x, nPtY:nPt.y});
+				// console.log({ptX:pt.x, ptY:pt.y});
 				pinkedPointsA.push(nPt);
 				
 			} else {
@@ -2177,8 +2189,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				var pt = pinkingPathB.getPointAt(targetOffsetB);
 				
 				var nPt = getPointOnNormal(edgeB, pOffsetB, -pinkingDepth, joints[index]['dirF']);
-				console.log({nPtX:nPt.x, nPtY:nPt.y});
-				console.log({ptX:pt.x, ptY:pt.y});
+				// console.log({nPtX:nPt.x, nPtY:nPt.y});
+				// console.log({ptX:pt.x, ptY:pt.y});
 				pinkedPointsB.push(nPt);
 				
 			} else {
@@ -2189,7 +2201,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		}
 		pinkedPointsB.push(edgeB.lastSegment.point);
 
-		console.log({pinkedPointsA:pinkedPointsA, pinkedPointsB:pinkedPointsB});
+		// console.log({pinkedPointsA:pinkedPointsA, pinkedPointsB:pinkedPointsB});
 
 
 		var pinkedA = new Path({segments:pinkedPointsA, closed:false});
@@ -2221,10 +2233,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-patternWidth), joints[index]['dirM']);
 	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-patternWidth), joints[index]['dirF']);
 
+
+	// TODO: Include edgeA and edgeB in the line list directly
 	var aLines = [holePathFarA, holePathNearA];
 	var bLines = [holePathFarB, holePathNearB];
 
-	var edgeACopy = edgeA.clone();
+	// var edgeACopy = edgeA.clone(); // Never clone, this adds the line directly to the canvas 
+
+	var edgeACopy = new Path({segments:edgeA.segments, closed:false});
 
 	// returnAFold.push(edgeA);
 	// returnBFold.push(edgeB);
@@ -2276,28 +2292,36 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				offsetA = aLines[holePattern[patternIndex]].getOffsetOf(ptA);
 			}
 
+			var minDist = 10;
+			if (param['total seam width'] != undefined) minDist = param['total seam width'];
+
+			// check whether the points are close to other prints (within minDist) through shape
 
 			if (skipHoles >= 1) {
 				skipHoles -= 1;
 			} else {
-				const patternIndexRef = patternIndex + 0;
-				laserHoleList.push({pointOrigin:ptA, bOrigin:ptB, offset:offsetA, offsetOrigin:sourceOffsetA, offsetOriginSource:originSourceOffsetA, type:"on-line", lineIndex:patternIndexRef});
+				var closeToOtherPrints = checkMinDist(ptA, ptB, minDist);
+				console.log('closeToOtherPrints: ', closeToOtherPrints);
+				if (!closeToOtherPrints) {
+					const patternIndexRef = patternIndex + 0;
+					laserHoleList.push({pointOrigin:ptA, bOrigin:ptB, offset:offsetA, offsetOrigin:sourceOffsetA, offsetOriginSource:originSourceOffsetA, type:"on-line", lineIndex:patternIndexRef});
 
-				patternIndex += 1;
-				if (patternIndex >= holePattern.length) patternIndex = 0;
+					patternIndex += 1;
+					if (patternIndex >= holePattern.length) patternIndex = 0;
 
-				circleA = new Path.Circle(ptA, param['hole diameter']/2);
-				circleB = new Path.Circle(ptB, param['hole diameter']/2);
-				circleA.name = 'cut';
-				circleB.name = 'cut';
-				circleA.strokeColor = laserColor;
-				circleB.strokeColor = laserColor;
-				circleA.strokeWidth = laserWidth;
-				circleB.strokeWidth = laserWidth;
-				circleA.fillColor = noColor;
-				circleB.fillColor = noColor;
-				returnALaser.push(circleA);
-				returnBLaser.push(circleB);
+					circleA = new Path.Circle(ptA, param['hole diameter']/2);
+					circleB = new Path.Circle(ptB, param['hole diameter']/2);
+					circleA.name = 'cut';
+					circleB.name = 'cut';
+					circleA.strokeColor = laserColor;
+					circleB.strokeColor = laserColor;
+					circleA.strokeWidth = laserWidth;
+					circleB.strokeWidth = laserWidth;
+					circleA.fillColor = noColor;
+					circleB.fillColor = noColor;
+					returnALaser.push(circleA);
+					returnBLaser.push(circleB);
+				}
 			}
 		}
 
@@ -2313,7 +2337,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 		var pathsGroup = new Group(copyPaths);
 		console.log({pathsGroup:pathsGroup});
-		pathsGroup.children.push(edgeACopy);
+		// pathsGroup.children.push(edgeACopy);
 		var laserPointSet = [];
 		for (let laserHole of laserHoleList) {
 			laserPointSet.push(laserHole.pointOrigin);
@@ -2382,13 +2406,15 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 		console.log({laserHoleList:laserHoleList});
 
+
+		pathsGroup.rotate(30, rotP);
 		// Separate into print jobs
 		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
 
-			console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
+			// console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
 			
 			var theOffset = (Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000);
 			if (lastJob.path.length < theOffset) {
@@ -2397,14 +2423,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			}
 
 			var laserPoint = lastJob.path.getPointAt(theOffset);
-			console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: theOffset});
+			// console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: theOffset});
 			laserHoleList[endIndex].point = laserPoint;
 			lastJob.laserHoles.push(laserHoleList[endIndex]); // point reference
 			testPoints.push(laserHoleList[endIndex].point); // "Segment" list for temporary path generation
-			console.log('testPoints: ', testPoints);
+			// console.log('testPoints: ', testPoints);
 			
 			const testPath = new Path({segments:testPoints, closed:false});
-			console.log({testPath:testPath});
+			// console.log({testPath:testPath});
 			if (((testPath.strokeBounds.width+10) > param['printing area width'])) {
 				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
 
@@ -2471,7 +2497,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			let longestW = {deg:0, width:0};
 			let rotPoint = new Point(job.path.strokeBounds.x, job.path.strokeBounds.y);
 			while (fullCircle < 360) {
-				console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
+				// console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
 				job.originSourcePathPart.rotate(rotationDegs, rotPoint);
 				job.path.rotate(rotationDegs, rotPoint);
 				fullCircle += rotationDegs;

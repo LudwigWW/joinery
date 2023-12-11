@@ -1003,7 +1003,7 @@ function generateJointLines() {
 	}
 }
 
-function displayJointLines() {
+function displayJointLines() { // dashed line showing which two paths are connected by a joint
 	for (i in jointLines.children) {
 		if (jointLines.children[i].name=='edge') {
 			jointLines.children[i].strokeColor = '#0F0';
@@ -1038,7 +1038,7 @@ function generateEdgeNormals() {
 	}
 }
 
-function displayFlipLines() {
+function displayFlipLines() { // shows the direction of the joint via green normal at mid point of each edge
 	for (i in flipLines.children) {
 		if (flipLines.children[i].name=='edge') {
 			flipLines.children[i].strokeColor = '#0F0';
@@ -1086,6 +1086,39 @@ function removeShape() {
 		refreshJointList();
 		checkSVGCount();
 	}
+}
+
+// Function goes through all groups in shape
+// For all named children 'print', it checks whether pointA and pointB are closer than minDist from any child Path of that group
+function checkMinDist(pointA, pointB, minDist) {
+	var bool = false;
+	for (i in shape) {
+		for (j in shape[i].children) {
+			if (shape[i].children[j].className=='Group') {
+				if (shape[i].children[j].children['print']) {
+					var print = shape[i].children[j].children['print'];
+					console.log('print: ', print);
+					
+					for (k in print.children) {
+						if (print.children[k].className=='Path' && print.children[k].name != 'printedMarker') {
+							var pt = print.children[k].getNearestLocation(pointA).point;
+							if (pointA.getDistance(pt) < minDist) {
+								bool = true;
+								break;
+							}
+							pt = print.children[k].getNearestLocation(pointB).point;
+							if (pointB.getDistance(pt) < minDist) {
+								bool = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return bool;
 }
 
 var projectBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};
