@@ -352,7 +352,8 @@ function removeJoint(s, p) {
 			}
 		}
 	}
-	shape[s].children[p+'_joint'].remove();
+	shape[s].children[p+'_joint'].removeChildren();
+	console.log(shape[s].children[p+'_joint'].remove());
 	shape[s].children[p].name = '';
 	shape[s].children[p].strokeWidth = 1;
 	activateDim(dimBool);
