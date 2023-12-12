@@ -25,6 +25,7 @@ function init() {
 	paper.install(window);
 	printingCommands = getJSONs("test.json");
 	var canvas = document.getElementById('paperCanvas');
+	var exportCanvas = document.getElementById('exportCanvas');
 	$('#paperCanvas').css({'width':window.innerWidth, 'height':window.innerHeight});
 	$('#bgCanvas').attr({'width':window.innerWidth, 'height':window.innerHeight});
 	cursorPt = new Point(-1, -1);
@@ -1142,6 +1143,30 @@ function calProjectBounds() {
 		projectBounds.maxY = corners[corners.length-1].y;
 		projectBounds.y = (projectBounds.maxY+projectBounds.minY)/2;
 		projectBounds.x = (projectBounds.maxX+projectBounds.minX)/2;
+	}
+}
+
+var tempProjectBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};
+function calTempProjectBounds(inShape) {
+	if (inShape.length > 0) {
+		var corners = [];
+		for (i in inShape) {
+			var rect = inShape[i].bounds;
+			corners.push({'x':rect.x, 'y':rect.y});
+			corners.push({'x':rect.x+rect.width, 'y':rect.y+rect.height});
+		}
+		corners.sort(function(a, b) {
+			return a.x - b.x;
+		});
+		tempProjectBounds.minX = corners[0].x;
+		tempProjectBounds.maxX = corners[corners.length-1].x;
+		corners.sort(function(a, b) {
+			return a.y - b.y;
+		});
+		tempProjectBounds.minY = corners[0].y;
+		tempProjectBounds.maxY = corners[corners.length-1].y;
+		tempProjectBounds.y = (tempProjectBounds.maxY+tempProjectBounds.minY)/2;
+		tempProjectBounds.x = (tempProjectBounds.maxX+tempProjectBounds.minX)/2;
 	}
 }
 

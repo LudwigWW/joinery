@@ -4178,6 +4178,89 @@ function getPrintPreview(relevantShapes) {
 	return imageData;
 }
 
+// Generate an SVG with only lines relevant for lasercutting
+function getLaserSVG(selectedShapeID) {
+	var selectedShape = shape[selectedShapeID]; 
+	console.log('selectedShape: ', selectedShape);
+
+	// Make a new shape with copies of all relevant paths for lasercutting (joints and unjointed paths)
+	var laserShape = new Group();
+	var foundJoints = [];
+	var includedIDs = [];
+	for (let i in selectedShape.children) {
+		if (selectedShape.children[i].className == 'Group') {
+			// separate name by _ or space
+			var nameIndex = selectedShape.children[i].name.split(/[\s_]+/)[0];
+			console.log('nameIndex: ', nameIndex);
+			console.log('!isNaN(nameIndex): ', !isNaN(nameIndex));
+			// check if nameIndex is a number
+			if (!isNaN(nameIndex)) {
+				
+				if (!foundJoints.includes(nameIndex) && !includedIDs.includes(selectedShape.children[i].id)) {
+					var newGroup;
+					if (selectedShape.children[i].children['laser']) {
+						newGroup = selectedShape.children[i].children['laser'].clone({deep:true});
+					} else { // Fallback to fail gracefully
+						newGroup = selectedShape.children[i].clone({deep:true});
+					} 
+					newGroup.name = selectedShape.children[i].name;
+					laserShape.addChild(newGroup);
+					// Save id of group
+					foundJoints.push(parseInt(selectedShape.children[i].name.split('_')[0]));
+					includedIDs.push(selectedShape.children[i].id); //
+				}
+			}
+		}
+	}
+
+	for (let i in selectedShape.children) {
+		if (selectedShape.children[i].className == 'Path') {
+			if (foundJoints.includes(i) || selectedShape.children[i].name) {
+				// pass
+			} else {
+				var newPath = selectedShape.children[i].clone({deep:true});
+				laserShape.addChild(newPath);
+			}
+		}
+
+		if (selectedShape.children[i].className == 'Shape') {
+			// TODO Check if we need to handle shapes separately
+		}
+	}
+
+
+	laserShape.name = "DeleteMe";
+
+	// Make a new project with only this shape to export
+	var tempProject = new paper.Project();
+
+	// Add the shape to the project
+	tempProject.activeLayer.addChild(laserShape);
+	// tempProject.importJSON(laserShape.exportJSON());
+
+	console.log('laserShape: ', laserShape);
+	var inShape = [laserShape];
+	calTempProjectBounds(inShape);
+
+	var svgWidth = tempProjectBounds.maxX-tempProjectBounds.minX;
+	var svgHeight = tempProjectBounds.maxY-tempProjectBounds.minY;
+
+	// Then export an SVG with only this shape
+	var localSVG = $(tempProject.exportSVG({bounds:'content'})).html();
+	var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+tempProjectBounds.minX+' '+tempProjectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+localSVG+'</svg>';
+
+	// Clean up by removing the shape again
+	laserShape.remove();
+	// tempProject.clear();
+	// tempProject.activeLayer.removeChildren();
+
+	// console.log(paper.projects);
+	paper.project = paper.projects[0];
+	tempProject.remove();
+	// Return the SVG string
+	return svgString;
+}
+
 function is_server() {
 	return ! (typeof window != 'undefined' && window.document);
 }
@@ -4321,7 +4404,7 @@ function exportProject() {
 		var testPath = generateAsciiPolygons("T", projectBounds.minX, projectBounds.minY, 45, 10);
 		console.log({testPath:testPath});
 
-		
+		// make preview image that provides context for the manual interactions 
 		var laserObjects = [];
 		for (shapeID of allShapeIDs) {
 			const shapeList = [shape[shapeID]];
@@ -4333,6 +4416,13 @@ function exportProject() {
 		}
 
 		console.log({laserObjects:laserObjects});
+
+		// Export svg with only the laser paths
+		for (shapeID of allShapeIDs) {
+			var laserSVG = getLaserSVG(shapeID);
+			console.log('laserSVG: ', laserSVG);
+		}
+
 		
 		grayOutShapes();
 
