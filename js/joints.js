@@ -3,6 +3,7 @@
 
 var jointProfileCount = 0;
 var chosenPrinter = {};
+var chosenLaser = {};
 var requestCounter = 0;
 var markerGCodes = [];
 var printCounter = 799; // Starts at A
@@ -370,6 +371,12 @@ function generateJoint(index) {
 		for (let printer of response.printerList) {
 			if (printer.name === "default") {
 				chosenPrinter = printer;
+			}
+		}
+
+		for (let laser of response.laserList) {
+			if (laser.name === "default") {
+				chosenLaser = laser;
 			}
 		}
 		
@@ -4417,14 +4424,25 @@ function exportProject() {
 		}
 
 		console.log({laserObjects:laserObjects});
+		svgFilesToNest = [];
+		boxList = [];
+		var margin = 2;
 
 		// Export svg with only the laser paths
 		for (shapeID of allShapeIDs) {
 			var laserSVG = getLaserSVG(shapeID);
 			console.log('laserSVG: ', laserSVG);
+			var svgblob = new Blob([laserSVG], {type: 'image/svg+xml'});
+			var svgURL = URL.createObjectURL(svgblob);
+			svgFilesToNest.push(svgURL);
+			boxList.push(minimizeBB(shape[shapeID], margin));
+			console.log('boxList: ', boxList);
 		}
 
-		
+		var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
+		var arrangement = packboxes(boxList, laserArea);
+		console.log({arrangement:arrangement});
+
 		grayOutShapes();
 
 		for (let print of prints) {
