@@ -139,7 +139,7 @@ var printedRivets = {
 	'param': {
 		'hem offset': 8,
 		'hole diameter': 1.5,
-		'seam width': 5,
+		'seam pattern width': 0,
 		'hole spacing': 10,
 		'skip # holes': 0,
 		'printing area width': 240,
@@ -206,7 +206,7 @@ var printedWhip = {
 	'param': {
 		'hem offset': 8,
 		'hole diameter': 1.5,
-		'seam width': 5,
+		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
 		'printing area width': 240,
@@ -222,7 +222,7 @@ var printedZigZag = {
 	'param': {
 		'hem offset': 8,
 		'hole diameter': 1.5,
-		'seam width': 5,
+		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
 		'printing area width': 240,
@@ -238,7 +238,7 @@ var printedCross = {
 	'param': {
 		'hem offset': 8,
 		'hole diameter': 1.5,
-		'seam width': 5,
+		'seam pattern width': 5,
 		'hole spacing': 7,
 		'skip # holes': 0,
 		'printing area width': 240,
@@ -2079,16 +2079,16 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var skipHoles = Math.floor(param['skip # holes']);
 
 	// Handling for simple case (non-)patterns
-	let patternWidth;
+	let targetPatternWidth;
 	let holePattern;
 	let holePatternOffset;
-	let patternWidths = [];
+	let patternLocations = [];
 	let maxLineDistance = 0;
 
-	if (param['seam width'] == undefined) {
-		patternWidth = 1;
+	if (param['seam pattern width'] == undefined) {
+		targetPatternWidth = 0.001;
 	} else {
-		patternWidth = param['seam width'];
+		targetPatternWidth = param['seam pattern width'];
 	}
 	if (G91Obj.base.holePattern == undefined) {
 		holePattern = [0];
@@ -2100,38 +2100,38 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	} else {
 		holePatternOffset = G91Obj.base.holePatternOffset;
 	}
-	if (G91Obj.base.patternWidths == undefined) {
+	if (G91Obj.base.patternLocations == undefined) {
 		for (let i = 0; i < holePattern.length; i++) {
 			if (!isNaN(holePattern[i])) {
 				if ((holePattern[i]) > maxLineDistance) maxLineDistance = (holePattern[i]);
 			}
 		}
 		for (let i = 0; i <= maxLineDistance; i++) {
-			patternWidths.push(i);
+			patternLocations.push(i);
 		}
 	} else {
-		patternWidths = G91Obj.base.patternWidths;
-		for (let i = 0; i < patternWidths.length; i++) {
-			if (!isNaN(patternWidths[i])) {
-				if ((patternWidths[i]) > maxLineDistance) maxLineDistance = (patternWidths[i]);
+		patternLocations = G91Obj.base.patternLocations;
+		for (let i = 0; i < patternLocations.length; i++) {
+			if (!isNaN(patternLocations[i])) {
+				if ((patternLocations[i]) > maxLineDistance) maxLineDistance = (patternLocations[i]);
 			}
 		}
 	}
 
 	let widthFactor = 1
 	if (maxLineDistance > 0) {
-		widthFactor = patternWidth / maxLineDistance;
+		widthFactor = targetPatternWidth / maxLineDistance;
 	}
 
-	for (let i = 0; i < patternWidths.length; i++) {
-		if (isNaN(patternWidths[i])) {
-			let letter = patternWidths[i].charAt(0);
-			let number = parseFloat(patternWidths[i].substring(1));
+	for (let i = 0; i < patternLocations.length; i++) {
+		if (isNaN(patternLocations[i])) {
+			let letter = patternLocations[i].charAt(0);
+			let number = parseFloat(patternLocations[i].substring(1));
 			let newWidth = number*widthFactor;
 			let newWidthString = letter + newWidth.toString();
-			patternWidths[i] = newWidthString;
+			patternLocations[i] = newWidthString;
 		} else {
-			patternWidths[i] = patternWidths[i]*widthFactor;
+			patternLocations[i] = patternLocations[i]*widthFactor;
 		}
 	}
 
@@ -2140,7 +2140,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	if (joints[index]['dirM']) mOrF = true;
 
 
-	console.log('G91Obj.base.patternWidths: ', G91Obj.base.patternWidths);
+	console.log('G91Obj.base.patternLocations: ', G91Obj.base.patternLocations);
 
 
 	// Makes original path part of the joint (but not part of laser cuts)
@@ -2149,7 +2149,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
 
-	if (param['hem offset'] < (patternWidth / 2)) {
+	if (param['hem offset'] < (targetPatternWidth / 2)) {
 		console.error({message:"hem offset must be larger than seam width"}); // TODO: Should we be going in the outside direction?
 	}
 
@@ -2276,8 +2276,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var targetingPathB = getOffsetPath(edgeB, (param['hem offset']+1), joints[index]['dirF']);
 	var holePathFarA = getOffsetPath(edgeA, (param['hem offset']), joints[index]['dirM']);
 	var holePathFarB = getOffsetPath(edgeB, (param['hem offset']), joints[index]['dirF']);
-	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-patternWidth), joints[index]['dirM']);
-	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-patternWidth), joints[index]['dirF']);
+	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-targetPatternWidth), joints[index]['dirM']);
+	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-targetPatternWidth), joints[index]['dirF']);
 
 
 	returnALaser.push(holePathNearA);
@@ -2287,10 +2287,10 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var aLines = [];
 	var bLines = [];
 
-	for (let onePatternWidth of patternWidths) {
-		if (isNaN(onePatternWidth)) {
-			let letter = onePatternWidth.charAt(0);
-			let number = parseFloat(onePatternWidth.substring(1));
+	for (let onePatternLocation of patternLocations) {
+		if (isNaN(onePatternLocation)) {
+			let letter = onePatternLocation.charAt(0);
+			let number = parseFloat(onePatternLocation.substring(1));
 			if (number == 0) {
 				number = 0.001;
 			}
@@ -2299,14 +2299,14 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
 		} else {
-			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+onePatternWidth-(patternWidth*0.5)), joints[index]['dirM']);
-			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+onePatternWidth-(patternWidth*0.5)), joints[index]['dirF']);
+			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+onePatternLocation-(targetPatternWidth*0.5)), joints[index]['dirM']);
+			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+onePatternLocation-(targetPatternWidth*0.5)), joints[index]['dirF']);
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
 		}
 	}
 
-	console.log('patternWidths: ', patternWidths);
+	console.log('patternLocations: ', patternLocations);
 
 
 	for (let oneALine of aLines) {

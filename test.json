@@ -50,7 +50,7 @@
         "y": 0
       },
       "directional":false,
-      "patternWidths":[0, "c-1", "c2"],
+      "patternLocations":[0, "c-1", "c2"],
       "pattern":[1],
       "renderDetails":{"type":"circle", "diameter":9}
     },
@@ -65,7 +65,7 @@
         "y": 0
       },
       "directional":false,
-      "patternWidths":[0, 1, 2, 3],
+      "patternLocations":[0, 1, 2, 3],
       "pattern":[1],
       "renderDetails":{"type":"circle", "diameter":9}
     },
@@ -80,7 +80,7 @@
         "y": 1.589
       },
       "directional":false,
-      "patternWidths":[0, 1, 2, 3],
+      "patternLocations":[0, 1, 2, 3],
       "pattern":[1],
       "renderDetails":{"type":"circle", "diameter":10}
     },
