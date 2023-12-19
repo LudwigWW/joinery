@@ -2065,6 +2065,23 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':printJobs};
 }
 
+function parsePatternLocation(patternLocation) {
+	console.log('patternLocation: ', patternLocation);
+	console.log('isNaN(patternLocation): ', isNaN(patternLocation));
+	if (isNaN(patternLocation)) {
+		
+		let letter = patternLocation.charAt(0);
+		let number = parseFloat(patternLocation.substring(1));
+		let hem = false;
+		if (letter == 'h') hem = true;
+		let outside = false;
+		if (letter == 'o') outside = true;
+		return {hem:hem, outside:outside, dist:number};
+	} else {
+		return {hem:true, outside:false, dist:patternLocation};
+	}
+}
+
 
 function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91) {
 	var returnB = [];
@@ -2084,6 +2101,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	let holePatternOffset;
 	let patternLocations = [];
 	let maxLineDistance = 0;
+	let minLineDistance = 0;
 
 	if (param['seam pattern width'] == undefined) {
 		targetPatternWidth = 0.001;
@@ -2100,27 +2118,27 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	} else {
 		holePatternOffset = G91Obj.base.holePatternOffset;
 	}
-	if (G91Obj.base.patternLocations == undefined) {
+	if (G91Obj.base.patternLocations == undefined) { // make uniform pattern since no locations giving
 		for (let i = 0; i < holePattern.length; i++) {
-			if (!isNaN(holePattern[i])) {
-				if ((holePattern[i]) > maxLineDistance) maxLineDistance = (holePattern[i]);
-			}
+			if ((holePattern[i]) > maxLineDistance) maxLineDistance = (holePattern[i]);
 		}
 		for (let i = 0; i <= maxLineDistance; i++) {
 			patternLocations.push(i);
 		}
 	} else {
 		patternLocations = G91Obj.base.patternLocations;
-		for (let i = 0; i < patternLocations.length; i++) {
-			if (!isNaN(patternLocations[i])) {
-				if ((patternLocations[i]) > maxLineDistance) maxLineDistance = (patternLocations[i]);
+		for (let i = 0; i < patternLocations.length; i++) { // get total pattern width 
+			let parsedPL = parsePatternLocation(patternLocations[i]);
+			if (parsedPL.hem) {
+				if (parsedPL.dist > maxLineDistance) maxLineDistance = parsedPL.dist;
+				if (parsedPL.dist < minLineDistance) minLineDistance = parsedPL.dist;
 			}
 		}
 	}
 
 	let widthFactor = 1
-	if (maxLineDistance > 0) {
-		widthFactor = targetPatternWidth / maxLineDistance;
+	if (maxLineDistance > 0 || minLineDistance < 0) {
+		widthFactor = targetPatternWidth / (maxLineDistance - minLineDistance);
 	}
 
 	for (let i = 0; i < patternLocations.length; i++) {
@@ -2283,24 +2301,21 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	returnALaser.push(holePathNearA);
 	returnA.push(holePathFarA);
 
-
+	var refLineA = getOffsetPath(edgeA, param['hem offset'], joints[index]['dirM']);
+	var refLineB = getOffsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
 	var aLines = [];
 	var bLines = [];
 
 	for (let onePatternLocation of patternLocations) {
-		if (isNaN(onePatternLocation)) {
-			let letter = onePatternLocation.charAt(0);
-			let number = parseFloat(onePatternLocation.substring(1));
-			if (number == 0) {
-				number = 0.001;
-			}
-			var holePathOffsetA = getOffsetPath(edgeA, number, joints[index]['dirM']);
-			var holePathOffsetB = getOffsetPath(edgeB, number, joints[index]['dirF']);
+		let parsedPL = parsePatternLocation(onePatternLocation);
+		if (!parsedPL.hem) {
+			var holePathOffsetA = getOffsetPath(edgeA, parsedPL.dist, joints[index]['dirM']);
+			var holePathOffsetB = getOffsetPath(edgeB, parsedPL.dist, joints[index]['dirF']);
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
 		} else {
-			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+onePatternLocation-(targetPatternWidth*0.5)), joints[index]['dirM']);
-			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+onePatternLocation-(targetPatternWidth*0.5)), joints[index]['dirF']);
+			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirM']);
+			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirF']);
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
 		}
@@ -2313,6 +2328,13 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		console.log({oneALine:oneALine});
 		returnALaser.push(oneALine);
 	}
+
+	for (let oneBLine of bLines) {
+		console.log({oneBLine:oneBLine});
+		returnBLaser.push(oneBLine);
+	}
+
+	console.log('aLines: ', aLines);
 
 	// TODO: Include edgeA and edgeB in the line list directly
 	// var aLines = [holePathFarA, holePathNearA];
@@ -2330,46 +2352,54 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	let printJobs = [];
 
 	var laserHoleList = [];
+
 	
 	if (param['hole diameter']>0 && param['hole spacing']>0) {
-		var holeCount = Math.floor(aLines[0].length/param['hole spacing']);
-		if (Math.floor(bLines[0].length/param['hole spacing']) < holeCount) {
-			holeCount = Math.floor(bLines[0].length/param['hole spacing']);
+		var holeCount = Math.floor(refLineA.length/param['hole spacing']);
+		if (Math.floor(refLineB.length/param['hole spacing']) < holeCount) {
+			holeCount = Math.floor(refLineB.length/param['hole spacing']);
 			console.warn({message:"hole number does not match; large line length discrepancy"});
 		}
-		const remainderA = aLines[0].length-(holeCount*param['hole spacing']);
-		const remainderB = bLines[0].length-(holeCount*param['hole spacing']);
+		const remainderA = refLineA.length-(holeCount*param['hole spacing']);
+		const remainderB = refLineB.length-(holeCount*param['hole spacing']);
 		var patternIndex = 0;
 				
 		for (var i=0; i<holeCount; i++) {
 			
 			const sourceOffsetA = (i+holePatternOffset[patternIndex])*param['hole spacing']+param['hole spacing']/2+remainderA/2;
 			const sourceOffsetB = (i+holePatternOffset[patternIndex])*param['hole spacing']+param['hole spacing']/2+remainderB/2;
-			var ptA = aLines[0].getPointAt(sourceOffsetA);
-			var ptB = bLines[0].getPointAt(sourceOffsetB);
+			var ptA = refLineA.getPointAt(sourceOffsetA);
+			var ptB = refLineB.getPointAt(sourceOffsetB);
 			var offsetA = sourceOffsetA;
 
-			const sourceOffsetPercentageA = (sourceOffsetA / aLines[0].length);
+			const sourceOffsetPercentageA = (sourceOffsetA / refLineA.length);
 			const originSourceOffsetA = sourceOffsetPercentageA * edgeA.length;
 
 			var circleA;
 			var circleB;
 
-			if (holePattern[patternIndex] == 0) { //TODO: This should probably just be merged with the other cases
-				
+			// if (holePattern[patternIndex] == 0) { //TODO: This should probably just be merged with the other cases
+			if (false) {
 				if (i == 0) {
 					centerPoint = ptA;
 					centerPointB = ptB;
 				}
 			} else { // Normals don't exist, so we use percentage of the offset instead
-				const offsetPercentageA = (sourceOffsetA / aLines[0].length);
-				const offsetPercentageB = (sourceOffsetB / bLines[0].length);
+				const offsetPercentageA = (sourceOffsetA / refLineA.length);
+				const offsetPercentageB = (sourceOffsetB / refLineB.length);
 				const targetOffsetA = offsetPercentageA * aLines[holePattern[patternIndex]].length;
+				console.log('aLines[holePattern[patternIndex]].length: ', aLines[holePattern[patternIndex]].length);
+				console.log('offsetPercentageA: ', offsetPercentageA);
 				const targetOffsetB = offsetPercentageB * bLines[holePattern[patternIndex]].length;
 
 				ptA = aLines[holePattern[patternIndex]].getPointAt(targetOffsetA);
+				console.log('targetOffsetA: ', targetOffsetA);
+				console.log('holePattern[patternIndex]: ', holePattern[patternIndex]);
+				console.log('aLines[holePattern[patternIndex]]: ', aLines[holePattern[patternIndex]]);
+				console.log('ptA: ', ptA);
 				ptB = bLines[holePattern[patternIndex]].getPointAt(targetOffsetB);
 				offsetA = aLines[holePattern[patternIndex]].getOffsetOf(ptA);
+				console.log('offsetA: ', offsetA);
 			}
 
 			var minDist = 10;
@@ -2384,23 +2414,30 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				console.log('closeToOtherPrints: ', closeToOtherPrints);
 				if (!closeToOtherPrints) {
 					const patternIndexRef = patternIndex + 0;
-					laserHoleList.push({pointOrigin:ptA, bOrigin:ptB, offset:offsetA, offsetOrigin:sourceOffsetA, offsetOriginSource:originSourceOffsetA, type:"on-line", lineIndex:patternIndexRef});
+					var needleHole = true;
+					if (parsePatternLocation(patternLocations[holePattern[patternIndex]]).outside) {
+						needleHole = false;
+					}
+
+					laserHoleList.push({pointOrigin:ptA, bOrigin:ptB, offset:offsetA, offsetOrigin:sourceOffsetA, offsetOriginSource:originSourceOffsetA, type:"on-line", needle:needleHole, lineIndex:patternIndexRef});
+
+					if (needleHole) {
+						circleA = new Path.Circle(ptA, param['hole diameter']/2);
+						circleB = new Path.Circle(ptB, param['hole diameter']/2);
+						circleA.name = 'cut';
+						circleB.name = 'cut';
+						circleA.strokeColor = laserColor;
+						circleB.strokeColor = laserColor;
+						circleA.strokeWidth = laserWidth;
+						circleB.strokeWidth = laserWidth;
+						circleA.fillColor = noColor;
+						circleB.fillColor = noColor;
+						returnALaser.push(circleA);
+						returnBLaser.push(circleB);
+					}
 
 					patternIndex += 1;
 					if (patternIndex >= holePattern.length) patternIndex = 0;
-
-					circleA = new Path.Circle(ptA, param['hole diameter']/2);
-					circleB = new Path.Circle(ptB, param['hole diameter']/2);
-					circleA.name = 'cut';
-					circleB.name = 'cut';
-					circleA.strokeColor = laserColor;
-					circleB.strokeColor = laserColor;
-					circleA.strokeWidth = laserWidth;
-					circleB.strokeWidth = laserWidth;
-					circleA.fillColor = noColor;
-					circleB.fillColor = noColor;
-					returnALaser.push(circleA);
-					returnBLaser.push(circleB);
 				}
 			}
 		}
@@ -2411,7 +2448,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			var copyP = new Path({segments:onePath.segments, closed:false});
 			copyPaths.push(copyP);
 		}
-		// copyPath = new Path({segments:aLines[0].segments, closed:false});
+		// copyPath = new Path({segments:refLineA.segments, closed:false});
 		copyPath = copyPaths[0];
 
 
@@ -2490,7 +2527,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		pathsGroup.rotate(30, rotP);
 		// Separate into print jobs
 		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
-		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
+		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
 
@@ -2537,7 +2574,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				// returnAFold.push(originSourcePathPart);
 				var renderRef = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 
-				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:aLines[0], originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
+				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
 
 				// console.log({newJobL:jobs[jobs.length-1].path.length, lastJobl:lastJob.path.length, jobs:jobs, newJob:jobs[jobs.length-1], lastJob:lastJob});
 

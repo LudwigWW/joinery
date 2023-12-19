@@ -50,7 +50,9 @@
         "y": 0
       },
       "directional":false,
-      "patternLocations":[0, "c-1", "c2"],
+      "patternLocations":[0, "o-1", "c2"],
+      "holePattern":[0],
+      "holePatternOffset":[0],
       "pattern":[1],
       "renderDetails":{"type":"circle", "diameter":9}
     },
