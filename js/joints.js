@@ -231,6 +231,23 @@ var printedZigZag = {
 		'pinking cut': false,
 	}
 };
+var printedFlex = {
+	'name':'printed flexible stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'hem offset': 8,
+		'hole diameter': 1.5,
+		'seam pattern width': 5,
+		'hole spacing': 9,
+		'skip # holes': 0,
+		'printing area width': 240,
+		'printing area depth': 210,
+		'marker height': 3,
+		'pinking cut': false,
+	}
+};
+
 var printedCross = {
 	'name':'printed cross stitch',
 	'profile':'',
@@ -321,7 +338,7 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedDecorative, loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
+var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
 
@@ -359,6 +376,59 @@ function removeJoint(s, p) {
 	shape[s].children[p].name = '';
 	shape[s].children[p].strokeWidth = 1;
 	activateDim(dimBool);
+}
+
+function handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91) {
+	var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+
+	console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
+
+	var g = new Group();
+	g.name = 'folds';
+	shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+	shape[shapeA].children[pathA+'_joint'].addChild(g);
+	shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+	// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+	// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
+
+	shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+	// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+	// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
+
+	var g2 = new Group();
+	g2.name = 'folds';
+	shape[shapeB].children[pathB+'_joint'].addChild(g2);
+	shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+
+	// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+	shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+	// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+	// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+	// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+	shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+
+	var gLaserA = new Group();
+	gLaserA.name = 'laser';
+	shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
+	shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
+
+	var gLaserB = new Group();
+	gLaserB.name = 'laser';
+	shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
+	shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
+
+	var gPrintA = new Group();
+	gPrintA.name = 'print';
+	shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
+	shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
+
+	var gPrintB = new Group();
+	gPrintB.name = 'print';
+	shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
+	shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
+	console.log("FabJoint Done childPath:", childPath);
 }
 
 function generateJoint(index) {
@@ -530,56 +600,7 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.dotsTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
-
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
-
-					var g = new Group();
-					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
-					shape[shapeA].children[pathA+'_joint'].addChild(g);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
-	
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
-	
-					var g2 = new Group();
-					g2.name = 'folds';
-					shape[shapeB].children[pathB+'_joint'].addChild(g2);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
-	
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
-
-					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
-
-					var gLaserA = new Group();
-					gLaserA.name = 'laser';
-					shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
-					shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
-
-					var gLaserB = new Group();
-					gLaserB.name = 'laser';
-					shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
-					shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
-
-					var gPrintA = new Group();
-					gPrintA.name = 'print';
-					shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
-					shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
-
-					var gPrintB = new Group();
-					gPrintB.name = 'print';
-					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
-					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
-					console.log("CC ~ file: joints.js:572 ~ req.success ~ childPath:", childPath);
+					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
 					
 					break;
 					
@@ -708,39 +729,42 @@ function generateJoint(index) {
 					
 				case 'pullable baste stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
-					
+					console.log("printTemplate", printTemplate);
+
+
 					var G91 = {base:printTemplate.G91Commands.bastePull, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.bastePullTop
 					};
 
-					var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
-					var g = new Group();
-					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
-					shape[shapeA].children[pathA+'_joint'].addChild(g);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+
+					// var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					// var g = new Group();
+					// g.name = 'folds';
+					// shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					// shape[shapeA].children[pathA+'_joint'].addChild(g);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
 	
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
 	
-					var g2 = new Group();
-					g2.name = 'folds';
-					shape[shapeB].children[pathB+'_joint'].addChild(g2);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					// var g2 = new Group();
+					// g2.name = 'folds';
+					// shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+					// shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
 
@@ -791,80 +815,96 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.whipTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+
+					// var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					// // var g = new Group();
+					// // g.name = 'folds';
+					// // shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+					// // shape[shapeA].children[pathA+'_joint'].addChild(g);
+					// // shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+					// // shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// // shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// // shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+					// // shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
+					// // shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+	
+					// // var g2 = new Group();
+					// // g2.name = 'folds';
+					// // shape[shapeB].children[pathB+'_joint'].addChild(g2);
+					// // shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					// // shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					// // shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					// // shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+					// // shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
+					// // shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+	
+					// // console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// // break;
+
 					// var g = new Group();
 					// g.name = 'folds';
 					// shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
 					// shape[shapeA].children[pathA+'_joint'].addChild(g);
 					// shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// // shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+					// // shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					// shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#000';
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 1;
+					// // shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+					// // shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 	
 					// var g2 = new Group();
 					// g2.name = 'folds';
 					// shape[shapeB].children[pathB+'_joint'].addChild(g2);
 					// shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
-					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
+
+					// // shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
 	
 					// shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
-	
-					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
-					// break;
+					// // shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+					// // shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
 
-					var g = new Group();
-					g.name = 'folds';
-					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
-					shape[shapeA].children[pathA+'_joint'].addChild(g);
-					shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-					// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
-	
-					shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-					// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
-					// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
-	
-					var g2 = new Group();
-					g2.name = 'folds';
-					shape[shapeB].children[pathB+'_joint'].addChild(g2);
-					shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+					// // shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
 
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
-	
-					shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
-					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+					// var gLaserA = new Group();
+					// gLaserA.name = 'laser';
+					// shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
+					// shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
 
-					// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-					shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+					// var gLaserB = new Group();
+					// gLaserB.name = 'laser';
+					// shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
+					// shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
 
-					var gLaserA = new Group();
-					gLaserA.name = 'laser';
-					shape[shapeA].children[pathA+'_joint'].addChild(gLaserA);
-					shape[shapeA].children[pathA+'_joint'].children['laser'].addChildren(childPath.returnALaser);
+					// var gPrintA = new Group();
+					// gPrintA.name = 'print';
+					// shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
+					// shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
 
-					var gLaserB = new Group();
-					gLaserB.name = 'laser';
-					shape[shapeB].children[pathB+'_joint'].addChild(gLaserB);
-					shape[shapeB].children[pathB+'_joint'].children['laser'].addChildren(childPath.returnBLaser);
-
-					var gPrintA = new Group();
-					gPrintA.name = 'print';
-					shape[shapeA].children[pathA+'_joint'].addChild(gPrintA);
-					shape[shapeA].children[pathA+'_joint'].children['print'].addChildren(childPath.returnAPrint);
-
-					var gPrintB = new Group();
-					gPrintB.name = 'print';
-					shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
-					shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
+					// var gPrintB = new Group();
+					// gPrintB.name = 'print';
+					// shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
+					// shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
 					
 					break;
+
+				case 'printed flexible stitch':
+						// var printTemplate = template;
+						console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+						
+						var G91 = {base:printTemplate.G91Commands.flex, 
+							spikes:printTemplate.G91Commands.spikes, 
+							spikesTop:printTemplate.G91Commands.spikesTop, 
+							top:printTemplate.G91Commands.flexTop
+						};
+						console.log('G91: ', G91);
+	
+						handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+						break;
 
 				case 'printed zig zag stitch':
 					// var printTemplate = template;
@@ -1253,6 +1293,8 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 
 	var markers = [];
 
+	// TODO: At least make marker offset based on length of the shorter path. How to handle the size difference better?
+
 	let markerOffset = job.originSourceOffset + 6; // From start
 	let markerOffsetRotated = 6; // From part cut point
 	let rotatedPath = job.originSourcePathPart; 
@@ -1500,8 +1542,13 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	const offsetPercentage = (offset / edgeAB.length);
 	const targetOffset = offsetPercentage * textOffsetPath.length;
 
+	console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
+
+
 	const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
 	const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
+
+	console.log({startP:startP, endP:endP});
 	
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 	console.log(rad)
@@ -1523,14 +1570,14 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	
 
 
-	// Pprint text markers
+	// Print text markers
 	if (rotPath) {
 
 		if (isA) {
-			textOffsetPath = disconnectedOffsetPath(rotPath, textOffset, joints[index]['dirM']);
+			textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirM']);
 		}
 		else {
-			textOffsetPath = disconnectedOffsetPath(rotPath, textOffset, joints[index]['dirF']);
+			textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirF']);
 			startOffset = -4;
 		}
 
@@ -1540,6 +1587,10 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
 		const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
 		
+		
+		console.log({startP:startP, endP:endP});
+		console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, rotPath:rotPath.length, edgeAB:edgeAB.length});
+
 		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 		console.log(rad)
 
@@ -1615,8 +1666,6 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 }
 
 function parsePatternLocation(patternLocation) {
-	console.log('patternLocation: ', patternLocation);
-	console.log('isNaN(patternLocation): ', isNaN(patternLocation));
 	if (isNaN(patternLocation)) {
 		
 		let letter = patternLocation.charAt(0);
@@ -2097,7 +2146,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			
 			const testPath = new Path({segments:testPoints, closed:false});
 			// console.log({testPath:testPath});
-			if (((testPath.strokeBounds.width+10) > param['printing area width'])) {
+			if ((endIndex < laserHoleList.length-1) && ((testPath.strokeBounds.width+10) > param['printing area width'])) {
+				console.log("Splitting job at: ", laserHoleList[endIndex].patternedOffset, lastJob.path.length, lastJob.offset, lastJob.path.strokeBounds.width, param['printing area width']);
+				console.log("endIndex", endIndex);
 				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
 
 				// const originSourceSplitPL = laserHoleList[endIndex].offsetOriginSource; // Why? offsetOriginSource not far along enough somehow?
@@ -3855,25 +3906,29 @@ function getLaserSVG(selectedShapeID) {
 	var includedIDs = [];
 	for (let i in selectedShape.children) {
 		if (selectedShape.children[i].className == 'Group') {
-			// separate name by _ or space
-			var nameIndex = selectedShape.children[i].name.split(/[\s_]+/)[0];
-			console.log('nameIndex: ', nameIndex);
-			console.log('!isNaN(nameIndex): ', !isNaN(nameIndex));
-			// check if nameIndex is a number
-			if (!isNaN(nameIndex)) {
-				
-				if (!foundJoints.includes(nameIndex) && !includedIDs.includes(selectedShape.children[i].id)) {
-					var newGroup;
-					if (selectedShape.children[i].children['laser']) {
-						newGroup = selectedShape.children[i].children['laser'].clone({deep:true});
-					} else { // Fallback to fail gracefully
-						newGroup = selectedShape.children[i].clone({deep:true});
-					} 
-					newGroup.name = selectedShape.children[i].name;
-					laserShape.addChild(newGroup);
-					// Save id of group
-					foundJoints.push(parseInt(selectedShape.children[i].name.split('_')[0]));
-					includedIDs.push(selectedShape.children[i].id); //
+			if (selectedShape.children[i].name === undefined || selectedShape.children[i].name === null) {
+				// TODO?
+			} else {
+				// separate name by _ or space
+				var nameIndex = selectedShape.children[i].name.split(/[\s_]+/)[0];
+				console.log('nameIndex: ', nameIndex);
+				console.log('!isNaN(nameIndex): ', !isNaN(nameIndex));
+				// check if nameIndex is a number
+				if (!isNaN(nameIndex)) {
+					
+					if (!foundJoints.includes(nameIndex) && !includedIDs.includes(selectedShape.children[i].id)) {
+						var newGroup;
+						if (selectedShape.children[i].children['laser']) {
+							newGroup = selectedShape.children[i].children['laser'].clone({deep:true});
+						} else { // Fallback to fail gracefully
+							newGroup = selectedShape.children[i].clone({deep:true});
+						} 
+						newGroup.name = selectedShape.children[i].name;
+						laserShape.addChild(newGroup);
+						// Save id of group
+						foundJoints.push(parseInt(selectedShape.children[i].name.split('_')[0]));
+						includedIDs.push(selectedShape.children[i].id); //
+					}
 				}
 			}
 		}
@@ -3965,9 +4020,11 @@ function exportProject() {
 					}
 				} else if (shape[i].children[j].className=='Group') {
 					var shapeName = shape[i].children[j].name;
-					if (typeof(shapeName)==='undefined') {
+					if (typeof(shapeName)==='undefined' || shapeName === null) {
 						//shape[i].children[j].strokeColor = '#F0F';
 					} else {
+						console.log(shape[i].children[j]);
+						console.log({shapeName:shapeName});
 						var shapeNameStr = shapeName.split('_');
 						if (shapeNameStr[shapeNameStr.length-1] == 'joint') {
 							shape[i].children[j].strokeWidth = 1.0;
@@ -4101,6 +4158,76 @@ function exportProject() {
 		var arrangement = packboxes(boxList, laserArea);
 		console.log({arrangement:arrangement});
 
+		console.log('window: ', window);
+		console.log('window: ', window.Fit);
+
+
+		let bins = [
+		// array of 2D Bins
+			new window.Fit.Bin(
+				1,    // unique id for each bins
+				1200, // width of a bin
+				600   // height of a bin
+			),
+		]
+		  
+		let parts = [
+		// array of 2D Polygons
+		new window.Fit.Part(
+			1,  // unique id for each parts
+			[   // array of 2D points
+			new window.Fit.Vector(0, 0),
+			new window.Fit.Vector(100, 0),
+			new window.Fit.Vector(120, 400),
+			]
+		),
+		]
+		  
+		  
+		let packer = new window.Fit.Packer()
+		
+		let config = { 
+			spacing: 0,         // space between parts
+			rotationSteps: 4,   // # of angles for available rotation (ex. 4 means [0, 90, 180, 270] angles from 360 / 4 )
+			population: 10,     // # of population in GA
+			generations: 10,    // # of generations in GA
+			mutationRate: 0.25, // mutation rate in GA
+			seed: 0             // seed of random value in GA
+		}
+		
+		packer.start(bins, parts, config, {
+			onEvaluation: (e) => {
+				// e.progress   : evaluation progress in a generation of GA
+				console.log("Packing...");
+				console.log("onEvaluation", e);
+			},
+			onPacking: (e) => {
+				// callback on packing once
+				// e.placed     : placed parts
+				// e.placements : transformations of placed ({ bin: id, part: id, position: (x, y), rotation: angle }, rotation must be done before translation)
+				// e.unplaced   : unplaced parts
+
+				console.log("onPacking", e);
+			
+				// If unplaced parts exist, you can add a new bin in a process
+				if (e.unplaced.length > 0) {
+					let lastBin = e.bins[e.bins.length - 1]
+					let newBin = new window.Fit.Bin(lastBin.id + 1, lastBin.width, lastBin.height)
+					packer.addBin(newBin)
+				}
+			},
+			onPackingCompleted: (e) => {
+				// callback on packing completed
+				// e contains same data as an onPacking argument.
+				console.log("onPackingCompleted", e);
+				console.log("Packing done");
+			}
+		})
+		
+		// packing for one second
+		setTimeout(() => { packer.stop() }, 1000);
+		// packer.stop() // Stop a process
+		
 		grayOutShapes();
 
 		for (let print of prints) {
