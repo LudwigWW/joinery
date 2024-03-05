@@ -9,8 +9,30 @@ var eventEmitter = new events.EventEmitter();
 const jscad = require('@jscad/modeling');
 const cors = require('cors');
 const express = require('express');
+const { OctoPrintClient } = require('octoprint-client');
+const FormData = require('form-data');
+const axios = require('axios');
+var request = require('request-promise');
+// const { OctoPrintServer } = require('octoprint');
+
 
 const debug = false;
+
+// // Initialize OctoPrint client
+// const octoPrintClient = new OctoPrintClient({
+//     url: 'http://10.42.0.1/op-prusa/', // Replace with your OctoPrint URL
+//     apiKey: '754E3BBA98FB4DF98E71C920699D3EDC' // Replace with your OctoPrint API key
+// });
+
+
+
+
+// Configuration for OctoPrint server
+const octoPrintUrl = 'http://10.42.0.1/op-prusa/';
+const apiKey = '754E3BBA98FB4DF98E71C920699D3EDC'; 
+
+// Initialize OctoPrint
+// const octoPrint = new OctoPrintServer({ url: octoPrintUrl, apiKey });
 
 const execPromised = util.promisify(require('child_process').exec);
 async function execAsync(command, res, callback) {
@@ -26,7 +48,7 @@ async function execAsync(command, res, callback) {
         }
     } catch (e) {
         console.error(e); // should contain code (exit code) and signal (that caused the termination).
-        send_error_response(res, e);
+        // send_error_response(res, e);
         // return -1; // failure state
     }
 }
@@ -82,7 +104,7 @@ var reqCounter = 0;
 
 //Create an event handler:
 var screamEventHandler = function (data) {
-    console.log('I hear a scream!' + data);
+    console.log('I hear a scream! ' + data);
 };
 
 // axios({
@@ -138,6 +160,223 @@ function send_error_response(res, err) {
 }
 
 app.use(cors({ origin: true }));
+
+// Example route to get printer status
+app.post('/printer/status.cmd', async (req, res) => {
+
+    let test_data = '';
+    req.on('data', function(data) {
+        test_data += data
+    });
+
+    req.on('end', function() {
+        test_data = JSON.parse(test_data);
+
+        const testPath = '../../fabricfuse-data/gcode/test.gcode';
+        fs.writeFile(testPath, test_data.testGCode, function (er) {
+            if (er) {
+                console.log(`File writeopen error: ${er}`);
+                scream = "FILE ERROR";
+                eventEmitter.emit('scream', scream);
+            }
+            else {
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.write('{"message": "Gcode saved"}');
+                return res.end();
+            }
+        });
+
+        // Call OctoPrint API to get printer status
+        // try {
+        //     // Call OctoPrint API to get printer status
+        //     const response = await axios.get(`${octoPrintUrl}/api/printer`, {
+        //         headers: { 'X-Api-Key': apiKey }
+        //     });
+        //     console.log(response.data);
+        //     res.json(response.data);
+        // } catch (error) {
+        //     console.error(error);
+        //     res.status(500).json({ error: error.message });
+        // }
+    });
+
+});
+
+
+
+// Upload a file
+app.post('/print2.cmd', async (req, res) => {
+    try {
+        // Read the file data
+        const filePath = '../../fabricfuse-data/gcode/test.gcode';
+        const fileData = fs.readFileSync(filePath);
+
+        console.log({fileData:fileData});
+
+        // Generate a boundary string
+        const boundary = `----CoFabricAtionBoundary${Math.random().toString().slice(2)}`;
+
+        // Construct the multipart/form-data body
+        let body = `--${boundary}\r\n`;
+        body += 'Content-Disposition: form-data; name="file"; filename="test.gcode"\r\n';
+        body += 'Content-Type: application/octet-stream\r\n\r\n';
+        body += fileData;
+        body += `\r\n--${boundary}--\r\n`;
+
+        // Set the headers
+        const headers = {
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Content-Length': Buffer.byteLength(body),
+            'X-Api-Key': apiKey
+        };
+
+        // Make the POST request to OctoPrint API
+        const response = await axios.post(`${octoPrintUrl}/api/files/local`, body, { headers });
+
+        // Send the response back to the client
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/send.cmd', async (req, res) => {
+    try {
+        // Set the URL of the OctoPrint instance
+        const octoPrintUrl = 'http://10.42.0.1/op-prusa/';
+
+        // Read the file to be sent
+        const filePath = '../../fabricfuse-data/gcode/test.gcode';
+        const fileName = 'test.gcode'; // Specify the filename
+        const fileData = fs.readFileSync(filePath);
+
+        // Construct form data
+        const formData = new FormData();
+        formData.append('file', fileData, { filename: fileName });
+        formData.append('select', 'true');
+        formData.append('print', 'true');
+        const contentLength = formData.getLengthSync();
+
+        // Send the file to OctoPrint
+        const response = await axios.post(`${octoPrintUrl}api/files/local`, formData, {
+            headers: {
+                // 'Content-Type': 'application/octet-stream',
+                ...formData.getHeaders(),
+                'Content-Length': contentLength, // Add Content-Length header
+                'X-Api-Key': apiKey
+            }
+        });
+
+        // Log the response from OctoPrint
+        console.log(response.data);
+
+        // Send a response back to the client
+        res.status(200).json({ message: 'File sent to OctoPrint successfully' });
+    } catch (error) {
+        // Handle errors
+        console.error('Error sending file to OctoPrint:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Upload G-code file and start print job
+app.post('/print.cmd', async (req, res) => {
+
+    function restPOSTform(path, form) {
+        var self = this;
+        return new Promise(function (resolve, reject) {
+    
+        var url = path;
+        // var url = path;
+        var options = {
+            method: 'POST',
+            url: url,
+            headers: {
+                'X-Api-Key': apiKey
+            },
+            formData: form,
+            json: true // Automatically parses the JSON string in the response
+        };
+    
+        return axios.post(url, form, options)
+            .then(function (response) {
+                resolve(response.data);
+            })
+            .catch(function (error) {
+                reject(error);
+            });
+        })
+      }
+
+  /**
+   * [[Description]]
+   * @param   {string} file     The file to upload, including a valid
+   * @param   {string} path     The path within the location to upload the file  in (without the future filename - basically the parent folder).
+   * @param   {boolean} select   Whether to select the file directly after upload (true) or not (false).
+   * @param   {boolean} print    Whether to start printing the file directly after upload (true) or not (false).  If set, select is implicitely true as well.
+   * @param   {object} userdata An optional object that if specified will be interpreted as JSON and then saved along with the file as metadata
+   * @returns {object} [[Description]]
+   */
+    function sendFile(file, path, select, print, userdata) {
+        var self = this;
+        return new Promise(function (resolve, reject) {
+        var form = {};
+        if (file) {
+            if (fs.existsSync(file)) {
+                // form.file = fs.createReadStream(file);
+                fs.readFileSync('../../fabricfuse-data/gcode/test.gcode');
+                // form.file.filename = "test.gcode"; // Add the filename here
+            } else {
+                reject("No file at path");
+            }
+        } else {
+            reject("No File");
+        }
+        if (path) {
+            form.path = octoPrintUrl + "/api/files/" + path;
+            form.filePath = octoPrintUrl + "/api/files/" + path;
+            
+        }
+        if (select) {
+            form.select = select;
+        }
+        if (print) {
+            form.print = print;
+        }
+        if (userdata) {
+            form.userdata = JSON.stringify(userdata);
+        }
+        console.log(form)
+        // var api_path = self.getPath("files") + "/local";
+        var api_path = `${octoPrintUrl}/api/files/local`;
+        restPOSTform(api_path, form).then(function (body, err) {
+            resolve(body);
+            })
+            .catch(function (err) {
+            reject(err);
+            });
+        });
+    }
+
+    try {
+
+        // Read G-code file from disk
+        const gcodePath = '../../fabricfuse-data/gcode/test.gcode';
+        const gcodeData = fs.createReadStream(gcodePath);
+
+        sendFile(gcodePath, "local", true, true, { "name": "test" }).then(function (body) {
+            console.log(body);
+            res.send('Print job started successfully');
+        }).catch(function (err) {
+            console.log(err);
+            res.status(500).json({ error: err.message });
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+
+});
+
 app.post('/exportMarkersSTL.cmd', (req, res) => {
     
     let geometry_data = '';
@@ -151,6 +390,7 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
         if(debug) console.log({geometry_data:geometry_data});
         // res.end();
         var jscadText = STL.extrudePolygonJscad(geometry_data);
+        // console.log({jscadText:jscadText});
     
         const jscadPath = '../../fabricfuse-data/jscad/geo'+geometry_data.ID+'.jscad';
         const stlPath = '../../fabricfuse-data/stl/geo'+geometry_data.ID+'.stl';
@@ -174,7 +414,7 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
                     fs.readFile(gcodePath, function(err, data) {
                         if (err) {
                             console.log(`File read error: ${err}`);
-                            send_error_response(res, err);
+                            // send_error_response(res, err);
                         } else {
                             try {
                                 var lines = data.toString().split('\n');
@@ -217,7 +457,7 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
                                 res.write(jsonGcode);
                                 return res.end();
                             } catch (e) {
-                                send_error_response(res, e);
+                                // send_error_response(res, e);
                             }
                             
                         }

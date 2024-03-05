@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "octoprint": "^0.0.4",
+    "request-promise": "^4.2.6"
+  }
+}

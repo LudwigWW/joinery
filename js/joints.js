@@ -379,6 +379,48 @@ function removeJoint(s, p) {
 }
 
 function handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91) {
+
+	// Open file from /examples/ folder without using require
+
+	var req2 = $.getJSON('examples/testrivets.json');
+	var testGCode = '';
+
+	req2.success(function(response){
+		console.log({response:response});
+		testGCode = response.text;
+
+		// console.log("🚀 ~ file: joints.js:335 ~ initJoint ~ testGCode", testGCode);
+		axios.post('http://127.0.0.1:5505/printer/status.cmd', {
+			testGCode: testGCode,
+			x: 0, //markerObj.targetPoint.x,
+			y: 0 //markerObj.targetPoint.y
+		}).then(function (response) {
+			// if (debug) console.log(response);
+			console.log("Success");
+			console.log(response);
+
+			axios.post('http://127.0.0.1:5505/send.cmd', {
+				empty: "empty"
+			}).then(function (response) {
+				// if (debug) console.log(response);
+				console.log("PrintSuccess");
+				console.log(response);
+			}).catch(function (error) {
+				console.log(error);
+				console.log("PrintNoSuccess");
+			});	
+		
+	
+		}).catch(function (error) {
+			console.log(error);
+			console.log("NoSuccess");
+		});	
+	
+	});
+
+
+
+
 	var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
 
 	console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
