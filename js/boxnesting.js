@@ -1,5 +1,5 @@
 function minimizeBB(paperItem, margin) {
-    console.log('paperItem: ', paperItem);
+    // console.log('paperItem: ', paperItem);
     // Align entire path width-wise (printing build plate left/right-wise)
     let rotationDegs = 10;
     let fullCircle = 0;
@@ -36,7 +36,7 @@ function packboxes(boxes, inSpace) {
     let area = 0;
     let maxWidth = 0;
     for (const box of boxes) {
-        console.log('box: ', box);
+        // console.log('box: ', box);
         area += box.w * box.h;
         maxWidth = Math.max(maxWidth, box.w);
     }

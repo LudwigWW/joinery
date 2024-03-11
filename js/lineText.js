@@ -285,7 +285,7 @@ function generateAsciiPolygons(text, start_x, start_y, text_rotation, text_size)
     // singleAsciiPoly.points = singleAsciiPoly.translatePoints(translation_poly_copy2x, midpoint);
     // singleAsciiPoly.translate(midpoint);
 
-    console.log({singleAsciiPoly:singleAsciiPoly, combined_division_list:combined_division_list});
+    // console.log({singleAsciiPoly:singleAsciiPoly, combined_division_list:combined_division_list});
 
 
     let combinedAsciiPolyList = [];
@@ -298,7 +298,7 @@ function generateAsciiPolygons(text, start_x, start_y, text_rotation, text_size)
             yet_another_temp_point_list.push(singleAsciiPoly.segments[point_idx]);
         }
         var oneLetterPoly = finishPoly(yet_another_temp_point_list);
-        console.log({oneLetterPoly:oneLetterPoly});
+        // console.log({oneLetterPoly:oneLetterPoly});
         // combinedAsciiPolyList.push(finishPoly(yet_another_temp_point_list));
         g.addChildren([oneLetterPoly]);
     }

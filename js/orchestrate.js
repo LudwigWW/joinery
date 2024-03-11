@@ -3,14 +3,14 @@ function createOrderList(prints, shapes, shapeIDs) {
     var handledPrints = [];
     var handledShapes = [];
 
-    console.log({prints:prints, shapes:shapes, shapeIDs:shapeIDs});
+    // console.log(log({prints:prints, shapes:shapes, shapeIDs:shapeIDs});
     var remainingShapeIDs = [...shapeIDs];
     var remainingPrints = [...prints];
     var orderList = [];
 	var flatList = [];
 	var counter = 0;
     
-    console.log({remainingPrints:remainingPrints, remainingShapeIDs:remainingShapeIDs});
+    // console.log(log({remainingPrints:remainingPrints, remainingShapeIDs:remainingShapeIDs});
     
 
     // let three = 0;
@@ -35,18 +35,18 @@ function createOrderList(prints, shapes, shapeIDs) {
             }
         }
 
-        console.log({nextShapeID:nextShapeID});
+        // console.log(log({nextShapeID:nextShapeID});
 
         // mark shape handled
         for (let shape of shapes) {
-            console.log({shape:shape, shapeID:shape.ID});
+            // console.log(log({shape:shape, shapeID:shape.ID});
             if (shape.ID == nextShapeID) {
-                console.log({status:"FoundShape"});
+                // console.log(log({status:"FoundShape"});
                 // currentObj.parentShapes.push(shape);
                 currentObj.parentShape = shape;
                 handledShapes.push(shape.ID);
                 var index = remainingShapeIDs.indexOf(shape.ID);
-                console.log({index:index});
+                // console.log(log({index:index});
                 if (index !== -1) {
                     remainingShapeIDs.splice(index, 1);
                 }
@@ -60,7 +60,7 @@ function createOrderList(prints, shapes, shapeIDs) {
             }
         }
 
-        console.log({handledShapes:handledShapes, remainingShapeIDs:remainingShapeIDs});
+        // console.log(log({handledShapes:handledShapes, remainingShapeIDs:remainingShapeIDs});
 
         currentObj.childPrints = [];
         for (let printIndex = remainingPrints.length-1; printIndex >= 0; printIndex--) {
@@ -68,7 +68,7 @@ function createOrderList(prints, shapes, shapeIDs) {
             for (let relShape of remainingPrints[printIndex].relevantShapes) {
                 if (handledShapes.indexOf(relShape.ID) == -1) {
                     good = false; 
-                    console.log({Status:"Print can not be added yet, lasershape not handled", print:remainingPrints[printIndex]});
+                    // console.log(log({Status:"Print can not be added yet, lasershape not handled", print:remainingPrints[printIndex]});
                     break;
                 }
             }
@@ -80,7 +80,7 @@ function createOrderList(prints, shapes, shapeIDs) {
 				var theImageData = remainingPrints[printIndex].imageData;
                 var imageDatas = [theImageData];
 				for (let relevant of remainingPrints[printIndex].relevantShapes) {
-                    // console.log({relevant:relevant});
+                    // // console.log(log({relevant:relevant});
                     // imageDatas.push(relevant.shape.imageData); // Don't use raw shape images, use custom images with parts highlighted
                 }
                 for (let img of remainingPrints[printIndex].shapeImages) {
@@ -100,7 +100,7 @@ function createOrderList(prints, shapes, shapeIDs) {
         orderList.push(currentObj);
     }
 
-    console.log({orderList:orderList, flatList:flatList});
+    // console.log(log({orderList:orderList, flatList:flatList});
     return [orderList, flatList];
 }
 

@@ -604,11 +604,13 @@ function refreshJointList() {
 		var html = '<div id="joint_'+jID+'" class="jointItem">';
 		html = html+'<div class="title">joint '+jID+'<b>delete</b></div>';
 		html = html+'<div class="jointOptions">';
-		html = html+'<select>';
+		html = html+'<label for="seamType">Seam Type:</label>';
+		html = html+'<select class="profile">';
 		for (i in jointProfileList) {
 			html = html+'<option value="'+jointProfileList[i].profile+'">'+jointProfileList[i].profile+'</option>';
 		}
-		html = html+'<option value="none">none</option></select>';
+		html = html+'<option value="none">none</option></select></br>';
+		html = html+'<label for="featureType">Sewing Feature Type:</label>';
 		html = html+'<select class="featureType">';
 		for (var i = 0; i < featureTypes.length; i++) {
 			html = html+'<option value="'+featureTypes[i].type+'">'+featureTypes[i].type+'</option>';
@@ -629,8 +631,17 @@ function refreshJointList() {
 		if (!bool) {
 			$('#joint_'+jID+' .jointOptions select option[value="none"]').prop('selected', true);
 		}
-		
-		
+
+		var fBool = false;
+		$('#joint_'+jID+' .jointOptions select.featureType > option').each(function () {
+			if ($(this).val()==joints[index].featureType.type) {
+				$(this).prop('selected', true);
+				fBool = true;
+			}
+		});
+		if (!fBool) {
+			$('#joint_'+jID+' .jointOptions select.featureType option[value="none"]').prop('selected', true);
+		}
 	}
 	
 	$('.jointItem').each(function(){
@@ -640,15 +651,16 @@ function refreshJointList() {
 		var shapeB = parseInt(index[3].split('-')[0]);
 		var pathB = parseInt(index[3].split('-')[1]);
 		var id = parseInt($(this).attr('id').split('_')[1]);
-		$(this).find('select').on('change', function() {
-			if ($(this).hasClass('featureType')) {
-				joints[id].featureType = $(this).find('option:selected').val();
-			} else {
-				joints[id].profile = $(this).find('option:selected').val();
-				joints[id].featureType = $(this).parent().find('.featureType option:selected').val();
-				generateJoint(id);	
-			}
-			console.log(joints[id].featureType);
+		$(this).find('select.profile').on('change', function() {
+			joints[id].profile = $(this).find('option:selected').val();
+			joints[id].featureType = featureTypes.find(type => type.type === $(this).parent().find('.featureType option:selected').val());
+			generateJoint(id);	
+			console.log({profile:joints[id].profile, featureType:joints[id].featureType});
+		});
+		$(this).find('select.featureType').on('change', function() {
+			joints[id].featureType = featureTypes.find(type => type.type === $(this).find('option:selected').val());
+			generateJoint(id);
+			console.log({profile:joints[id].profile, featureType:joints[id].featureType});
 		});
 		$(this).find('.swapMF').on('click', function() {
 			joints[id].m = (joints[id].m+1)%2;

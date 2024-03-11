@@ -1,5 +1,5 @@
 // import * as STLExports from '../js/lib/STLExport.js';
-// console.log('fromMesh: ', STLExports);
+// // console.log('fromMesh: ', STLExports);
 
 var jointProfileCount = 0;
 var chosenPrinter = {};
@@ -343,7 +343,7 @@ var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, 
 var jointProfileList = [];
 
 var featureTypes = [
-	{ type: 'none', order: 6 },
+	{ type: 'none', order: 20 },
 	{ type: 'internal feature', order: 5 },
 	{ type: 'outside shell', order: 4 },
 	{ type: 'opening and fastenings', order: 3 },
@@ -355,13 +355,14 @@ function createJointProfile(n) {
 	if (n < jointType.length) {
 		var joint1 = $.extend(true,{},jointType[n]);
 		joint1.profile = joint1.name+' '+jointProfileCount;
+		joint1.featureType = 'none';
 		jointProfileCount++;
 		jointProfileList.push(joint1);
 	}
 }
 
 function initJoint(s, p) {
-	console.log("CC ~ file: joints.js:335 ~ initJoint ~ s, p:", s, p);
+	// console.log("CC ~ file: joints.js:335 ~ initJoint ~ s, p:", s, p);
 
 	var g = new Group();
 	g.name = p+'_joint';
@@ -381,13 +382,13 @@ function removeJoint(s, p) {
 		}
 	}
 	shape[s].children[p+'_joint'].removeChildren();
-	console.log(shape[s].children[p+'_joint'].remove());
+	// console.log(shape[s].children[p+'_joint'].remove());
 	shape[s].children[p].name = '';
 	shape[s].children[p].strokeWidth = 1;
 	activateDim(dimBool);
 }
 
-function handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91) {
+function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91) {
 
 	// Open file from /examples/ folder without using require
 
@@ -395,44 +396,46 @@ function handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91
 	var testGCode = '';
 
 	req2.success(function(response){
-		console.log({response:response});
-		testGCode = response.text;
+		if (debug) {
+			// console.log({response:response});
+			testGCode = response.text;
 
-		// console.log("🚀 ~ file: joints.js:335 ~ initJoint ~ testGCode", testGCode);
-		axios.post('http://127.0.0.1:5505/printer/status.cmd', {
-			testGCode: testGCode,
-			x: 0, //markerObj.targetPoint.x,
-			y: 0 //markerObj.targetPoint.y
-		}).then(function (response) {
-			// if (debug) console.log(response);
-			console.log("Success");
-			console.log(response);
-
-			axios.post('http://127.0.0.1:5505/send.cmd', {
-				empty: "empty"
+			// // console.log("🚀 ~ file: joints.js:335 ~ initJoint ~ testGCode", testGCode);
+			axios.post('http://127.0.0.1:5505/printer/status.cmd', {
+				testGCode: testGCode,
+				x: 0, //markerObj.targetPoint.x,
+				y: 0 //markerObj.targetPoint.y
 			}).then(function (response) {
-				// if (debug) console.log(response);
-				console.log("PrintSuccess");
-				console.log(response);
+				// if (debug) // console.log(response);
+				// console.log("Success");
+				// console.log(response);
+
+				axios.post('http://127.0.0.1:5505/send.cmd', {
+					empty: "empty"
+				}).then(function (response) {
+					// if (debug) // console.log(response);
+					// console.log("PrintSuccess");
+					// console.log(response);
+				}).catch(function (error) {
+					// console.log(error);
+					// console.log("PrintNoSuccess");
+				});	
+			
+		
 			}).catch(function (error) {
-				console.log(error);
-				console.log("PrintNoSuccess");
+				// console.log(error);
+				// console.log("NoSuccess");
 			});	
 		
-	
-		}).catch(function (error) {
-			console.log(error);
-			console.log("NoSuccess");
-		});	
-	
+		}
 	});
 
 
 
 
-	var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+	var childPath = generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 
-	console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
+	// console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
 
 	var g = new Group();
 	g.name = 'folds';
@@ -479,7 +482,7 @@ function handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91
 	gPrintB.name = 'print';
 	shape[shapeB].children[pathB+'_joint'].addChild(gPrintB);
 	shape[shapeB].children[pathB+'_joint'].children['print'].addChildren(childPath.returnBPrint);
-	console.log("FabJoint Done childPath:", childPath);
+	// console.log("FabJoint Done childPath:", childPath);
 }
 
 function generateJoint(index) {
@@ -487,8 +490,8 @@ function generateJoint(index) {
 	var req = $.getJSON('test.json');
 
 	req.success(function(response){
-		// console.log({response:response});
-		// console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
+		// // console.log({response:response});
+		// // console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
 		
 		for (let printer of response.printerList) {
 			if (printer.name === "default") {
@@ -529,11 +532,14 @@ function generateJoint(index) {
 				break;
 			}
 		}
+
+		var featureType = joints[index].featureType;
+		console.log({jType:jType, param:param, joint:joints[index], index:index});
 	
 		var delta = shape[shapeA].children[pathA].length / shape[shapeB].children[pathB].length;
 		
 		if (delta > 1.5 || delta < 0.5) { // 1.01;0.99
-			console.log('delta: ', delta);
+			// console.log('delta: ', delta);
 			setMessage('<b>Cannot join</b>: paths have significantly different lengths ' + delta, '#F80');
 		} else {
 			switch (jType) {
@@ -643,7 +649,7 @@ function generateJoint(index) {
 	
 				case 'printed rivets':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.dots, 
 						spikes:printTemplate.G91Commands.spikesTall, 
@@ -651,13 +657,13 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.dotsTop
 					};
 
-					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					
 					break;
 					
 				case 'printed running stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.alternatingLine, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -665,7 +671,7 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.alternatingLineTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					// var g = new Group();
 					// g.name = 'folds';
 					// shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
@@ -689,7 +695,7 @@ function generateJoint(index) {
 					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.2;
 
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
 
 					var g = new Group();
 					g.name = 'folds';
@@ -742,7 +748,7 @@ function generateJoint(index) {
 
 				case 'printed baste stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.baste, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -774,13 +780,13 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
 					
 				case 'pullable baste stitch':
 					// var printTemplate = template;
-					console.log("printTemplate", printTemplate);
+					// console.log("printTemplate", printTemplate);
 
 
 					var G91 = {base:printTemplate.G91Commands.bastePull, 
@@ -789,7 +795,7 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.bastePullTop
 					};
 
-					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 
 					// var childPath = generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
 					// var g = new Group();
@@ -815,13 +821,13 @@ function generateJoint(index) {
 					// shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					// shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// // console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
 
 				case 'printed decorative stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:736 ~ req.success ~ printTemplate:", printTemplate)
+					// console.log("🚀 ~ file: joints.js:736 ~ req.success ~ printTemplate:", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.spiral, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -853,12 +859,12 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 
 				case 'printed whip stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.whip, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -866,9 +872,9 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.whipTop
 					};
 
-					handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 
-					// var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					// var childPath = generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					// // var g = new Group();
 					// // g.name = 'folds';
 					// // shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
@@ -892,7 +898,7 @@ function generateJoint(index) {
 					// // shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					// // shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					// // console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// // // console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					// // break;
 
 					// var g = new Group();
@@ -945,21 +951,21 @@ function generateJoint(index) {
 
 				case 'printed flexible stitch':
 						// var printTemplate = template;
-						console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+						// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 						
 						var G91 = {base:printTemplate.G91Commands.flex, 
 							spikes:printTemplate.G91Commands.spikes, 
 							spikesTop:printTemplate.G91Commands.spikesTop, 
 							top:printTemplate.G91Commands.flexTop
 						};
-						console.log('G91: ', G91);
+						// console.log('G91: ', G91);
 	
-						handleFabricationJoints(index, shapeA, pathA, shapeB, pathB, param, G91);
+						handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 						break;
 
 				case 'printed zig zag stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.zigzag, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -967,7 +973,7 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.zigzagTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					var g = new Group();
 					g.name = 'folds';
 					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
@@ -991,11 +997,11 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 				case 'printed cross stitch':
 					// var printTemplate = template;
-					console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.cross, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -1003,7 +1009,7 @@ function generateJoint(index) {
 						top:printTemplate.G91Commands.crossTop
 					};
 
-					var childPath = generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91);
+					var childPath = generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					var g = new Group();
 					g.name = 'folds';
 					shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
@@ -1027,7 +1033,7 @@ function generateJoint(index) {
 					shape[shapeB].children[pathB+'_joint'].strokeColor = '#000';
 					shape[shapeB].children[pathB+'_joint'].strokeWidth = 1;
 	
-					console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
+					// console.log({gcodesInReturn:g, printJobs:childPath.printJobs});
 					break;
 				case 'tab insert':
 					var childPath = generateTabInsertJoint(index, shapeA, pathA, shapeB, pathB, param);
@@ -1127,11 +1133,11 @@ function generateJoint(index) {
 			}
 		}
 		
-		console.log('jointLines: ', jointLines);
-		console.log('tempLines: ', tempLines);
-		console.log('flipLines: ', flipLines);
-		console.log('highlight: ', highlight);
-		console.log('shape: ', shape);
+		// console.log('jointLines: ', jointLines);
+		// console.log('tempLines: ', tempLines);
+		// console.log('flipLines: ', flipLines);
+		// console.log('highlight: ', highlight);
+		// console.log('shape: ', shape);
 		
 
 		refreshShapeDisplay();
@@ -1150,7 +1156,7 @@ function STLParse( scene ) {
 	scene.traverse(function(object) {
 		if (object instanceof THREE.Mesh) {
 			var geometry = object.geometry;
-			console.log('geometry: ', geometry);
+			// console.log('geometry: ', geometry);
 			var matrixWorld = object.matrixWorld;
 			var mesh = object;
 
@@ -1274,17 +1280,17 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	}
 	addGCodePart("", param, svgHoleList, commandObj.base, 0, false, placeConnectionList); // Just getting the order reference
 	addGCodePart("", param, svgBHoleList, commandObj.top, 0, true, placeBConnectionList);
-	console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
+	// console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
 
 	var placeConnLists = [placeConnectionList, placeBConnectionList];
 
 	returnList = returnAPrint;
 	returnRef = job.renderRef.a;
 	for (let placeConnL of placeConnLists) {
-		console.log({placeConnL:placeConnL});
+		// console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
-			// console.log({connection:connection});
-			console.log(connection.to !== null);
+			// // console.log({connection:connection});
+			// console.log(connection.to !== null);
 			if (connection.to !== null) {
 				switch (commandObj.base.renderDetails.type) {
 					case "circle":
@@ -1298,11 +1304,11 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						var renderPath = new Path([connection.from, connection.to]);
 						renderPath.name = 'printedLine';
 						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
-						// console.log({dist:connection.from.getDistance(connection.to)});
+						// // console.log({dist:connection.from.getDistance(connection.to)});
 						renderPath.renderWidth = outWidth;
 						returnList.push(renderPath);
 						returnRef.printLines.push(renderPath);
-						// console.log({renderPath:renderPath});
+						// // console.log({renderPath:renderPath});
 						break;
 				}
 			} else {
@@ -1313,7 +1319,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
 						returnRef.printOutlines.push(renderPath);
-						// console.log({rCircle:renderPath});
+						// // console.log({rCircle:renderPath});
 						break;
 					case "line":
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.skipDiameter/2);
@@ -1321,7 +1327,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
 						returnRef.printOutlines.push(renderPath);
-						// console.log({rCircle:renderPath});
+						// // console.log({rCircle:renderPath});
 						break;
 				}
 			}
@@ -1340,7 +1346,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 		markerParams.type = param['markertype'];
 	}
 
-	console.log({job:job});
+	// console.log({job:job});
 
 	var markers = [];
 
@@ -1349,7 +1355,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	let markerOffset = job.originSourceOffset + 6; // From start
 	let markerOffsetRotated = 6; // From part cut point
 	let rotatedPath = job.originSourcePathPart; 
-	// console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
+	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
 	var startHole = job.laserHoles[0].point;
 	
 	var markerObj;
@@ -1362,11 +1368,11 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	
 	let markerOffsetE = job.originSourceOffsetEnd - 6; 
 	let markerOffsetERotated = (job.originSourcePathPart.length - 6);
-	// console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
+	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
 
 	var markerObjEnd;
 	if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
-		console.log({status:"MarkingEnd"});
+		// console.log({status:"MarkingEnd"});
 		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
 		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
 		if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
@@ -1376,7 +1382,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 
 	
 	
-	console.log({markers:markers});
+	// console.log({markers:markers});
 	
 
 	
@@ -1386,15 +1392,15 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 		var currentID = requestCounter + 0;
 		requestCounter += 1;
 
-		console.log({markerObj:markerObj})
+		// console.log({markerObj:markerObj})
 
 		const markerDetails = getMarkerDetails(markerObj);
 	
 		const relVector = new Point(markerObj.targetPoint.x - job.laserHoles[0].point.x, markerObj.targetPoint.y - job.laserHoles[0].point.y);
 	
-		console.log({relVector:relVector, targetP:markerObj.targetPoint, startHole: job.laserHoles[0].point});
+		// console.log({relVector:relVector, targetP:markerObj.targetPoint, startHole: job.laserHoles[0].point});
 	
-		console.log({markerDetails:markerDetails});
+		// console.log({markerDetails:markerDetails});
 		
 	
 		var returnObj = {details:markerDetails, sourceObj:markerObj, serverData:undefined};
@@ -1409,15 +1415,15 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 			x: 0, //markerObj.targetPoint.x,
 			y: 0 //markerObj.targetPoint.y
 		}).then(function (response) {
-			// if (debug) console.log(response);
+			// if (debug) // console.log(response);
 			var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode, relVector:relVector} ;
-			console.log('markerGCode: ', markerGCode);
+			// console.log('markerGCode: ', markerGCode);
 			markerGCodes.push(markerGCode);
 	
 			returnObj.serverData = markerGCode;
 	
 		}).catch(function (error) {
-			console.log(error);
+			// console.log(error);
 		});	
 		return returnObj;
 	}
@@ -1425,7 +1431,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	//
 	// TODO: Transfer multiple at once for rendering/slicing
 	//
-	// console.log({targetPointx:markerObj.targetPoint.x, targetPointy:markerObj.targetPoint.y}) //startPoint:startPoint, 
+	// // console.log({targetPointx:markerObj.targetPoint.x, targetPointy:markerObj.targetPoint.y}) //startPoint:startPoint, 
 	
 	return markers;
 }
@@ -1445,7 +1451,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		var crossings = marker.getCrossings(edgeAB);
 		// var crossingsB = markerB.getCrossings(edgeB);
 
-		console.log({ptAB:ptAB, markerParams:markerParams});
+		// console.log({ptAB:ptAB, markerParams:markerParams});
 
 		// First, add laser paths
 		if (crossings.length == 2) {
@@ -1463,7 +1469,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			var openC = openMarker.getCrossings(tinyOffsetPath);
 			var splitC = splitMarker.getCrossings(tinyOffsetPath);
 
-			// console.log("joints[index]['dirM']: ", joints[index]['dirM']);
+			// // console.log("joints[index]['dirM']: ", joints[index]['dirM']);
 			
 			if (openC.length < splitC.length) {
 				clonePath = splitMarker.clone();
@@ -1499,7 +1505,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			var marker2 = new Path.Circle(ptAB2, markerParams.size);
 			var crossings2 = marker2.getCrossings(rotPath);
 
-			console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
+			// console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
 
 			
 			markerSTLOutlines.push(marker2); // Add print output
@@ -1515,7 +1521,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			// 	var openC2 = openMarker2.getCrossings(tinyOffsetPath2);
 			// 	var splitC2 = splitMarker2.getCrossings(tinyOffsetPath2);
 
-			// 	// console.log("joints[index]['dirM']: ", joints[index]['dirM']);
+			// 	// // console.log("joints[index]['dirM']: ", joints[index]['dirM']);
 				
 			// 	if (openC2.length < splitC2.length) {
 			// 		splitMarker.closePath();
@@ -1556,7 +1562,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 
 		
 		var arrowPoints = [longArrowP, ptAB, halfArrowP1, halfArrowP2, ptAB];
-		console.log({offsetPercentage:offsetPercentage, offset:offset, targetOffsetHalf:targetOffsetHalf, targetOffsetFull:targetOffsetFull, edgeAB:edgeAB.length, halfOffsetPath:halfOffsetPath.length, fullOffsetPath:fullOffsetPath.length});
+		// console.log({offsetPercentage:offsetPercentage, offset:offset, targetOffsetHalf:targetOffsetHalf, targetOffsetFull:targetOffsetFull, edgeAB:edgeAB.length, halfOffsetPath:halfOffsetPath.length, fullOffsetPath:fullOffsetPath.length});
 		var arrowPath = new Path(arrowPoints);
 		// arrowPath.color = new Color(1, 0, 0);
 		// arrowPath.strokeColor = '#F00';
@@ -1573,7 +1579,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			var marker2 = new Path.Circle(ptAB2, markerParams.size);
 			var crossings2 = marker2.getCrossings(rotPath);
 
-			console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
+			// console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
 
 			// markerSTLOutlines.push(marker2);
 		}
@@ -1593,19 +1599,19 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	const offsetPercentage = (offset / edgeAB.length);
 	const targetOffset = offsetPercentage * textOffsetPath.length;
 
-	console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
+	// console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
 
 
 	const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
 	const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
 
-	console.log({startP:startP, endP:endP});
+	// console.log({startP:startP, endP:endP});
 	
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
-	console.log(rad)
+	// console.log(rad)
 
 	var textGroup = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
-	console.log({textGroup:textGroup});
+	// console.log({textGroup:textGroup});
 	for (let childpath of textGroup.children) {
 		childpath.name = 'printedText'
 		returnABPrint.push(childpath);
@@ -1639,20 +1645,20 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
 		
 		
-		console.log({startP:startP, endP:endP});
-		console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, rotPath:rotPath.length, edgeAB:edgeAB.length});
+		// console.log({startP:startP, endP:endP});
+		// console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, rotPath:rotPath.length, edgeAB:edgeAB.length});
 
 		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
-		console.log(rad)
+		// console.log(rad)
 
 		var textGroupPrint = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
 		// For each Path, for each pair of points (sliding window of size 2), do add aimed gcode generation
 		// Add this to the return, similar to the server-made marker gcode 
 
-		console.log({textGroupPrint:textGroupPrint});
+		// console.log({textGroupPrint:textGroupPrint});
 		var printedText = [];
 		for (let path of textGroupPrint.children) {
-			console.log({ptAB2:ptAB2, point:path.segments[0].point});
+			// console.log({ptAB2:ptAB2, point:path.segments[0].point});
 			const relVector = new Point(path.segments[0].point.x - ptAB2.x, path.segments[0].point.y - ptAB2.y);
 			var onePrintedText = {relVector:relVector, lines:[]};
 			for (let segIndex = 0; segIndex < path.segments.length -1; segIndex++) {
@@ -1667,7 +1673,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 }
 
 function getMarkerDetails(markerObj) {
-	console.log({markerObj:markerObj});
+	// console.log({markerObj:markerObj});
 	var outline = dividePath(markerObj.outlines[0], 20);
 	// Make relative points for print generation
 	const xOrigin = markerObj.targetPoint.x; //markerObj.outlines[0].firstSegment.point.x;
@@ -1712,7 +1718,7 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var G91Obj = G91;
 	var skipHoles = Math.floor(param['skip # holes']);
 
-	console.log({warning:"Deprecated"});
+	// console.log({warning:"Deprecated"});
 	return {'returnA':returnA, 'returnB':returnB, 'returnAFold':returnAFold, 'returnBFold':returnBFold, 'printJobs':{}};
 }
 
@@ -1732,7 +1738,7 @@ function parsePatternLocation(patternLocation) {
 }
 
 
-function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91) {
+function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, pathB, param, G91) {
 	var returnB = [];
 	var returnA = [];
 	var returnAFold = [];
@@ -1806,8 +1812,13 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	var mOrF = false;
 	if (joints[index]['dirM']) mOrF = true;
 
+	var shapeSet = new Set();
+	shapeSet.add(shapeA);
+	shapeSet.add(shapeB);
+	// get list from set
+	var shapeList = Array.from(shapeSet); 
 
-	console.log('G91Obj.base.patternLocations: ', G91Obj.base.patternLocations);
+	// console.log('G91Obj.base.patternLocations: ', G91Obj.base.patternLocations);
 
 
 	// Makes original path part of the joint (but not part of laser cuts)
@@ -1821,21 +1832,21 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 	}
 
 	if (param['pinking cut'] == true) {
-		console.log({status:"Pinking"});
+		// console.log({status:"Pinking"});
 		const pinkingDepth = 3;
 		const pinkingDist = pinkingDepth * 0.75;
 
 		var pinkingPathA = getOffsetPath(edgeA, (-pinkingDepth), joints[index]['dirM']);
 		var pinkingPathB = getOffsetPath(edgeB, (-pinkingDepth), joints[index]['dirF']);
 
-		console.log({pinkingPathA:pinkingPathA, pinkingPathB:pinkingPathB});
+		// console.log({pinkingPathA:pinkingPathA, pinkingPathB:pinkingPathB});
 
 
 		function getPointOnNormal(path, offset, distance, direction) {
 			var pointOnPath = path.getPointAt(offset);
 			var normalVector = path.getNormalAt(offset);
 			var offsetVector = normalVector.normalize(distance); 
-			// console.log(direction);
+			// // console.log(direction);
 			// if (direction == false) {
 				offsetVector = offsetVector.multiply(direction);
 			// }
@@ -1843,13 +1854,13 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			return pointDistAway;
 		}
 
-		// console.log("edgeAP");
+		// // console.log("edgeAP");
 		// for (let seg of edgeA.segments) {
-		// 	console.log({x:seg._point._x, y:seg._point._y});
+		// 	// console.log({x:seg._point._x, y:seg._point._y});
 		// }
-		// console.log("edgeBP");
+		// // console.log("edgeBP");
 		// for (let seg of edgeB.segments) {
-		// 	console.log({x:seg._point._x, y:seg._point._y});
+		// 	// console.log({x:seg._point._x, y:seg._point._y});
 		// }
 
 		var pinkingCountA = Math.floor(edgeA.length/(pinkingDist));
@@ -1857,7 +1868,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		const remainderA = edgeA.length-(pinkingCountA*pinkingDist);
 		const remainderB = edgeB.length-(pinkingCountB*pinkingDist);
 
-		console.log({pinkingCountA:pinkingCountA, pinkingCountB:pinkingCountB, remainderA:remainderA, remainderB:remainderB});
+		// console.log({pinkingCountA:pinkingCountA, pinkingCountB:pinkingCountB, remainderA:remainderA, remainderB:remainderB});
 
 		var pathAStart = shape[shapeA].children[pathA].firstSegment.point;
 		var pathAEnd = shape[shapeA].children[pathA].lastSegment.point;
@@ -1880,8 +1891,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				var pt = pinkingPathA.getPointAt(targetOffsetA);
 				
 				var nPt = getPointOnNormal(edgeA, pOffsetA, -pinkingDepth, joints[index]['dirM']);
-				// console.log({nPtX:nPt.x, nPtY:nPt.y});
-				// console.log({ptX:pt.x, ptY:pt.y});
+				// // console.log({nPtX:nPt.x, nPtY:nPt.y});
+				// // console.log({ptX:pt.x, ptY:pt.y});
 				pinkedPointsA.push(nPt);
 				
 			} else {
@@ -1903,8 +1914,8 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				var pt = pinkingPathB.getPointAt(targetOffsetB);
 				
 				var nPt = getPointOnNormal(edgeB, pOffsetB, -pinkingDepth, joints[index]['dirF']);
-				// console.log({nPtX:nPt.x, nPtY:nPt.y});
-				// console.log({ptX:pt.x, ptY:pt.y});
+				// // console.log({nPtX:nPt.x, nPtY:nPt.y});
+				// // console.log({ptX:pt.x, ptY:pt.y});
 				pinkedPointsB.push(nPt);
 				
 			} else {
@@ -1915,7 +1926,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		}
 		pinkedPointsB.push(edgeB.lastSegment.point);
 
-		// console.log({pinkedPointsA:pinkedPointsA, pinkedPointsB:pinkedPointsB});
+		// // console.log({pinkedPointsA:pinkedPointsA, pinkedPointsB:pinkedPointsB});
 
 
 		var pinkedA = new Path({segments:pinkedPointsA, closed:false});
@@ -1970,20 +1981,20 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		}
 	}
 
-	console.log('patternLocations: ', patternLocations);
+	// console.log('patternLocations: ', patternLocations);
 
 
 	for (let oneALine of aLines) {
-		console.log({oneALine:oneALine});
+		// console.log({oneALine:oneALine});
 		returnALaser.push(oneALine);
 	}
 
 	for (let oneBLine of bLines) {
-		console.log({oneBLine:oneBLine});
+		// console.log({oneBLine:oneBLine});
 		returnBLaser.push(oneBLine);
 	}
 
-	console.log('aLines: ', aLines);
+	// console.log('aLines: ', aLines);
 
 	// TODO: Include edgeA and edgeB in the line list directly
 	// var aLines = [holePathFarA, holePathNearA];
@@ -2037,18 +2048,18 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				const offsetPercentageA = (sourceOffsetA / refLineA.length);
 				const offsetPercentageB = (sourceOffsetB / refLineB.length);
 				const targetOffsetA = offsetPercentageA * aLines[holePattern[patternIndex]].length;
-				console.log('aLines[holePattern[patternIndex]].length: ', aLines[holePattern[patternIndex]].length);
-				console.log('offsetPercentageA: ', offsetPercentageA);
+				// console.log('aLines[holePattern[patternIndex]].length: ', aLines[holePattern[patternIndex]].length);
+				// console.log('offsetPercentageA: ', offsetPercentageA);
 				const targetOffsetB = offsetPercentageB * bLines[holePattern[patternIndex]].length;
 
 				ptA = aLines[holePattern[patternIndex]].getPointAt(targetOffsetA);
-				console.log('targetOffsetA: ', targetOffsetA);
-				console.log('holePattern[patternIndex]: ', holePattern[patternIndex]);
-				console.log('aLines[holePattern[patternIndex]]: ', aLines[holePattern[patternIndex]]);
-				console.log('ptA: ', ptA);
+				// console.log('targetOffsetA: ', targetOffsetA);
+				// console.log('holePattern[patternIndex]: ', holePattern[patternIndex]);
+				// console.log('aLines[holePattern[patternIndex]]: ', aLines[holePattern[patternIndex]]);
+				// console.log('ptA: ', ptA);
 				ptB = bLines[holePattern[patternIndex]].getPointAt(targetOffsetB);
 				offsetA = aLines[holePattern[patternIndex]].getOffsetOf(ptA);
-				console.log('offsetA: ', offsetA);
+				// console.log('offsetA: ', offsetA);
 			}
 
 			var minDist = 10;
@@ -2060,7 +2071,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				skipHoles -= 1;
 			} else {
 				var closeToOtherPrints = checkMinDist(ptA, ptB, minDist);
-				console.log('closeToOtherPrints: ', closeToOtherPrints);
+				// console.log('closeToOtherPrints: ', closeToOtherPrints);
 				if (!closeToOtherPrints) {
 					const patternIndexRef = patternIndex + 0;
 					var needleHole = true;
@@ -2102,7 +2113,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 
 		var pathsGroup = new Group(copyPaths);
-		console.log({pathsGroup:pathsGroup});
+		// console.log({pathsGroup:pathsGroup});
 		// pathsGroup.children.push(edgeACopy);
 		var laserPointSet = [];
 		for (let laserHole of laserHoleList) {
@@ -2170,17 +2181,17 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			offsets.push(0);
 		}
 
-		console.log({laserHoleList:laserHoleList});
+		// console.log({laserHoleList:laserHoleList});
 
 
 		pathsGroup.rotate(30, rotP);
 		// Separate into print jobs
 		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
-		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0}];
+		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0, jointShapeList:shapeList}];
 		while (startIndex < (laserHoleList.length-1)) {
 			var lastJob = jobs[jobs.length-1];
 
-			// console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
+			// // console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
 			
 			var theOffset = (Math.floor((laserHoleList[endIndex].patternedOffset - lastJob.offset) * 10000) / 10000);
 			if (lastJob.path.length < theOffset) {
@@ -2189,17 +2200,17 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			}
 
 			var laserPoint = lastJob.path.getPointAt(theOffset);
-			// console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: theOffset});
+			// // console.log({laserPoint:laserPoint, pathL:lastJob.path.length, OffSet: theOffset});
 			laserHoleList[endIndex].point = laserPoint;
 			lastJob.laserHoles.push(laserHoleList[endIndex]); // point reference
 			testPoints.push(laserHoleList[endIndex].point); // "Segment" list for temporary path generation
-			// console.log('testPoints: ', testPoints);
+			// // console.log('testPoints: ', testPoints);
 			
 			const testPath = new Path({segments:testPoints, closed:false});
-			// console.log({testPath:testPath});
+			// // console.log({testPath:testPath});
 			if ((endIndex < laserHoleList.length-1) && ((testPath.strokeBounds.width+10) > param['printing area width'])) {
-				console.log("Splitting job at: ", laserHoleList[endIndex].patternedOffset, lastJob.path.length, lastJob.offset, lastJob.path.strokeBounds.width, param['printing area width']);
-				console.log("endIndex", endIndex);
+				// console.log("Splitting job at: ", laserHoleList[endIndex].patternedOffset, lastJob.path.length, lastJob.offset, lastJob.path.strokeBounds.width, param['printing area width']);
+				// console.log("endIndex", endIndex);
 				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
 
 				// const originSourceSplitPL = laserHoleList[endIndex].offsetOriginSource; // Why? offsetOriginSource not far along enough somehow?
@@ -2212,7 +2223,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				// 	splitPointLength -= jobs[prevJobI].length;
 				// }
 
-				// console.log({splitPointLength:splitPointLength, holeOffset:laserHoleList[endIndex-1].offset, holeOffsetPlus1:laserHoleList[endIndex].offset});
+				// // console.log({splitPointLength:splitPointLength, holeOffset:laserHoleList[endIndex-1].offset, holeOffsetPlus1:laserHoleList[endIndex].offset});
 
 				var splitPoint = lastJob.path.getPointAt(splitPointLength);
 				// lastJob.divide(splitPoint);
@@ -2225,9 +2236,9 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				// returnAFold.push(originSourcePathPart);
 				var renderRef = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 
-				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL});
+				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL, jointShapeList:shapeList});
 
-				// console.log({newJobL:jobs[jobs.length-1].path.length, lastJobl:lastJob.path.length, jobs:jobs, newJob:jobs[jobs.length-1], lastJob:lastJob});
+				// // console.log({newJobL:jobs[jobs.length-1].path.length, lastJobl:lastJob.path.length, jobs:jobs, newJob:jobs[jobs.length-1], lastJob:lastJob});
 
 				startIndex = endIndex;
 				testPoints = [];
@@ -2252,7 +2263,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 		// handle split jobs (laser+printed markers, printed stitches)
 		for (let job of jobs) {
 			
-			console.log("strokeBoundHeight " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width);
+			// console.log("strokeBoundHeight " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width);
 
 			var printJobID = (parseInt(shapeA)+1).toString() + "+" + (parseInt(shapeB)+1).toString() + getAlphaID(printCounter);
 
@@ -2265,7 +2276,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			let longestW = {deg:0, width:0};
 			let rotPoint = new Point(job.path.strokeBounds.x, job.path.strokeBounds.y);
 			while (fullCircle < 360) {
-				// console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
+				// // console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
 				job.originSourcePathPart.rotate(rotationDegs, rotPoint);
 				job.path.rotate(rotationDegs, rotPoint);
 				fullCircle += rotationDegs;
@@ -2287,7 +2298,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 				}
 			}
 
-			console.log("strokeBoundHeightAfter " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width );
+			// console.log("strokeBoundHeightAfter " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width );
 
 			var jobRef = job;
 			
@@ -2299,7 +2310,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 			var minY = 0;
 			for (var i=0; i<holeCount; i++) {
 				var ptA = job.laserHoles[i].point; //job.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderA/2);
-				// console.log({ptA:ptA});
+				// // console.log({ptA:ptA});
 				if (i === 0) {
 					startPoint = ptA;
 					holeList.push(new Point(0.0, 0.0)); // Position in SVG does not matter for printing
@@ -2308,7 +2319,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 					var relativeY = ptA.y - startPoint.y;
 					var realtiveP = new Point(relativeX, relativeY);
 					holeList.push(realtiveP); // remaining points relative to start point
-					console.log({realtiveP:realtiveP});
+					// console.log({realtiveP:realtiveP});
 					if (relativeY > 0) if (maxY < relativeY) maxY = relativeY;
 					if (minY > relativeY) minY = relativeY;
 				}
@@ -2324,7 +2335,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
 
-			printJobs.push({fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false});
+			printJobs.push({featureType:featureType, fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false, printShapeList:job.jointShapeList});
 
 		}
 		
@@ -2332,7 +2343,7 @@ function generateDoubleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 	if (!emptyIDs) {
 		var testPath = generateAsciiPolygons(".PB", projectBounds.minX, projectBounds.minY, -90, 10);
-		console.log({testPath:testPath});
+		// console.log({testPath:testPath});
 		returnA.push(testPath);
 		var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
 		text.fillColor = 'black';
@@ -3507,11 +3518,11 @@ function lineIntersection(line1Start, line1End, line2Start, line2End) {
 };
 
 async function getTemplate(templateName) {
-	console.log("🚀 ~ file: joints.js:1751 ~ getTemplate ~ template", template)
+	// console.log("🚀 ~ file: joints.js:1751 ~ getTemplate ~ template", template)
 	if (template == undefined) {
 		
 		$.getJSON(templateName, function(data){
-			console.log("🚀 ~ file: joints.js:1753 ~ $.getJSON ~ data", data)
+			// console.log("🚀 ~ file: joints.js:1753 ~ $.getJSON ~ data", data)
 			template = data;
 			return data;
 		}).fail(function(){
@@ -3529,7 +3540,7 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 	const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
 	
 	lengthFactor = length / patternDefaultLength;
-	console.log({length:length, lengthFactor:lengthFactor});
+	// console.log({length:length, lengthFactor:lengthFactor});
 	var rad = Math.atan2(deltaY, deltaX); // In radians
 	// if (Math.abs(rad) > 0.001) {
 	if (true) {
@@ -3600,8 +3611,8 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 
 // Combination of printed needle and thread
 function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustment, reverse=false) {
-	// console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
-	// console.log("outString: " + outString.length);
+	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
+	// // console.log("outString: " + outString.length);
 
 	commandObj = commandObjs[0];
 	needleObj = commandObjs[1];
@@ -3628,11 +3639,11 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 	var patternIndex = 0;
 	let placeCounter = 0;
 	// for (let i = -5; i < 5; i++) { 
-	// 	console.log(mod(i, commandObj.pattern.length));
+	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
 
 	let pattern = [...commandObj.pattern];
-	// console.log('pattern: ', pattern);
+	// // console.log('pattern: ', pattern);
 
 	let placeListLocal = [...placeList];
 
@@ -3742,23 +3753,23 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 		lastPlace.push(place);
 		placeCounter += 1;
 	}
-	// console.log("outStringAdded: " + outString.length);
+	// // console.log("outStringAdded: " + outString.length);
 	return outString;
 } 
 
 function addGCodePart(outString, params, placeList, commandObj, depthAdjustment, reverse=false, memoryList=[], memoryObj={}) {
 	var connectionMemoryList = [];
-	// console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
-	// console.log("outString: " + outString.length);
+	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
+	// // console.log("outString: " + outString.length);
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
 	// for (let i = -5; i < 5; i++) { 
-	// 	console.log(mod(i, commandObj.pattern.length));
+	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
 
 	let pattern = [...commandObj.pattern];
-	// console.log('pattern: ', pattern);
+	// // console.log('pattern: ', pattern);
 
 	let placeListLocal = [...placeList];
 	if (pattern.length == 0) {
@@ -3836,7 +3847,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 		lastPlace.push(place);
 		placeCounter += 1;
 	}
-	// console.log("outStringAdded: " + outString.length);
+	// // console.log("outStringAdded: " + outString.length);
 	return outString;
 } 
 
@@ -3845,7 +3856,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 	GCODE = chosenPrinter.startCode + GCODE;
 	
 	for (let outputContainer of addedOutputs) {
-		console.log('output: ', outputContainer);
+		// console.log('output: ', outputContainer);
 		GCODE += outputContainer.output.G91.spikes.precode;
 		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed);
 	}
@@ -3863,7 +3874,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 
 	GCODE += chosenPrinter.endCode;
 
-	// console.log('ExportedGCODE: ', GCODE);
+	// // console.log('ExportedGCODE: ', GCODE);
 
 	var blob = new Blob([GCODE], {type: 'text/plain'});
 	var d = new Date();
@@ -3922,7 +3933,7 @@ function calcBounds(relevantShapes) {
 
 function getLaserPreview(relevantShapes) {
 	localBounds = calcBounds(relevantShapes);
-	console.log({localBoundsLaser:localBounds});
+	// console.log({localBoundsLaser:localBounds});
 	var localSVG = $(project.exportSVG({bounds:'content'})).html();
 	const localWidth = localBounds.maxX-localBounds.minX;
 	const localHeight = localBounds.maxY-localBounds.minY;
@@ -3934,7 +3945,7 @@ function getLaserPreview(relevantShapes) {
 
 function getPrintPreview(relevantShapes) {
 	localBounds = calcBounds(relevantShapes);
-	console.log({localBounds:localBounds});
+	// console.log({localBounds:localBounds});
 	var localSVG = $(project.exportSVG({bounds:'content'})).html();
 	localBounds.minX -= 5;
 	localBounds.minY -= 5;
@@ -3949,7 +3960,7 @@ function getPrintPreview(relevantShapes) {
 // Generate an SVG with only lines relevant for lasercutting
 function getLaserSVG(selectedShapeID) {
 	var selectedShape = shape[selectedShapeID]; 
-	console.log('selectedShape: ', selectedShape);
+	// console.log('selectedShape: ', selectedShape);
 
 	// Make a new shape with copies of all relevant paths for lasercutting (joints and unjointed paths)
 	var laserShape = new Group();
@@ -3962,8 +3973,8 @@ function getLaserSVG(selectedShapeID) {
 			} else {
 				// separate name by _ or space
 				var nameIndex = selectedShape.children[i].name.split(/[\s_]+/)[0];
-				console.log('nameIndex: ', nameIndex);
-				console.log('!isNaN(nameIndex): ', !isNaN(nameIndex));
+				// console.log('nameIndex: ', nameIndex);
+				// console.log('!isNaN(nameIndex): ', !isNaN(nameIndex));
 				// check if nameIndex is a number
 				if (!isNaN(nameIndex)) {
 					
@@ -4010,7 +4021,7 @@ function getLaserSVG(selectedShapeID) {
 	tempProject.activeLayer.addChild(laserShape);
 	// tempProject.importJSON(laserShape.exportJSON());
 
-	console.log('laserShape: ', laserShape);
+	// console.log('laserShape: ', laserShape);
 	var inShape = [laserShape];
 	calTempProjectBounds(inShape);
 
@@ -4026,7 +4037,7 @@ function getLaserSVG(selectedShapeID) {
 	// tempProject.clear();
 	// tempProject.activeLayer.removeChildren();
 
-	// console.log(paper.projects);
+	// // console.log(paper.projects);
 	paper.project = paper.projects[0];
 	tempProject.remove();
 	// Return the SVG string
@@ -4045,7 +4056,9 @@ function exportProject() {
 	var allShapeIDs = new Set();
 
 
-	console.log({markerGCodesExport:markerGCodes});
+	// console.log({markerGCodesExport:markerGCodes});
+
+	allPrintJobSets = [];
 
 	if (shape.length > 0) {
 		calProjectBounds();
@@ -4055,7 +4068,7 @@ function exportProject() {
 		var addedPrintJobs = [];
 		var GCODE = "";
 		for (i in shape) {
-			console.log({theshape:shape[i]});
+			// console.log({theshape:shape[i]});
 			for (j in shape[i].children) {
 				if (shape[i].children[j].className=='Path') {
 					if (shape[i].children[j].name=='joint') {
@@ -4074,8 +4087,8 @@ function exportProject() {
 					if (typeof(shapeName)==='undefined' || shapeName === null) {
 						//shape[i].children[j].strokeColor = '#F0F';
 					} else {
-						console.log(shape[i].children[j]);
-						console.log({shapeName:shapeName});
+						// console.log(shape[i].children[j]);
+						// console.log({shapeName:shapeName});
 						var shapeNameStr = shapeName.split('_');
 						if (shapeNameStr[shapeNameStr.length-1] == 'joint') {
 							shape[i].children[j].strokeWidth = 1.0;
@@ -4095,7 +4108,9 @@ function exportProject() {
 
 				if (shape[i].children[j].printJobs) {
 					var thePrintJobs = shape[i].children[j].printJobs;
-					console.log({thePrintJobs:thePrintJobs});
+					var printJobContainer = {parentshape:shape[i], parentshapeID:i, printJobs:thePrintJobs};
+					allPrintJobSets.push(printJobContainer);
+					// console.log({thePrintJobs:thePrintJobs});
 					for (let output of shape[i].children[j].printJobs) {
 						if (output.handled === false) {
 							output.handled = true;
@@ -4114,7 +4129,7 @@ function exportProject() {
 								addedPrintJobs = [];
 							}
 
-							console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
+							// console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
 							
 							let localHeight = heightUsed - output.relativeHeight.min + 20;
 							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
@@ -4122,10 +4137,10 @@ function exportProject() {
 							addedShapes.push({shape: shape[i], ID:i});
 							addedPrintJobs.push(output);
 							allShapeIDs.add(i);
-							console.log({allShapeIDs:allShapeIDs, i:i});
+							// console.log({allShapeIDs:allShapeIDs, i:i});
 
 							// Add "Inject here" G-Code flag for printed markers?  
-							console.log({output:output, printedTextsOutput:output.markers[0].sourceObj.printedText});
+							// console.log({output:output, printedTextsOutput:output.markers[0].sourceObj.printedText});
 							if (output.markers[0].sourceObj.printedText[0]) {
 								for (let marker of output.markers) {
 									for (let pT of marker.sourceObj.printedText) {
@@ -4143,7 +4158,7 @@ function exportProject() {
 							if (output.markers[0].serverData)
 								for (let marker of output.markers) {
 
-									console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
+									// console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
 
 									let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
 									outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + constXShift).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
@@ -4153,7 +4168,7 @@ function exportProject() {
 
 									GCODE += marker.serverData.markerGC;
 								}
-							else console.log({Warning:"Server marker data unavailable"});
+							else // console.log({Warning:"Server marker data unavailable"});
 
 							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
 						}
@@ -4171,25 +4186,29 @@ function exportProject() {
 			addedPrintJobs = [];
 		}
 
+		allPrintJobSets.sort((b, a) => a.printJobs[0].featureType.order - b.printJobs[0].featureType.order);
+
+		console.log({allPrintJobSets:allPrintJobSets});
+
 		// var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
 		// text.fillColor = 'black';
 		// text.content = projectBounds.minX + ' ' + projectBounds.minY;
 
 		var testPath = generateAsciiPolygons("T", projectBounds.minX, projectBounds.minY, 45, 10);
-		console.log({testPath:testPath});
+		// console.log({testPath:testPath});
 
 		// make preview image that provides context for the manual interactions 
 		var laserObjects = [];
 		for (shapeID of allShapeIDs) {
 			const shapeList = [shape[shapeID]];
-			console.log({shapeID:shapeID, shapeList:shapeList});
+			// console.log({shapeID:shapeID, shapeList:shapeList});
 			var imageData = getLaserPreview(shapeList);
 			laserObjects.push({ID:shapeID, imageData:imageData});
 			shape[shapeID].imageData = imageData;
 			shape[shapeID].ID = shapeID;
 		}
 
-		console.log({laserObjects:laserObjects});
+		// console.log({laserObjects:laserObjects});
 		svgFilesToNest = [];
 		boxList = [];
 		var margin = 2;
@@ -4197,20 +4216,20 @@ function exportProject() {
 		// Export svg with only the laser paths
 		for (shapeID of allShapeIDs) {
 			var laserSVG = getLaserSVG(shapeID);
-			console.log('laserSVG: ', laserSVG);
+			// console.log('laserSVG: ', laserSVG);
 			var svgblob = new Blob([laserSVG], {type: 'image/svg+xml'});
 			var svgURL = URL.createObjectURL(svgblob);
 			svgFilesToNest.push(svgURL);
 			boxList.push(minimizeBB(shape[shapeID], margin));
-			console.log('boxList: ', boxList);
+			// console.log('boxList: ', boxList);
 		}
 
 		var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
 		var arrangement = packboxes(boxList, laserArea);
-		console.log({arrangement:arrangement});
+		// console.log({arrangement:arrangement});
 
-		console.log('window: ', window);
-		console.log('window: ', window.Fit);
+		// console.log('window: ', window);
+		// console.log('window: ', window.Fit);
 
 
 		let bins = [
@@ -4249,8 +4268,8 @@ function exportProject() {
 		packer.start(bins, parts, config, {
 			onEvaluation: (e) => {
 				// e.progress   : evaluation progress in a generation of GA
-				console.log("Packing...");
-				console.log("onEvaluation", e);
+				// console.log("Packing...");
+				// console.log("onEvaluation", e);
 			},
 			onPacking: (e) => {
 				// callback on packing once
@@ -4258,7 +4277,7 @@ function exportProject() {
 				// e.placements : transformations of placed ({ bin: id, part: id, position: (x, y), rotation: angle }, rotation must be done before translation)
 				// e.unplaced   : unplaced parts
 
-				console.log("onPacking", e);
+				// console.log("onPacking", e);
 			
 				// If unplaced parts exist, you can add a new bin in a process
 				if (e.unplaced.length > 0) {
@@ -4270,8 +4289,8 @@ function exportProject() {
 			onPackingCompleted: (e) => {
 				// callback on packing completed
 				// e contains same data as an onPacking argument.
-				console.log("onPackingCompleted", e);
-				console.log("Packing done");
+				// console.log("onPackingCompleted", e);
+				// console.log("Packing done");
 			}
 		})
 		
@@ -4310,7 +4329,7 @@ function exportProject() {
 			// TODO: Make all the color mods, then get picture of relevantShapes (laserPreview)
 
 			for (let thisShape of print.relevantShapes) {
-				console.log({thisShape:thisShape});
+				// console.log({thisShape:thisShape});
 				colorForLaser(thisShape.shape);
 				const shapeList = [thisShape.shape];
 				var imageData = getLaserPreview(shapeList);
@@ -4324,8 +4343,8 @@ function exportProject() {
 			print.imageData = imageData;
 			print.shapeImages = shapeImages;
 
-			console.log({shapeImages:shapeImages});
-			console.log({printList:printList, threadList:threadList, prints:prints});
+			// console.log({shapeImages:shapeImages});
+			// console.log({printList:printList, threadList:threadList, prints:prints});
 
 			grayOutShapes();
 
@@ -4335,11 +4354,11 @@ function exportProject() {
 
 		var svgWidth = projectBounds.maxX-projectBounds.minX;
 		var svgHeight = projectBounds.maxY-projectBounds.minY;
-		console.log({svgWidth:svgWidth, svgHeight:svgHeight});
+		// console.log({svgWidth:svgWidth, svgHeight:svgHeight});
 		var svgContent = $(project.exportSVG({bounds:'content'})).html();
 		var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+projectBounds.minX+' '+projectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+svgContent+'</svg>';
 		
-		// console.log(svgString);
+		// // console.log(svgString);
 
 		var blob = new Blob([svgString], {type: 'image/svg+xml'});
 		var d = new Date();
@@ -4352,7 +4371,7 @@ function exportProject() {
 		image.addEventListener('load', () => URL.revokeObjectURL(url), {once: true});
 		image.src = url;
 		image.width = 100;
-		console.log({url:url, image:image});
+		// // console.log({url:url, image:image});
 		var urlString = url.substring(5);
 		var imgHtml = "<img source=\""+urlString+"\" target=\"_BLANK\">";
 		$("#TestDiv").append(image);
@@ -4372,7 +4391,7 @@ function exportProject() {
 		exportWindow.flat = fabOrder.flattened;
 		exportWindow.order = fabOrder.order;
 
-		console.log(fabOrder);
+		// // console.log(fabOrder);
 	
 	} else {
 		setMessage('<b>No drawings to export</b>', '#F80');

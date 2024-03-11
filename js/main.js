@@ -17,6 +17,7 @@ const laserColorDone = '#D33';
 const printColor = '#05D';
 const printColorDone = '#339';
 var noColor;
+const debug = false;
 
 function init() {
 	if (!initialized) {
@@ -43,7 +44,6 @@ function init() {
 	paperScale = 1.0;
 	drawGrid();
 	initialized = true;
-	console.log({THREE:THREE});
 	noColor = new Color(0, 0, 0, 0);
 	
 	// axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
@@ -537,7 +537,6 @@ function processJointProfile(e) {
 				var activeOption = $('#jointTypeDiv .dropdownSelected').find('div')[0].id;
 				var activeOptionStr = activeOption.split('_');
 				var id = 'joint_'+(jointProfileCount-1);
-				console.log(id);
 				createJointProfileMenu((jointProfileList.length-1), jointProfileCount-1, id);
 				refreshJointList();
 
@@ -776,7 +775,8 @@ function singlePathJointButton() {
 	if (jointMake.length==1) {
 		console.log({checkPathJoint:checkPathJoint(jointMake[0].shape, jointMake[0].path)});
 		if (checkPathJoint(jointMake[0].shape, jointMake[0].path)=='jointMake' && mode=='set') {
-			var jointDetail = {'0':jointMake[0], '1':jointMake[0], 'profile':'none', 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1, 'selfJoining': 1};
+			var defaultFeatureType = featureTypes[0];
+			var jointDetail = {'0':jointMake[0], '1':jointMake[0], 'profile':'none', 'featureType':defaultFeatureType, 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1, 'selfJoining': 1};
 				joints.push(jointDetail);
 				initJoint(jointDetail[0].shape, jointDetail[0].path);
 				// initJoint(jointDetail[1].shape, jointDetail[1].path);
@@ -898,7 +898,8 @@ function shapePathClick() {
 			if (jointMake.length==2) {
 				var delta = shape[jointMake[0].shape].children[jointMake[0].path].length / shape[jointMake[1].shape].children[jointMake[1].path].length;
 				if (delta < 1.2 && delta > 0.8) {
-					var jointDetail = {'0':jointMake[0], '1':jointMake[1], 'profile':'none', 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1};
+					var defaultFeatureType = featureTypes[0];
+					var jointDetail = {'0':jointMake[0], '1':jointMake[1], 'profile':'none', 'featureType':defaultFeatureType, 'm':0, 'f':1, 'dirM':1, 'dirF':-1, 'revA': 1, 'revB': 1};
 					joints.push(jointDetail);
 					initJoint(jointDetail[0].shape, jointDetail[0].path);
 					initJoint(jointDetail[1].shape, jointDetail[1].path);
@@ -1098,7 +1099,7 @@ function checkMinDist(pointA, pointB, minDist) {
 			if (shape[i].children[j].className=='Group') {
 				if (shape[i].children[j].children['print']) {
 					var print = shape[i].children[j].children['print'];
-					console.log('print: ', print);
+					// console.log('print: ', print);
 					
 					for (k in print.children) {
 						if (print.children[k].className=='Path' && print.children[k].name != 'printedMarker') {
