@@ -609,6 +609,11 @@ function refreshJointList() {
 			html = html+'<option value="'+jointProfileList[i].profile+'">'+jointProfileList[i].profile+'</option>';
 		}
 		html = html+'<option value="none">none</option></select>';
+		html = html+'<select class="featureType">';
+		for (var i = 0; i < featureTypes.length; i++) {
+			html = html+'<option value="'+featureTypes[i].type+'">'+featureTypes[i].type+'</option>';
+		}
+		html = html+'</select>';
 		html = html+'<div class="optionButton swapMF">swap M/F</div><div class="optionButton revM">reverse M</div><div class="optionButton revF">reverse F</div><div class="optionButton2 flipM">flip M</div><div class="optionButton2 flipF">flip F</div>';
 		html = html+'</div>';
 		html = html+'</div>';
@@ -636,8 +641,14 @@ function refreshJointList() {
 		var pathB = parseInt(index[3].split('-')[1]);
 		var id = parseInt($(this).attr('id').split('_')[1]);
 		$(this).find('select').on('change', function() {
-			joints[id].profile = $(this).find('option:selected').val();
-			generateJoint(id);			
+			if ($(this).hasClass('featureType')) {
+				joints[id].featureType = $(this).find('option:selected').val();
+			} else {
+				joints[id].profile = $(this).find('option:selected').val();
+				joints[id].featureType = $(this).parent().find('.featureType option:selected').val();
+				generateJoint(id);	
+			}
+			console.log(joints[id].featureType);
 		});
 		$(this).find('.swapMF').on('click', function() {
 			joints[id].m = (joints[id].m+1)%2;

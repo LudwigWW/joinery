@@ -342,6 +342,15 @@ var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, 
 
 var jointProfileList = [];
 
+var featureTypes = [
+	{ type: 'none', order: 6 },
+	{ type: 'internal feature', order: 5 },
+	{ type: 'outside shell', order: 4 },
+	{ type: 'opening and fastenings', order: 3 },
+	{ type: 'finishings', order: 2 },
+	{ type: 'hem', order: 1 }
+];
+
 function createJointProfile(n) {
 	if (n < jointType.length) {
 		var joint1 = $.extend(true,{},jointType[n]);
