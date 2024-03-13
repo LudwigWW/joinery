@@ -107,7 +107,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     setMessage('<b>GCODE Exported</b>', '#444');
 
     var printShapes = [...addedOutputs];
-    var printObj = {relevantShapes:addedShapes, printedThreads:printShapes, printJobs:addedPrintJobs};
+    var printObj = {relevantShapes:addedShapes, printedThreads:printShapes, printJobs:addedPrintJobs, fabricated:false, gCodeBlob:blob, gcodeString:GCODE};
     return printObj;
 }
 

@@ -90,6 +90,22 @@
     float:none;
   }
 
+  .hruleHolder {
+    width: 100%;
+  }
+
+  .cutsHolder {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .printsHolder {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
   .bucketholder {
     position: relative;
     float: none;
@@ -107,6 +123,7 @@
     margin: 5px;
     width: flex;
     margin-bottom: 5px;
+    display:block;
   }
 
   .stepholder {

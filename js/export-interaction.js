@@ -13,6 +13,10 @@ var flat;
 // var laserObjects;
 // var allShapeIDs;
 
+var currentBucket = 0;
+var currentCut = 1;
+var currentPrint = 1;
+
 window.onbeforeunload = function() {
     return "Have you finished fabricating the project?";
 };
@@ -85,7 +89,6 @@ function init() {
 
 function initButtons() {
 	$('#export1').change(function() {
-        console.log({export1:"Happen"});
 		if (this.files.length) {
 			var file = this.files[0];
 			var reader = new FileReader();
@@ -123,6 +126,22 @@ function initButtons() {
 
 		} 
 	});
+}
+
+function refreshPage() {
+	
+	// reset container
+	$("#flatListContainer").empty();
+	if (flat.length > 0) {
+        $("#flatListContainer").append(addStepsHTML(flat));
+    }
+
+	// Buckets
+	$("#bucketListContainer").empty();
+	if (jobBucketsByShape.length > 0) {
+		$("#bucketListContainer").append(addBucketsHTML(jobBucketsByShape));
+	}
+	
 }
 
 // function createOrderList(prints, shapes, shapeIDs) {
@@ -239,12 +258,106 @@ function makeButton(id, text, onclick) {
 
 }
 
-function addBucketBox(bucket, stepNumber) {
+function makeColorStyle(status) {
+	var html = '';
+	if (status == 1) {
+		html += ' style="border-color: green;"';
+	} else if (status == 2){
+		html += ' style="border-color: lightblue;"';
+	} else {
+		html += ' style="border-color: lightgrey;"';
+	}
+	return html;
+}
+
+
+function addListBucketBox(bucket, status=0) {
+	var id = bucket.bucketOrder;
+	let html = '<div id="step'+id.toString()+'box" class="bucketholder"';
+	
+
+	html += makeColorStyle(status);
+
+	html += '> ';
+	html += '<span>Group '+(id+1).toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	// if (completed) {
+	// 	html += ' checked';
+	// } 
+	html += '> '
+	// html += '<span id="type'+id.toString()+'">'+ type.string +'</span> '
+	// html += '<img src="';
+	
+	// switch(type.detail) {
+	// 	case 0:
+	// 		html += '../images/holeIcon2.svg';
+	// 		break;
+	// 	case 1:
+	// 		html += '../images/dullIcon.svg';
+	// 		break;
+	// 	default:
+	// 		html += '../images/needleIcon.svg';
+	// }
+
+	// html += '" style="width:16px">';
+
+
+	// html += makeButton(id, "Download", 'downloadFile(\'exp'+id.toString()+'\')');
+	html += '<br>';
+	
+	html += '<div class="cutsHolder">';
+	for (let cutObj of bucket.cutObjs) {
+		let showNr = false;
+		if (cutObj.cutOrder > 0) {
+			showNr = true;
+		}
+		var cutStatus = 0;
+		if (cutObj.fabricated) {
+			cutStatus = 2;
+		} else if (currentCut == cutObj.cutOrder) {
+			cutStatus = 1;
+		}
+
+		html += addParallelCuts(cutObj, showNr, cutStatus, false);
+	}
+	html += '</div>';
+
+	html += '<div class="hruleHolder">';
+	html += '<hr>';
+	html += '</div>';
+	html += '<div class="printsHolder">';
+	for (let job of bucket.printJobs) {
+		// for (let printJob of job) {
+		// 	console.log({printJob:printJob});
+		let printJobsId = job.printStep;
+			for (let print of job.singlePrints) {
+				let printStatus = 0;
+				if (print.fabricated) {
+					printStatus = 2;
+				} else if (currentPrint == printJobsId) {
+					printStatus = 1;
+				}
+				html += addParallelJobs(print, printJobsId, printStatus, false);
+			}
+		// }
+	}
+	html += '</div>';
+	// console.log(imageDatas.length)
+	// console.log(imageDatas)
+	// if (imageDatas.length > 0) {
+	// 	for (let imageData of imageDatas) {
+	// 		console.log(imageData);
+	// 		let image = makeImage(imageData);
+	// 		html += image;
+	// 	}
+	// }
+	html += '</div>';
+	return html;
 }
 
 
 function addListBox(id, type, imageDatas, completed) {
-	let html = '<div id="step'+id.toString()+'box" class="stepholder"> <span>Step '+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	let html = '<div id="step'+id.toString()+'box" class="stepholder" style="border-color: red;"> ';
+	html += '<span>Step '+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
 	if (completed) {
 		html += ' checked';
 	} 
@@ -264,11 +377,8 @@ function addListBox(id, type, imageDatas, completed) {
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'exp'+id.toString()+'\')');
 	html += '<br>';
-	console.log(imageDatas.length)
-	console.log(imageDatas)
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
-			console.log(imageData);
 			let image = makeImage(imageData);
 			html += image;
 		}
@@ -290,7 +400,19 @@ function addStepsHTML(flatList) {
 }
 
 function addBucketsHTML(buckets) {
-	console.log({buckets:buckets});
+	var html = "";
+    if (buckets.length > 0) {
+		for (var i = 0; i < buckets.length; i++) {
+			var bucket = buckets[i];
+			var status = 0;
+			if (currentBucket == i) {
+				status = 1;
+			}
+			html += addListBucketBox(bucket, status);
+			html += '<br>';
+		}
+	}
+	return html;
 	if (buckets.length > 0) {
 		var html = '';
 		for (var i = 0; i < buckets.length; i++) {
@@ -318,18 +440,79 @@ function addBucketsHTML(buckets) {
 	} else return "";
 }
 
-function addParallelJobs(job) {
-	var html = '<div class="container">';
-	html += '<div class="header ';
-	if (job.fabricated) {
-		html += 'fabricated';
-	} else if (job.selected) {
-		html += 'selected';
-	} else {
-		html += 'default';
+function addParallelCuts(cutObj, showNr, status, completed=false) {
+	let id = cutObj.cutOrder;
+	let type = cutObj.type;
+	let imageDatas = cutObj.imageDatas;
+	let html = '<div id="step'+id.toString()+'box" class="stepholder"'
+	html += makeColorStyle(status);
+	html += '> ';
+	
+	html += '<span>Fabric Cut C'+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	if (completed) {
+		html += ' checked';
+	} 
+	html += '> <span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
+	
+	switch(type.detail) {
+		case 0:
+			html += '../images/holeIcon2.svg';
+			break;
+		case 1:
+			html += '../images/dullIcon.svg';
+			break;
+		default:
+			html += '../images/needleIcon.svg';
 	}
-	html += '">Type: ' + "job.type" + ' | Sub-step: ' + "job.subStep" + '</div>';
-	// html += '<img src="' + "job.image" + '" alt="Job Image">';
+
+	html += '" style="width:16px">';
+	html += makeButton(id, "Download", 'downloadFile(\'cut_'+id.toString()+'\')');
+	html += '<br>';
+	if (imageDatas.length > 0) {
+		for (let imageData of imageDatas) {
+			let image = makeImage(imageData);
+			html += image;
+		}
+	}
+	html += '</div>';
+	return html;
+}
+
+
+function addParallelJobs(print, id, status, completed=false) {
+	let type = print.type;
+	let imageDatas = print.imageDatas;
+	let html = '<div id="step'+id.toString()+'box" class="stepholder"';
+	
+	html += makeColorStyle(status);
+
+	html += '> ';
+	html += '<span>Seam S'+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	if (completed) {
+		html += ' checked';
+	} 
+	html += '> <span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
+	
+	switch(type.detail) {
+		case 0:
+			html += '../images/holeIcon2.svg';
+			break;
+		case 1:
+			html += '../images/dullIcon.svg';
+			break;
+		default:
+			html += '../images/needleIcon.svg';
+	}
+
+	html += '" style="width:16px">';
+	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')');
+	html += '<br>';
+	if (imageDatas.length > 0) {
+		for (let imageData of imageDatas) {
+			let image = makeImage(imageData);
+			html += image;
+		}
+	}
 	html += '</div>';
 	return html;
 }
@@ -527,6 +710,43 @@ function fabricateNow(e) {
 
 function downloadFile(e) {
     console.log({e:e});
+	// split by underscore
+	var parts = e.split('_');
+	var type = parts[0];
+	var id = parts[1];
+	if (type == 'print') {
+		// Find print with id in jobBucketsByShape
+		for (let bucket of jobBucketsByShape) {
+			for (let job of bucket.printJobs) {
+				if (job.printStep == id) {
+
+					for (let print of job.singlePrints) {
+						// download job gcode
+						var d = new Date();
+						saveAs(print.gCodeBlob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
+						print.fabricated = true;
+					}
+					job.fabricated = true;
+				}
+			}
+		}
+	} else if (type == 'cut') {
+		// Find cut with id 
+		for (let bucket of jobBucketsByShape) {
+			for (let cut of bucket.cutObjs) {
+				if (cut.cutOrder == id) {
+					// download cut gcode
+					var d = new Date();
+					saveAs(cut.cutSVG.blob, 'joinery_cut_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
+					cut.fabricated = true;
+					console.log({cut:cut});
+				}
+			}
+		}
+	}
+
+	// refresh page
+	refreshPage();
 }
 
 $(document).bind("contextmenu", function (event) {

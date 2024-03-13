@@ -146,7 +146,7 @@ var printedRivets = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'skip # holes': 0,
-		'pinking cut': true,
+		'pinking cut': false,
 		'anti-overlap spacing': 5,
 	}
 };
@@ -4195,6 +4195,13 @@ function exportProject() {
 		}
 
 		allPrintJobSets.sort((b, a) => a.printJobs[0].featureType.order - b.printJobs[0].featureType.order);
+		// TODO: Also sort joints heuristically/by length 
+
+		let printStep = 1;
+		for (let printJobSet of allPrintJobSets) {
+			printJobSet.printStep = printStep;
+			printStep++;
+		}
 
 		console.log({allPrintJobSets:allPrintJobSets});
 
@@ -4214,9 +4221,11 @@ function exportProject() {
 		var jobBucketsByShape = [];
 		for (var i = 0; i < shapeIDsOrder.length; i++) {
 			var key = shapeIDsOrder[i].key;
-			jobBucketsByShape.push({key:key, shapeIDs:shapeIDsOrder[i].shapeIDs, printJobs:printJobSetsByShape[key]});
+			jobBucketsByShape.push({key:key, shapeIDs:shapeIDsOrder[i].shapeIDs, printJobs:printJobSetsByShape[key], bucketOrder:i});
 		}
 		console.log({jobBucketsByShape:jobBucketsByShape});
+
+		
 
 
 		// var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
@@ -4330,6 +4339,29 @@ function exportProject() {
 		setTimeout(() => { packer.stop() }, 10);
 		// packer.stop() // Stop a process
 		
+
+		var cutOrder = 1;
+		// Attach shapes for all cuts per bucket
+		for (let bucket of jobBucketsByShape) {
+			bucket.cutObjs = [];
+			for (let shapeID of bucket.shapeIDs) {
+				let theShape = shape[shapeID];
+
+				const typeObj = {detail:0, string:"Cut"};
+				var imageDataList = [shape[shapeID].imageData];
+				var cutObj = {bucketStep:bucket.bucketOrder, type:typeObj, imageDatas:imageDataList, cutSVG:shape[shapeID].cutSVGdata, shape:shape[shapeID], fabricated:false};
+				// if it doesn't have an order number yet
+				if (theShape.cutOrder === undefined) {
+					theShape.cutOrder = cutOrder;
+					cutObj.cutOrder = cutOrder;
+					cutOrder++;
+				} else {
+					cutObj.cutOrder = -1;
+				}
+				bucket.cutObjs.push(cutObj);
+			}
+		}
+
 		// Original combined printing as many as possible
 		for (let bucket of jobBucketsByShape) {
 			var prints2 = [];
@@ -4365,6 +4397,69 @@ function exportProject() {
 		console.log({jobBucketsByShape:jobBucketsByShape});
 
 		grayOutShapes();
+
+
+		// add printing preview images to bucket prints
+		for (let bucket of jobBucketsByShape) {
+			for (let printJob of bucket.printJobs) {
+				for (let print of printJob.singlePrints) {
+					var printList = [];
+					var threadList = [];
+					var shapeImages = [];
+					for (let printedThread of print.printedThreads) {
+						printList.push(printedThread.output.laserHolesRefPath);
+						threadList.push(printedThread);
+					}
+					
+					
+		
+					for (let printJob of print.printJobs) {
+						for (let printOutline of printJob.renderRef.a.printOutlines) {
+							printOutline.strokeColor = '#02B';
+							printOutline.strokeWidth = 0;
+							printOutline.fillColor = '#F1D';
+							printOutline.opacity = 0.25;
+						}
+						for (let printOutline of printJob.renderRef.b.printOutlines) {
+							printOutline.strokeColor = '#02B';
+							printOutline.strokeWidth = 0;
+							printOutline.fillColor = '#F1D';
+							printOutline.opacity = 0.25;
+						}
+					}
+		
+					// TODO: Make all the color mods, then get picture of relevantShapes (laserPreview)
+		
+					for (let thisShape of print.relevantShapes) {
+						// console.log({thisShape:thisShape});
+						colorForLaser(thisShape.shape);
+						const shapeList = [thisShape.shape];
+						var imageData = getLaserPreview(shapeList);
+						shapeImages.push(imageData);
+					}
+		
+		
+					var imageData = getPrintPreview(printList);
+					// laserObjects.push({ID:"5", imageData:imageData});
+		
+					print.imageData = imageData;
+					print.shapeImages = shapeImages;
+		
+					// console.log({shapeImages:shapeImages});
+					// console.log({printList:printList, threadList:threadList, prints:prints});
+	
+					const typeObj = {detail:1, string:"Print"};
+					var imageDataList = [print.imageData]
+					print.imageDatas = imageDataList;
+					print.type = typeObj;
+					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, parentShape:currentObj.parentShape, relevantShapes:theRelevantShapes, print:printRef};
+					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, shape:shape};
+
+					grayOutShapes();
+		
+				}
+			}
+		}
 
 		for (let print of prints) {
 			var printList = [];
