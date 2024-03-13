@@ -20,6 +20,8 @@
 	<script language="javascript" type="text/javascript" src="../js/lib/jquery-1.11.3.min.js"></script>
 	<script language="javascript" type="text/javascript" src="../js/lib/jquery-ui.min.js"></script>
 	<script language="javascript" type="text/javascript" src="../js/lib/paper-full.js"></script>
+	<link rel="stylesheet" href="../js/lib/bootstrap/css/bootstrap.min.css">
+	<script src="../js/lib/bootstrap/js/bootstrap.min.js"></script>
 	<canvas id="render-canvas"></canvas>
     <script>
       const canvas = document.getElementById("render-canvas");
@@ -37,7 +39,12 @@
 
 <body onload="init()">
 
+
+	<div id="bucketListContainer"></div>
+
 	<div id="flatListContainer"></div>
+
+	
 
 	<div id="step1" class="stepholder"> <span>Step 1:</span> <input id="done1" class="checkbox" type="checkbox"> <span id="type1">Cut</span> <img src="../images/holeIcon2.svg" style="width:16px"><div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div> <div class="buttonExport">	<label for="export1" class="button2" onclick="downloadFile('exp1')">Start</label></div>much testing <span class="extraHigh"> <input id="dl1" class="checkbox" type="checkbox"> <br> download</span> 
 <br> <span>Image</span></div>

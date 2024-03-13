@@ -90,7 +90,7 @@
     float:none;
   }
 
-  .stepholder {
+  .bucketholder {
     position: relative;
     float: none;
     color: #000000;
@@ -104,8 +104,27 @@
     background: #eee;
     border: 2px solid #17a035;
     border-radius: 8px;
-    margin: auto;
-    width: 50%;
+    margin: 5px;
+    width: flex;
+    margin-bottom: 5px;
+  }
+
+  .stepholder {
+    flex: 1;
+    position: relative;
+    float: none;
+    color: #000000;
+    padding: 6px 12px;
+    opacity: 1.0;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 2px;
+    font-size: 12px;
+    font-weight: 400;
+    background: #eee;
+    border: 2px solid #17a035;
+    border-radius: 8px;
+    margin: 5px;
     margin-bottom: 5px;
   }
 

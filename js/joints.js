@@ -2335,7 +2335,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
 
-			printJobs.push({featureType:featureType, fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false, printShapeList:job.jointShapeList});
+			printJobs.push({featureType:featureType, fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false, handled2:false, printShapeList:job.jointShapeList});
 
 		}
 		
@@ -4031,7 +4031,9 @@ function getLaserSVG(selectedShapeID) {
 	// Then export an SVG with only this shape
 	var localSVG = $(tempProject.exportSVG({bounds:'content'})).html();
 	var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+tempProjectBounds.minX+' '+tempProjectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+localSVG+'</svg>';
-
+	var blob = new Blob([svgString], {type: 'image/svg+xml'});
+	
+	const imageData = {blob:blob, width:svgWidth, height:svgHeight, svgString:svgString};
 	// Clean up by removing the shape again
 	laserShape.remove();
 	// tempProject.clear();
@@ -4040,8 +4042,8 @@ function getLaserSVG(selectedShapeID) {
 	// // console.log(paper.projects);
 	paper.project = paper.projects[0];
 	tempProject.remove();
-	// Return the SVG string
-	return svgString;
+	// Return the SVG image data
+	return imageData;
 }
 
 function is_server() {
@@ -4109,8 +4111,14 @@ function exportProject() {
 				if (shape[i].children[j].printJobs) {
 					var thePrintJobs = shape[i].children[j].printJobs;
 					var printJobContainer = {parentshape:shape[i], parentshapeID:i, printJobs:thePrintJobs};
-					allPrintJobSets.push(printJobContainer);
+					// if saved property undefined
+					if (thePrintJobs.saved === undefined) {
+						allPrintJobSets.push(printJobContainer);
+						thePrintJobs.saved = true;
+					}
 					// console.log({thePrintJobs:thePrintJobs});
+
+
 					for (let output of shape[i].children[j].printJobs) {
 						if (output.handled === false) {
 							output.handled = true;
@@ -4190,6 +4198,27 @@ function exportProject() {
 
 		console.log({allPrintJobSets:allPrintJobSets});
 
+		var printJobSetsByShape = {};
+		var shapeIDsOrder = [];
+		for (var i = 0; i < allPrintJobSets.length; i++) {
+			var printJobSet = allPrintJobSets[i];
+			var shapeIDs = printJobSet.printJobs[0].printShapeList;
+			var key = shapeIDs.join(',');
+			if (!printJobSetsByShape[key]) {
+				printJobSetsByShape[key] = [];
+				shapeIDsOrder.push({key:key, shapeIDs:shapeIDs});
+			}
+			printJobSetsByShape[key].push(printJobSet);
+		}
+
+		var jobBucketsByShape = [];
+		for (var i = 0; i < shapeIDsOrder.length; i++) {
+			var key = shapeIDsOrder[i].key;
+			jobBucketsByShape.push({key:key, shapeIDs:shapeIDsOrder[i].shapeIDs, printJobs:printJobSetsByShape[key]});
+		}
+		console.log({jobBucketsByShape:jobBucketsByShape});
+
+
 		// var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
 		// text.fillColor = 'black';
 		// text.content = projectBounds.minX + ' ' + projectBounds.minY;
@@ -4215,14 +4244,17 @@ function exportProject() {
 
 		// Export svg with only the laser paths
 		for (shapeID of allShapeIDs) {
-			var laserSVG = getLaserSVG(shapeID);
+			var laserSVGImageData = getLaserSVG(shapeID);
 			// console.log('laserSVG: ', laserSVG);
-			var svgblob = new Blob([laserSVG], {type: 'image/svg+xml'});
-			var svgURL = URL.createObjectURL(svgblob);
+			shape[shapeID].cutSVGdata = laserSVGImageData;
+
+			var svgURL = URL.createObjectURL(laserSVGImageData.blob);
 			svgFilesToNest.push(svgURL);
 			boxList.push(minimizeBB(shape[shapeID], margin));
 			// console.log('boxList: ', boxList);
 		}
+
+
 
 		var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
 		var arrangement = packboxes(boxList, laserArea);
@@ -4295,9 +4327,43 @@ function exportProject() {
 		})
 		
 		// packing for one second
-		setTimeout(() => { packer.stop() }, 1000);
+		setTimeout(() => { packer.stop() }, 10);
 		// packer.stop() // Stop a process
 		
+		// Original combined printing as many as possible
+		for (let bucket of jobBucketsByShape) {
+			var prints2 = [];
+			var heightUsed2 = 0.0;
+			var addedOutputs2 = [];
+			var addedShapes2 = [];
+			var addedPrintJobs2 = [];
+			for (let printJob of bucket.printJobs) {
+				var GCODE2 = "";
+				[GCODE2, heightUsed2] = handlePrintJobs(printJob.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+			}
+			[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
+			var combinedPrints = prints2;
+			bucket.combinedPrints = combinedPrints;
+		}
+
+		// Each printjob as a separate print
+		for (let bucket of jobBucketsByShape) {
+			for (let printJob of bucket.printJobs) {
+				var prints2 = [];
+				var GCODE2 = "";
+				var heightUsed2 = 0.0;
+				var addedOutputs2 = [];
+				var addedShapes2 = [];
+				var addedPrintJobs2 = [];
+				[GCODE2, heightUsed2] = handlePrintJobs(printJob.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+				[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
+				var singlePrints = prints2;
+				printJob.singlePrints = singlePrints;
+			}
+		}
+
+		console.log({jobBucketsByShape:jobBucketsByShape});
+
 		grayOutShapes();
 
 		for (let print of prints) {
@@ -4380,6 +4446,7 @@ function exportProject() {
 		exportWindow.laserObjects = laserObjects;
 		exportWindow.allShapeIDs = allShapeIDs;
 		exportWindow.svgContent = svgContent;
+		exportWindow.jobBucketsByShape = jobBucketsByShape;
 
 		exportWindow["myVar"] = "Hello World";
 		

@@ -19,7 +19,10 @@ window.onbeforeunload = function() {
 
 
 function init() {
+	console.log({jobBucketsByShape:window.jobBucketsByShape});
     console.log({images:window.imageList, myVar:window.myVar});
+
+	jobBucketsByShape = window.jobBucketsByShape;
     // var query = window.location.search.substring(1);
     // var qs = parse_query_string(query);
     // console.log({query:query, qs:qs});
@@ -49,6 +52,11 @@ function init() {
 	if (flat.length > 0) {
         $("#flatListContainer").append(addStepsHTML(flat));
     }
+
+	// Buckets
+	if (jobBucketsByShape.length > 0) {
+		$("#bucketListContainer").append(addBucketsHTML(jobBucketsByShape));
+	}
 	
 	// axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
 
@@ -226,6 +234,15 @@ function makeImage(imageData, width=200, height=150) {
     return image.outerHTML;
 }
 
+function makeButton(id, text, onclick) {
+	return '<div class="buttonExport"><label for="export'+id.toString()+'" class="button2" onclick="'+onclick+'">'+text+'</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
+
+}
+
+function addBucketBox(bucket, stepNumber) {
+}
+
+
 function addListBox(id, type, imageDatas, completed) {
 	let html = '<div id="step'+id.toString()+'box" class="stepholder"> <span>Step '+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
 	if (completed) {
@@ -244,7 +261,8 @@ function addListBox(id, type, imageDatas, completed) {
 			html += '../images/needleIcon.svg';
 	}
 
-	html += '" style="width:16px"><div class="buttonExport"><label for="export'+id.toString()+'" class="button2" onclick="downloadFile(\'exp'+id.toString()+'\')">Start</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
+	html += '" style="width:16px">';
+	html += makeButton(id, "Download", 'downloadFile(\'exp'+id.toString()+'\')');
 	html += '<br>';
 	console.log(imageDatas.length)
 	console.log(imageDatas)
@@ -268,6 +286,51 @@ function addStepsHTML(flatList) {
 			html += '<br>';
 		}
 	}
+	return html;
+}
+
+function addBucketsHTML(buckets) {
+	console.log({buckets:buckets});
+	if (buckets.length > 0) {
+		var html = '';
+		for (var i = 0; i < buckets.length; i++) {
+			var bucket = buckets[i];
+			var stepNumber = i + 1;
+			var headerColor = '';
+			if (bucket.fabricated) {
+				headerColor = 'text-muted';
+			} else if (bucket.selected) {
+				headerColor = 'text-success';
+			} else {
+				headerColor = 'text-warning';
+			}
+			html += '<div class="container">';
+			html += '<h4 class="' + headerColor + '">Step ' + stepNumber + '</h4>';
+			html += '<div class="row">';
+			for (var j = 0; j < bucket.printJobs.length; j++) {
+				var job = bucket.printJobs[j];
+				html += addParallelJobs(job);
+			}
+			html += '</div>';
+			html += '</div>';
+		}
+		return html;
+	} else return "";
+}
+
+function addParallelJobs(job) {
+	var html = '<div class="container">';
+	html += '<div class="header ';
+	if (job.fabricated) {
+		html += 'fabricated';
+	} else if (job.selected) {
+		html += 'selected';
+	} else {
+		html += 'default';
+	}
+	html += '">Type: ' + "job.type" + ' | Sub-step: ' + "job.subStep" + '</div>';
+	// html += '<img src="' + "job.image" + '" alt="Job Image">';
+	html += '</div>';
 	return html;
 }
 

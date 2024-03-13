@@ -14,6 +14,7 @@ const FormData = require('form-data');
 const axios = require('axios');
 var request = require('request-promise');
 // const { OctoPrintServer } = require('octoprint');
+const svelteApp = require('./App.svelte').default;
 
 
 const debug = false;
@@ -498,16 +499,96 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
     })
 })
 
+app.get('/control-panel', async (req, res) => {
+    // Fetch bucket data
+    const buckets = await fetchBucketData();
+
+    // Render the Svelte template
+    const { html, css, head } = await renderSvelteTemplate(buckets);
+
+    // Send the rendered HTML as the response
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+            <head>
+                ${head}
+                <style>${css.code}</style>
+            </head>
+            <body>
+                <div id="svelteApp">${html}</div>
+                <script src="/client.js"></script>
+            </body>
+        </html>
+    `);
+});
+
+async function fetchBucketData() {
+    // Fetch bucket data from your data source
+    // Replace this with your actual implementation
+    const buckets = [
+        {
+            name: 'Bucket 1',
+            size: '10GB',
+            image: 'bucket1.jpg',
+            jobs: [
+                {
+                    id: 'job1',
+                    gcode: 'job1.gcode',
+                    previewImage: 'job1-preview.jpg',
+                    downloaded: true
+                },
+                {
+                    id: 'job2',
+                    gcode: 'job2.gcode',
+                    previewImage: 'job2-preview.jpg',
+                    downloaded: false
+                }
+            ]
+        },
+        {
+            name: 'Bucket 2',
+            size: '5GB',
+            image: 'bucket2.jpg',
+            jobs: [
+                {
+                    id: 'job3',
+                    gcode: 'job3.gcode',
+                    previewImage: 'job3-preview.jpg',
+                    downloaded: true
+                },
+                {
+                    id: 'job4',
+                    gcode: 'job4.gcode',
+                    previewImage: 'job4-preview.jpg',
+                    downloaded: true
+                }
+            ]
+        }
+    ];
+
+    return buckets;
+}
+
+async function renderSvelteTemplate(buckets) {
+    // Import the necessary Svelte components
+
+    // Create a new Svelte app instance
+    const svelteApp = new svelteApp({
+        target: document.getElementById('svelteApp'),
+        props: {
+            buckets
+        }
+    });
+
+    // Render the svelteApp to a string
+    const { html, css, head } = svelteApp.render();
+
+    return { html, css, head };
+}
+
 app.listen(port, () => {
   console.log(`FF server listening on port ${port}`)
 })
-
-
-
-
-
-
-
 
 
 
@@ -569,6 +650,7 @@ http.createServer(function (req, res) {
         console.log('dataSent: ', JSON.parse(q.data).array);
 
         var jcadtext = "const jscad = require('@jscad/modeling') \n const { cylinder } = jscad.primitives \n \n const options = { \n height: 5.1, \n radius: 3.7 \n } \n const main = () => { \n return cylinder({radius: options.radius, height: options.height, segments: 6}) \n } \n module.exports = { main }";
+
 
         // const script = fs.readFileSync('data/test.jscad','UTF8')
         // jscad.compile(script,{}).then((input)=>{
