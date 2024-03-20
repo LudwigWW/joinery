@@ -1975,11 +1975,15 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			bLines.push(holePathOffsetB);
 		} else {
 			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirM']);
+			holePathOffsetA.strokeColor = laserColor;
 			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirF']);
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
 		}
 	}
+
+	console.log('aLines: ', aLines);
+	console.log({edgeA:edgeA, edgeB:edgeB});
 
 	// console.log('patternLocations: ', patternLocations);
 
@@ -2184,11 +2188,14 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		// console.log({laserHoleList:laserHoleList});
 
 
-		pathsGroup.rotate(30, rotP);
+		// pathsGroup.rotate(30, rotP); // Just a debug test?
 		// Separate into print jobs
 		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
 		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0, jointShapeList:shapeList}];
+		console.log({jobs:jobs});
 		while (startIndex < (laserHoleList.length-1)) {
+			console.log({startIndex:startIndex, endIndex:endIndex, laserHoleList:laserHoleList});
+			console.log({jobs:jobs});
 			var lastJob = jobs[jobs.length-1];
 
 			// // console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
@@ -2907,6 +2914,161 @@ function dist2Pt(aX, aY, bX, bY) {
 }
 
 function offsetPath(pathToOffset, offsetDist, offsetDir) {
+	var returnPath = [];
+	var splitAt = [];
+	for (var i=1; i<pathToOffset.segments.length-1; i++) {
+		var h1 = {'x': pathToOffset.segments[i].handleIn.x, 'y': pathToOffset.segments[i].handleIn.y};
+		var h2 = {'x': pathToOffset.segments[i].handleOut.x, 'y': pathToOffset.segments[i].handleOut.y};
+		var d1 = dist2Pt(h1.x, h1.y, 0, 0);
+		var d2 = dist2Pt(h2.x, h2.y, 0, 0);
+		if (d1==0 || d2==0) {
+			splitAt.push(i);
+		} else {
+			var CP = lineCP(h2, {'x':0, 'y':0}, h1);
+			var d = dist2Pt(CP.x, CP.y, 0, 0);
+			if (d > 0.1) {
+				splitAt.push(i);
+			}
+		}
+	}
+	if (splitAt.length > 0) {
+		var paths = [];
+		var pathsOffset = [];
+		paths.push(new Path());
+		pathsOffset.push(new Path());
+		for (var i=0; i<splitAt.length; i++) {
+			paths.push(new Path());
+			pathsOffset.push(new Path());
+		}
+		var counter = 0;
+		for (var i=0; i<pathToOffset.segments.length; i++) {
+			paths[counter].add(pathToOffset.segments[i]);
+			if (splitAt.indexOf(i)>=0) {
+				counter++;
+				paths[counter].add(pathToOffset.segments[i]);
+			}
+		}
+		for (var i=0; i<paths.length; i++) {
+			var amount = Math.floor(paths[i].length/10);
+			amount = amount<3 ? 3 : amount;
+			for (var j=0; j<amount+1; j++) {
+				var pt = paths[i].getPointAt(j/amount*paths[i].length);
+				var normal = paths[i].getNormalAt(j/amount*paths[i].length).multiply(offsetDir);
+				var pt2 = pt.add(normal.multiply(offsetDist));
+				pathsOffset[i].add(pt2);
+			}
+			pathsOffset[i].smooth();
+		}
+		var intersections = [];
+		for (var i=0; i<paths.length-1; i++) {
+			var pts = pathsOffset[i].getIntersections(pathsOffset[i+1]);
+			if (pts.length>0) {
+				if (pts.length==1) {
+					var d = dist2Pt(pathsOffset[i].lastSegment.point.x, pathsOffset[i].lastSegment.point.y, pts[0].point.x, pts[0].point.y);
+					if (d==0) {
+						intersections.push("none");
+					} else {
+						intersections.push(pts[0].point);
+					}
+				} else {
+					intersections.push(pts[0].point);
+				}
+			} else {
+				intersections.push("none");
+			}
+		}
+		for (var i=0; i<pathsOffset.length; i++) {
+			if (i==0 && intersections[i]!="none") {
+				var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i]));
+				splitPath.remove();
+			} else if (i>0 && i<pathsOffset.length-1) {
+				if (intersections[i-1]!="none") {
+					var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i-1]));
+					pathsOffset[i].remove();
+					pathsOffset[i] = splitPath.clone();
+					splitPath.remove();
+				}
+				if (intersections[i]!="none") {
+					var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i]));
+					splitPath.remove();
+				}
+			} else if (i==pathsOffset.length-1 && intersections[i-1]!="none") {
+				var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i-1]));
+				pathsOffset[i].remove();
+				pathsOffset[i] = splitPath.clone();
+				splitPath.remove();
+			}
+		}
+		for (var i=0; i<intersections.length; i++) {
+			if (intersections[i]=="none") {
+				var ptA = pathsOffset[i].lastSegment.point;
+				var tanA = pathsOffset[i].getTangentAt(pathsOffset[i].length);
+				var ptB = pathsOffset[i+1].firstSegment.point;
+				var tanB = pathsOffset[i+1].getTangentAt(0);
+				var pt = lineIntersection(ptA, ptA.add(tanA), ptB, ptB.add(tanB.multiply(-1)));
+				pathsOffset[i].quadraticCurveTo(new Point(pt.x, pt.y), new Point(ptB.x, ptB.y));
+			}
+		}
+		for (var i=1; i<pathsOffset.length; i++) {
+			var len = pathsOffset[0].segments.length;
+			pathsOffset[0].segments[len-1].handleOut = pathsOffset[i].segments[0].handleOut;
+			for (var j=1; j<pathsOffset[i].segments.length; j++) {
+				pathsOffset[0].add(pathsOffset[i].segments[j]);
+			}
+		}
+		pathsOffset[0].insert(0, pathToOffset.firstSegment.point);
+		pathsOffset[0].insert(pathsOffset[0].segments.length, pathToOffset.lastSegment.point);
+		var finalPath = pathsOffset[0].clone();
+		for (i in paths) {
+			paths[i].remove();
+		}
+		for (i in pathsOffset) {
+			pathsOffset[i].remove();
+		}
+
+		// Check the bezier path for two points in the same location, and if so merge them into one point
+		for (var i = finalPath.segments.length - 1; i > 0; i--) {
+			if (finalPath.segments[i].point.isClose(finalPath.segments[i - 1].point, 0.000001)) {
+				console.warn('LegacyFix: Merging identical points');
+				finalPath.segments[i - 1].handleOut = finalPath.segments[i].handleOut;
+				// remove old segment
+				finalPath.removeSegment(i);
+			}
+		}
+
+		returnPath.push(finalPath);
+		return returnPath;
+	} else {
+		var pathsOffset = new Path();
+		var amount = Math.floor(pathToOffset.length/10);
+		amount = amount<3 ? 3 : amount;
+		for (var j=0; j<amount+1; j++) {
+			var pt = pathToOffset.getPointAt(j/amount*pathToOffset.length);
+			var normal = pathToOffset.getNormalAt(j/amount*pathToOffset.length).multiply(offsetDir);
+			var pt2 = pt.add(normal.multiply(offsetDist));
+			pathsOffset.add(pt2);
+		}
+		pathsOffset.smooth();
+		pathsOffset.insert(0, pathToOffset.firstSegment.point);
+		pathsOffset.insert(pathsOffset.segments.length, pathToOffset.lastSegment.point);
+		var finalPath = pathsOffset.clone();
+		pathsOffset.remove();
+		// Check the bezier path for two points in the same location, and if so merge them into one point
+		for (var i = finalPath.segments.length - 1; i > 0; i--) {
+			if (finalPath.segments[i].point.isClose(finalPath.segments[i - 1].point, 0.000001)) {
+				console.warn('LegacyFix: Merging identical points');
+				finalPath.segments[i - 1].handleOut = finalPath.segments[i].handleOut;
+				// remove old segment
+				finalPath.removeSegment(i);
+			}
+		}
+		returnPath.push(finalPath);
+		return returnPath;
+	}
+}
+
+
+function offsetPathDeprecated(pathToOffset, offsetDist, offsetDir) {
 	var returnPath = [];
 	var splitAt = [];
 	for (var i=1; i<pathToOffset.segments.length-1; i++) {
