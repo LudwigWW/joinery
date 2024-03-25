@@ -6,14 +6,14 @@ var chosenPrinter = {};
 var chosenLaser = {};
 var requestCounter = 0;
 var markerGCodes = [];
-var printCounter = 799; // Starts at A
+var printCounter = 1; // Starts at A
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
 
 const defaultLineLength = 10;
 const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
-const emptyIDs = true;
+const emptyIDs = false;
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
@@ -1351,9 +1351,13 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	var markers = [];
 
 	// TODO: At least make marker offset based on length of the shorter path. How to handle the size difference better?
+	const minDist = 4;
+	let partLength = job.originSourcePathPart.length;
+	// random position between 5 and partLength
+	const randomOffset = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
 
-	let markerOffset = job.originSourceOffset + 6; // From start
-	let markerOffsetRotated = 6; // From part cut point
+	let markerOffset = job.originSourceOffset + randomOffset; // From start
+	let markerOffsetRotated = randomOffset; // From part cut point
 	let rotatedPath = job.originSourcePathPart; 
 	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
 	var startHole = job.laserHoles[0].point;
@@ -1365,9 +1369,10 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 		markers.push(serverSlicing(markerObj, job, param)); 
 	}
 	
-	
-	let markerOffsetE = job.originSourceOffsetEnd - 6; 
-	let markerOffsetERotated = (job.originSourcePathPart.length - 6);
+	const randomOffsetE = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
+
+	let markerOffsetE = job.originSourceOffsetEnd - randomOffsetE; 
+	let markerOffsetERotated = (job.originSourcePathPart.length - randomOffsetE);
 	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
 
 	var markerObjEnd;
@@ -1586,7 +1591,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	}
 
 	// Set text markers
-	const textOffset = 22;
+	const textOffset = -4;
 	var textOffsetPath;
 	var startOffset = 4;
 	if (isA) {
@@ -1599,18 +1604,18 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	const offsetPercentage = (offset / edgeAB.length);
 	const targetOffset = offsetPercentage * textOffsetPath.length;
 
-	// console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
+	console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
 
 
 	const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
 	const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
 
-	// console.log({startP:startP, endP:endP});
+	console.log({startP:startP, endP:endP});
 	
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 	// console.log(rad)
 
-	var textGroup = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
+	var textGroup = generateAsciiPolygons(fabID+"_M2", startP.x, startP.y, rad, 20);
 	// console.log({textGroup:textGroup});
 	for (let childpath of textGroup.children) {
 		childpath.name = 'printedText'
@@ -1651,7 +1656,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 		// console.log(rad)
 
-		var textGroupPrint = generateAsciiPolygons(fabID, startP.x, startP.y, rad, 20);
+		var textGroupPrint = generateAsciiPolygons(fabID+"_M2", startP.x, startP.y, rad, 20);
 		// For each Path, for each pair of points (sliding window of size 2), do add aimed gcode generation
 		// Add this to the return, similar to the server-made marker gcode 
 
@@ -1826,6 +1831,10 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	shape[shapeB].children[pathB+'_joint'].addChild(shape[shapeB].children[pathB].clone());
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
+
+	// Original path needs to part of the laser cut 
+	returnALaser.push(edgeA);
+	returnBLaser.push(edgeB);
 
 	if (param['hem offset'] < (targetPatternWidth / 2)) {
 		console.error({message:"hem offset must be larger than seam width"}); // TODO: Should we be going in the outside direction?
