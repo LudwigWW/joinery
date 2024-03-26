@@ -448,31 +448,42 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 
 	// console.log({gcodesInReturn:g, printJobs:childPath.printJobs, returnBFold: childPath.returnBFold, returnB: childPath.returnB, childPath:childPath});
 
-	var g = new Group();
-	g.name = 'folds';
-	shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
-	shape[shapeA].children[pathA+'_joint'].addChild(g);
-	shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
-	// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
-	// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 
-	shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
-	// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
-	// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
+	console.log({returnA: childPath.returnB, folds:childPath.returnBFold, print:childPath.returnBPrint, laser:childPath.returnBLaser});
 
-	var g2 = new Group();
-	g2.name = 'folds';
-	shape[shapeB].children[pathB+'_joint'].addChild(g2);
-	shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+	const skipFolds = false;
+	if (!skipFolds) {
+		
+		var g = new Group();
+		g.name = 'folds';
+		shape[shapeA].children[pathA+'_joint'].printJobs = childPath.printJobs;
+		shape[shapeA].children[pathA+'_joint'].addChild(g);
+		shape[shapeA].children[pathA+'_joint'].children['folds'].addChildren(childPath.returnAFold);
+		// shape[shapeA].children[pathA+'_joint'].children['folds'].strokeColor = '#AAA';
+		// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 
-	// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+		// shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA);
+		// shape[shapeA].children[pathA+'_joint'].strokeColor = '#F00'; // '#000'
+		// shape[shapeA].children[pathA+'_joint'].strokeWidth = 0.2;
 
+		var g2 = new Group();
+		g2.name = 'folds';
+		shape[shapeB].children[pathB+'_joint'].addChild(g2);
+		shape[shapeB].children[pathB+'_joint'].children['folds'].addChildren(childPath.returnBFold);
+	
+
+		// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+		// shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
+		// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
+		// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
+
+		// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
+		shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
+	}
+
+	shape[shapeA].children[pathA+'_joint'].addChildren(childPath.returnA); // TODO Find out why we need to add this empty array to get the export page
 	shape[shapeB].children[pathB+'_joint'].addChildren(childPath.returnB);
-	// shape[shapeB].children[pathB+'_joint'].strokeColor = '#900';// '#000'
-	// shape[shapeB].children[pathB+'_joint'].strokeWidth = 0.5;
-
-	// shape[shapeB].children[pathB+'_joint'].children['folds'].strokeColor = '#AAA';
-	shape[shapeB].children[pathB+'_joint'].children['folds'].strokeWidth = 0.2;
 
 	var gLaserA = new Group();
 	gLaserA.name = 'laser';
@@ -1666,8 +1677,9 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 
 		const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 		// console.log(rad)
-
-		var textGroupPrint = generateAsciiPolygons(fabID+"_M2", startP.x, startP.y, rad, 20);
+		let markerText = fabID;
+		if (fabID.length > 0) markerText += "_M2";
+		var textGroupPrint = generateAsciiPolygons(markerText, startP.x, startP.y, rad, 20);
 		// For each Path, for each pair of points (sliding window of size 2), do add aimed gcode generation
 		// Add this to the return, similar to the server-made marker gcode 
 
@@ -1844,6 +1856,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
 
 	// Original path needs to part of the laser cut, but not if the joint says otherwise
+	console.log({doNotCutOutline:param['do not cut outline']});
 	if (param['do not cut outline'] == false) {
 		returnALaser.push(edgeA);
 		returnBLaser.push(edgeB);
@@ -1857,7 +1870,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		param['hem offset'] = 0.0001;
 	}
 
-	if (param['pinking cut'] == true) {
+	if (param['pinking cut'] == true && param['do not cut outline'] == false) {
 		// console.log({status:"Pinking"});
 		const pinkingDepth = 3;
 		const pinkingDist = pinkingDepth * 0.75;
@@ -4067,7 +4080,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 	var blob = new Blob([GCODE], {type: 'text/plain'});
 	var d = new Date();
 	saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
-	refreshShapeDisplay();
+	// refreshShapeDisplay();
 	setMessage('<b>GCODE Exported</b>', '#444');
 
 	var printShapes = [...addedOutputs];
@@ -4147,8 +4160,10 @@ function getPrintPreview(relevantShapes) {
 
 // Generate an SVG with only lines relevant for lasercutting
 function getLaserSVG(selectedShapeID) {
+	var originalProject = paper.project;
+
 	var selectedShape = shape[selectedShapeID]; 
-	// console.log('selectedShape: ', selectedShape);
+	console.log('selectedShape: ', selectedShape);
 
 	// Make a new shape with copies of all relevant paths for lasercutting (joints and unjointed paths)
 	var laserShape = new Group();
@@ -4204,22 +4219,31 @@ function getLaserSVG(selectedShapeID) {
 
 	// Make a new project with only this shape to export
 	var tempProject = new paper.Project();
+	console.log({tempProject:tempProject});
+	console.log({paper:paper});
 
 	// Add the shape to the project
 	tempProject.activeLayer.addChild(laserShape);
 	// tempProject.importJSON(laserShape.exportJSON());
 
-	// console.log('laserShape: ', laserShape);
+	console.log('laserShape: ', laserShape);
 	var inShape = [laserShape];
 	calTempProjectBounds(inShape);
+	console.log({tempProjectBounds:tempProjectBounds});
+
 
 	var svgWidth = tempProjectBounds.maxX-tempProjectBounds.minX;
 	var svgHeight = tempProjectBounds.maxY-tempProjectBounds.minY;
+	console.log({svgWidth:svgWidth, svgHeight:svgHeight});
+	// log position
+	console.log({xStart:tempProjectBounds.minX, yStart:tempProjectBounds.minY, xEnd:tempProjectBounds.maxX, yEnd:tempProjectBounds.maxY });
 
 	// Then export an SVG with only this shape
 	var localSVG = $(tempProject.exportSVG({bounds:'content'})).html();
 	var svgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+svgWidth+'mm" height="'+svgHeight+'mm" viewBox="'+tempProjectBounds.minX+' '+tempProjectBounds.minY+' '+svgWidth+' '+svgHeight+'">'+localSVG+'</svg>';
 	var blob = new Blob([svgString], {type: 'image/svg+xml'});
+
+	console.log({blob:blob, svgString:svgString});
 	
 	const imageData = {blob:blob, width:svgWidth, height:svgHeight, svgString:svgString};
 	// Clean up by removing the shape again
@@ -4228,7 +4252,8 @@ function getLaserSVG(selectedShapeID) {
 	// tempProject.activeLayer.removeChildren();
 
 	// // console.log(paper.projects);
-	paper.project = paper.projects[0];
+	// paper.project = paper.projects[0];
+	paper.project = originalProject;
 	tempProject.remove();
 	// Return the SVG image data
 	return imageData;
@@ -4409,7 +4434,7 @@ function exportProject() {
 		var jobBucketsByShape = [];
 		for (var i = 0; i < shapeIDsOrder.length; i++) {
 			var key = shapeIDsOrder[i].key;
-			jobBucketsByShape.push({key:key, shapeIDs:shapeIDsOrder[i].shapeIDs, printJobs:printJobSetsByShape[key], bucketOrder:i});
+			jobBucketsByShape.push({key:key, shapeIDs:shapeIDsOrder[i].shapeIDs, printSets:printJobSetsByShape[key], bucketOrder:i, fabricated:false});
 		}
 		console.log({jobBucketsByShape:jobBucketsByShape});
 
@@ -4434,99 +4459,114 @@ function exportProject() {
 			shape[shapeID].ID = shapeID;
 		}
 
-		// console.log({laserObjects:laserObjects});
-		svgFilesToNest = [];
-		boxList = [];
-		var margin = 2;
+		let nesting = false; 
+		if (nesting) {
+			// console.log({laserObjects:laserObjects});
+			svgFilesToNest = [];
+			boxList = [];
+			var margin = 2;
 
-		// Export svg with only the laser paths
-		for (shapeID of allShapeIDs) {
-			var laserSVGImageData = getLaserSVG(shapeID);
-			// console.log('laserSVG: ', laserSVG);
-			shape[shapeID].cutSVGdata = laserSVGImageData;
+			// Export svg with only the laser paths
+			for (shapeID of allShapeIDs) {
+				colorForLaser(shape[shapeID]);
+				var laserSVGImageData = getLaserSVG(shapeID);
+				// console.log('laserSVG: ', laserSVG);
+				shape[shapeID].cutSVGdata = laserSVGImageData;
 
-			var svgURL = URL.createObjectURL(laserSVGImageData.blob);
-			svgFilesToNest.push(svgURL);
-			boxList.push(minimizeBB(shape[shapeID], margin));
-			// console.log('boxList: ', boxList);
-		}
-
-
-
-		var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
-		var arrangement = packboxes(boxList, laserArea);
-		// console.log({arrangement:arrangement});
-
-		// console.log('window: ', window);
-		// console.log('window: ', window.Fit);
-
-
-		let bins = [
-		// array of 2D Bins
-			new window.Fit.Bin(
-				1,    // unique id for each bins
-				1200, // width of a bin
-				600   // height of a bin
-			),
-		]
-		  
-		let parts = [
-		// array of 2D Polygons
-		new window.Fit.Part(
-			1,  // unique id for each parts
-			[   // array of 2D points
-			new window.Fit.Vector(0, 0),
-			new window.Fit.Vector(100, 0),
-			new window.Fit.Vector(120, 400),
-			]
-		),
-		]
-		  
-		  
-		let packer = new window.Fit.Packer()
-		
-		let config = { 
-			spacing: 0,         // space between parts
-			rotationSteps: 4,   // # of angles for available rotation (ex. 4 means [0, 90, 180, 270] angles from 360 / 4 )
-			population: 10,     // # of population in GA
-			generations: 10,    // # of generations in GA
-			mutationRate: 0.25, // mutation rate in GA
-			seed: 0             // seed of random value in GA
-		}
-		
-		packer.start(bins, parts, config, {
-			onEvaluation: (e) => {
-				// e.progress   : evaluation progress in a generation of GA
-				// console.log("Packing...");
-				// console.log("onEvaluation", e);
-			},
-			onPacking: (e) => {
-				// callback on packing once
-				// e.placed     : placed parts
-				// e.placements : transformations of placed ({ bin: id, part: id, position: (x, y), rotation: angle }, rotation must be done before translation)
-				// e.unplaced   : unplaced parts
-
-				// console.log("onPacking", e);
-			
-				// If unplaced parts exist, you can add a new bin in a process
-				if (e.unplaced.length > 0) {
-					let lastBin = e.bins[e.bins.length - 1]
-					let newBin = new window.Fit.Bin(lastBin.id + 1, lastBin.width, lastBin.height)
-					packer.addBin(newBin)
-				}
-			},
-			onPackingCompleted: (e) => {
-				// callback on packing completed
-				// e contains same data as an onPacking argument.
-				// console.log("onPackingCompleted", e);
-				// console.log("Packing done");
+				var svgURL = URL.createObjectURL(laserSVGImageData.blob);
+				svgFilesToNest.push(svgURL);
+				boxList.push(minimizeBB(shape[shapeID], margin));
+				// console.log('boxList: ', boxList);
 			}
-		})
-		
-		// packing for one second
-		setTimeout(() => { packer.stop() }, 10);
-		// packer.stop() // Stop a process
-		
+
+
+
+			var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
+			var arrangement = packboxes(boxList, laserArea);
+			// console.log({arrangement:arrangement});
+
+			// console.log('window: ', window);
+			// console.log('window: ', window.Fit);
+
+
+			let bins = [
+			// array of 2D Bins
+				new window.Fit.Bin(
+					1,    // unique id for each bins
+					1200, // width of a bin
+					600   // height of a bin
+				),
+			]
+			
+			let parts = [
+			// array of 2D Polygons
+			new window.Fit.Part(
+				1,  // unique id for each parts
+				[   // array of 2D points
+				new window.Fit.Vector(0, 0),
+				new window.Fit.Vector(100, 0),
+				new window.Fit.Vector(120, 400),
+				]
+			),
+			]
+			
+			
+			let packer = new window.Fit.Packer()
+			
+			let config = { 
+				spacing: 0,         // space between parts
+				rotationSteps: 4,   // # of angles for available rotation (ex. 4 means [0, 90, 180, 270] angles from 360 / 4 )
+				population: 10,     // # of population in GA
+				generations: 10,    // # of generations in GA
+				mutationRate: 0.25, // mutation rate in GA
+				seed: 0             // seed of random value in GA
+			}
+			
+			packer.start(bins, parts, config, {
+				onEvaluation: (e) => {
+					// e.progress   : evaluation progress in a generation of GA
+					// console.log("Packing...");
+					// console.log("onEvaluation", e);
+				},
+				onPacking: (e) => {
+					// callback on packing once
+					// e.placed     : placed parts
+					// e.placements : transformations of placed ({ bin: id, part: id, position: (x, y), rotation: angle }, rotation must be done before translation)
+					// e.unplaced   : unplaced parts
+
+					// console.log("onPacking", e);
+				
+					// If unplaced parts exist, you can add a new bin in a process
+					if (e.unplaced.length > 0) {
+						let lastBin = e.bins[e.bins.length - 1]
+						let newBin = new window.Fit.Bin(lastBin.id + 1, lastBin.width, lastBin.height)
+						packer.addBin(newBin)
+					}
+				},
+				onPackingCompleted: (e) => {
+					// callback on packing completed
+					// e contains same data as an onPacking argument.
+					// console.log("onPackingCompleted", e);
+					// console.log("Packing done");
+				}
+			})
+			
+			// packing for one second
+			setTimeout(() => { packer.stop() }, 10);
+			// packer.stop() // Stop a process
+		} else {
+			for (shapeID of allShapeIDs) {
+				colorForLaser(shape[shapeID]);
+				console.log({type: "SVG for cutting", shape:shape[shapeID]});
+				console.log({shapeID:shapeID});
+				var laserSVGImageData = getLaserSVG(shapeID);
+				// console.log('laserSVG: ', laserSVG);
+				shape[shapeID].cutSVGdata = laserSVGImageData;
+
+				var svgURL = URL.createObjectURL(laserSVGImageData.blob);
+				// console.log('boxList: ', boxList);
+			}
+		}
 
 		var cutOrder = 1;
 		// Attach shapes for all cuts per bucket
@@ -4536,6 +4576,7 @@ function exportProject() {
 				let theShape = shape[shapeID];
 
 				const typeObj = {detail:0, string:"Cut"};
+				shape[shapeID].imageData.imageType = 'cutSVG for bucket';
 				var imageDataList = [shape[shapeID].imageData];
 				var cutObj = {bucketStep:bucket.bucketOrder, type:typeObj, imageDatas:imageDataList, cutSVG:shape[shapeID].cutSVGdata, shape:shape[shapeID], fabricated:false};
 				// if it doesn't have an order number yet
@@ -4557,9 +4598,9 @@ function exportProject() {
 			var addedOutputs2 = [];
 			var addedShapes2 = [];
 			var addedPrintJobs2 = [];
-			for (let printJob of bucket.printJobs) {
+			for (let printSet of bucket.printSets) {
 				var GCODE2 = "";
-				[GCODE2, heightUsed2] = handlePrintJobs(printJob.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
 			}
 			[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
 			var combinedPrints = prints2;
@@ -4568,17 +4609,17 @@ function exportProject() {
 
 		// Each printjob as a separate print
 		for (let bucket of jobBucketsByShape) {
-			for (let printJob of bucket.printJobs) {
+			for (let printSet of bucket.printSets) {
 				var prints2 = [];
 				var GCODE2 = "";
 				var heightUsed2 = 0.0;
 				var addedOutputs2 = [];
 				var addedShapes2 = [];
 				var addedPrintJobs2 = [];
-				[GCODE2, heightUsed2] = handlePrintJobs(printJob.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
 				[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
 				var singlePrints = prints2;
-				printJob.singlePrints = singlePrints;
+				printSet.singlePrints = singlePrints;
 			}
 		}
 
@@ -4589,8 +4630,8 @@ function exportProject() {
 
 		// add printing preview images to bucket prints
 		for (let bucket of jobBucketsByShape) {
-			for (let printJob of bucket.printJobs) {
-				for (let print of printJob.singlePrints) {
+			for (let printSet of bucket.printSets) {
+				for (let print of printSet.singlePrints) {
 					var printList = [];
 					var threadList = [];
 					var shapeImages = [];
@@ -4599,8 +4640,6 @@ function exportProject() {
 						threadList.push(printedThread);
 					}
 					
-					
-		
 					for (let printJob of print.printJobs) {
 						for (let printOutline of printJob.renderRef.a.printOutlines) {
 							printOutline.strokeColor = '#02B';
@@ -4620,14 +4659,18 @@ function exportProject() {
 		
 					for (let thisShape of print.relevantShapes) {
 						// console.log({thisShape:thisShape});
+						console.log({shape:thisShape.shape});
 						colorForLaser(thisShape.shape);
 						const shapeList = [thisShape.shape];
 						var imageData = getLaserPreview(shapeList);
+						imageData.imageType = 'laserPreview for print';
+						console.log("got laser preview");
 						shapeImages.push(imageData);
 					}
 		
 		
 					var imageData = getPrintPreview(printList);
+					imageData.imageType = 'printPreview for print';
 					// laserObjects.push({ID:"5", imageData:imageData});
 		
 					print.imageData = imageData;
@@ -4637,7 +4680,7 @@ function exportProject() {
 					// console.log({printList:printList, threadList:threadList, prints:prints});
 	
 					const typeObj = {detail:1, string:"Print"};
-					var imageDataList = [print.imageData]
+					var imageDataList = [print.imageData];
 					print.imageDatas = imageDataList;
 					print.type = typeObj;
 					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, parentShape:currentObj.parentShape, relevantShapes:theRelevantShapes, print:printRef};
@@ -4648,6 +4691,8 @@ function exportProject() {
 				}
 			}
 		}
+
+
 
 		for (let print of prints) {
 			var printList = [];
@@ -4682,6 +4727,7 @@ function exportProject() {
 				colorForLaser(thisShape.shape);
 				const shapeList = [thisShape.shape];
 				var imageData = getLaserPreview(shapeList);
+				console.log("got laser preview for print");
 				shapeImages.push(imageData);
 			}
 
@@ -4712,7 +4758,7 @@ function exportProject() {
 		var blob = new Blob([svgString], {type: 'image/svg+xml'});
 		var d = new Date();
 		saveAs(blob, 'joinery_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
-		refreshShapeDisplay();
+		
 		setMessage('<b>SVG Exported</b>', '#444');
 
 		const url = URL.createObjectURL(blob);
@@ -4741,6 +4787,7 @@ function exportProject() {
 		exportWindow.flat = fabOrder.flattened;
 		exportWindow.order = fabOrder.order;
 
+		// refreshShapeDisplay();
 		// // console.log(fabOrder);
 	
 	} else {

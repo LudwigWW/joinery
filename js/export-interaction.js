@@ -13,9 +13,11 @@ var flat;
 // var laserObjects;
 // var allShapeIDs;
 
-var currentBucket = 0;
-var currentCut = 1;
-var currentPrint = 1;
+var currentBucket = -1;
+var currentCut = 0;
+var currentPrint = 0;
+let currentCutObj = null;
+let currentPrintObj = null;
 
 window.onbeforeunload = function() {
     return "Have you finished fabricating the project?";
@@ -59,6 +61,8 @@ function init() {
 
 	// Buckets
 	if (jobBucketsByShape.length > 0) {
+		updateNextStep();
+
 		$("#bucketListContainer").append(addBucketsHTML(jobBucketsByShape));
 	}
 	
@@ -85,6 +89,8 @@ function init() {
 	//   }).then(function (response) {
 	// 	console.log(response.data);
 	//   });
+
+
 }
 
 function initButtons() {
@@ -139,9 +145,79 @@ function refreshPage() {
 	// Buckets
 	$("#bucketListContainer").empty();
 	if (jobBucketsByShape.length > 0) {
+		updateNextStep();
 		$("#bucketListContainer").append(addBucketsHTML(jobBucketsByShape));
 	}
 	
+}
+
+function updateNextStep() {
+	let lowestCutOrder = Infinity;
+	let lowestPrintStep = Infinity;
+	for (let bucket of jobBucketsByShape) {
+		let lowestCutObj = null;
+		for (let cutObj of bucket.cutObjs) {
+			if (!cutObj.fabricated && cutObj.cutOrder >= 0 && cutObj.cutOrder < lowestCutOrder) {
+				lowestCutOrder = cutObj.cutOrder;
+				lowestCutObj = cutObj;
+			}
+		}
+		if (lowestCutObj) {
+			// Do something with the lowestCutObj
+			currentCutObj = lowestCutObj;
+			currentCut = lowestCutOrder;
+		}
+
+		
+		for (let printSet of bucket.printSets) {
+			let unfabricatedPrint = false;
+			let tempSinglePrint = null;
+			for (let print of printSet.singlePrints) {
+				if (!print.fabricated) {
+					unfabricatedPrint = true;
+					tempSinglePrint = print;
+					break;
+				}
+			}
+
+			if (unfabricatedPrint && printSet.printStep < lowestPrintStep) {
+				lowestPrintStep = printSet.printStep;
+				currentPrint = lowestPrintStep;
+				currentPrintObj = tempSinglePrint;
+				// Also set the current bucket to this bucket
+				currentBucket = jobBucketsByShape.indexOf(bucket);
+			}
+		}
+	}
+
+	for (let bucket of jobBucketsByShape) {
+		let allFabricated = true;
+		for (let cutObj of bucket.cutObjs) {
+			if (!cutObj.fabricated) {
+				allFabricated = false;
+				break;
+			}
+		}
+		if (!allFabricated) {
+			continue;
+		}
+		for (let printSet of bucket.printSets) {
+			for (let print of printSet.singlePrints) {
+				if (!print.fabricated) {
+					allFabricated = false;
+					break;
+				}
+			}
+			if (!allFabricated) {
+				break;
+			}
+		}
+		if (allFabricated) {
+			bucket.fabricated = true;
+		}
+	}
+	console.log({currentCut:currentCut, currentPrint:currentPrint, currentBucket:currentBucket});
+	console.log({currentCutObj:currentCutObj, currentPrintObj:currentPrintObj});
 }
 
 // function createOrderList(prints, shapes, shapeIDs) {
@@ -325,18 +401,18 @@ function addListBucketBox(bucket, status=0) {
 	html += '<hr>';
 	html += '</div>';
 	html += '<div class="printsHolder">';
-	for (let job of bucket.printJobs) {
+	for (let set of bucket.printSets) {
 		// for (let printJob of job) {
 		// 	console.log({printJob:printJob});
-		let printJobsId = job.printStep;
-			for (let print of job.singlePrints) {
+		let printSetsId = set.printStep;
+			for (let print of set.singlePrints) {
 				let printStatus = 0;
 				if (print.fabricated) {
 					printStatus = 2;
-				} else if (currentPrint == printJobsId) {
+				} else if (currentPrint == printSetsId) {
 					printStatus = 1;
 				}
-				html += addParallelJobs(print, printJobsId, printStatus, false);
+				html += addParallelJobs(print, printSetsId, printStatus, false);
 			}
 		// }
 	}
@@ -379,6 +455,9 @@ function addListBox(id, type, imageDatas, completed) {
 	html += '<br>';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
+			let imageType = '';
+			if (imageData.imageType) imageType = imageData.imageType;
+			html += '<span>'+imageType+'</span>';
 			let image = makeImage(imageData);
 			html += image;
 		}
@@ -405,9 +484,12 @@ function addBucketsHTML(buckets) {
 		for (var i = 0; i < buckets.length; i++) {
 			var bucket = buckets[i];
 			var status = 0;
-			if (currentBucket == i) {
-				status = 1;
+			if (bucket.fabricated) {
+				status = 2;
 			}
+			else if (currentBucket == i) {
+				status = 1;
+			}  
 			html += addListBucketBox(bucket, status);
 			html += '<br>';
 		}
@@ -429,9 +511,9 @@ function addBucketsHTML(buckets) {
 			html += '<div class="container">';
 			html += '<h4 class="' + headerColor + '">Step ' + stepNumber + '</h4>';
 			html += '<div class="row">';
-			for (var j = 0; j < bucket.printJobs.length; j++) {
-				var job = bucket.printJobs[j];
-				html += addParallelJobs(job);
+			for (var j = 0; j < bucket.printSets.length; j++) {
+				var set = bucket.printSets[j];
+				html += addParallelJobs(set);
 			}
 			html += '</div>';
 			html += '</div>';
@@ -470,6 +552,9 @@ function addParallelCuts(cutObj, showNr, status, completed=false) {
 	html += '<br>';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
+			let imageType = '';
+			if (imageData.imageType) imageType = imageData.imageType;
+			html += '<span>'+imageType+'</span>';
 			let image = makeImage(imageData);
 			html += image;
 		}
@@ -509,10 +594,24 @@ function addParallelJobs(print, id, status, completed=false) {
 	html += '<br>';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
+			let imageType = '';
+			if (imageData.imageType) imageType = imageData.imageType;
+			html += '<span>'+imageType+'</span>';
 			let image = makeImage(imageData);
 			html += image;
 		}
 	}
+
+	if (print.shapeImages.length > 0) {
+		for (let imageData of print.shapeImages) {
+			let imageType = '';
+			if (imageData.imageType) imageType = imageData.imageType;
+			html += '<span>'+imageType+'</span>';
+			let image = makeImage(imageData);
+			html += image;
+		}
+	}
+
 	html += '</div>';
 	return html;
 }
@@ -717,16 +816,16 @@ function downloadFile(e) {
 	if (type == 'print') {
 		// Find print with id in jobBucketsByShape
 		for (let bucket of jobBucketsByShape) {
-			for (let job of bucket.printJobs) {
-				if (job.printStep == id) {
+			for (let set of bucket.printSets) {
+				if (set.printStep == id) {
 
-					for (let print of job.singlePrints) {
+					for (let print of set.singlePrints) {
 						// download job gcode
 						var d = new Date();
 						saveAs(print.gCodeBlob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
 						print.fabricated = true;
 					}
-					job.fabricated = true;
+					set.fabricated = true;
 				}
 			}
 		}

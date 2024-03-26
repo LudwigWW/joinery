@@ -538,6 +538,10 @@ function createJointProfileMenu(i, ic, id) {
 
 	$('#'+id+' input').on('change', function() {
 		$(this).css('color', '#F80');
+		// $(this).css('background-color', 'rgba(255, 136, 0, 0.1)');
+		if ($(this).is(':checkbox')) {
+			$(this).parent().css('background-color', 'rgba(255, 136, 0, 0.1)');
+		}
 	});
 
 	$('#'+id+' .paramList .param').on('click', function() {
@@ -579,7 +583,8 @@ function setJointValue(idString) {
 	}
 
 	$('#'+idString+' input').css('color', '#000');
-			
+	$('#'+idString+' input').parent().css('background-color', 'transparent');		
+	
 	for (j in joints) {
 		generateJoint(j);
 	}

@@ -11,9 +11,10 @@ var connectionLines;
 var shapeColor = [];
 var ctx;
 var printingCommands;
-const laserColor = '#F00';
+const laserColor = '#000';
+const laserColorLate = '#F00'
 const laserWidth = 0.1;
-const laserColorDone = '#D33';
+const laserColorDone = '#933';
 const printColor = '#05D';
 const printColorDone = '#339';
 var noColor;
@@ -1190,6 +1191,7 @@ function setMessage(s, c) {
 }
 
 function refreshShapeDisplay() {
+	console.log('refreshShapeDisplay');
 	for (i in shape) {
 		for (j in shape[i].children) {
 			shape[i].children[j].strokeWidth = 0.5;
@@ -1258,6 +1260,7 @@ function refreshShapeDisplay() {
 }
 
 function grayOutShapes() {
+	console.log('grayOutShapes');
 	for (i in shape) {
 		for (j in shape[i].children) {
 			shape[i].children[j].strokeWidth = 0.1;
@@ -1280,15 +1283,50 @@ function grayOutShapes() {
 }
 
 function colorForLaser(thisShape) {
-		for (j in thisShape.children) {
-			if (thisShape.children[j].className=='Group') {
-				if (thisShape.children[j].children['laser']) {
-					thisShape.children[j].children['laser'].strokeColor = laserColor;
-					thisShape.children[j].children['laser'].strokeWidth = 0.1;
+	console.log("colorForLaser");
+	for (j in thisShape.children) {
+		if (thisShape.children[j].className=='Group') {
+			if (thisShape.children[j].children['laser']) {
+				thisShape.children[j].children['laser'].strokeColor = laserColorLate;
+				// thisShape.children[j].children['laser'].strokeColor = '#FF0';
+				thisShape.children[j].children['laser'].strokeWidth = laserWidth;
+			}
+			for (child of thisShape.children[j].children) {
+				// child.strokeWidth = laserWidth;
+			}
+
+			for (laserChild of thisShape.children[j].children.laser.children) {
+				if (laserChild.name == 'cut') {
+					laserChild.strokeColor = laserColor;
+				}
+				else {
+					laserChild.strokeColor = laserColorLate;
 				}
 			}
+		} else if (thisShape.children[j].className=='Path') {
+			thisShape.children[j].strokeWidth = laserWidth;
+			thisShape.children[j].strokeColor = laserColorLate;
 		}
+	}
+}
 
+
+function colorForPreview(thisShape) {
+	console.log("colorForLaser");
+	for (j in thisShape.children) {
+		if (thisShape.children[j].className=='Group') {
+			if (thisShape.children[j].children['laser']) {
+				thisShape.children[j].children['laser'].strokeColor = laserColor;
+				thisShape.children[j].children['laser'].strokeWidth = laserWidth;
+			}
+			// for (child of thisShape.children[j].children) {
+			// 	console.log(child);
+			// 	child.strokeWidth = laserWidth;
+			// }
+		} else if (thisShape.children[j].className=='Path') {
+			thisShape.children[j].strokeWidth = laserWidth;
+		}
+	}
 }
 
 var dimBool = false;
