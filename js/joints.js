@@ -13,7 +13,7 @@ const constXShift = 5;
 const defaultLineLength = 10;
 const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
-const emptyIDs = false;
+const emptyIDs = true;
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
@@ -36,6 +36,7 @@ var paramAngle = [
 ];
 
 var paramBool = [
+	'do not cut outline',
 	'pinking cut'
 ];
 
@@ -137,6 +138,7 @@ var printedRivets = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'seam pattern width': 0,
@@ -156,6 +158,7 @@ var printedRunning = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 10,
@@ -172,6 +175,7 @@ var printedBaste = {
 	'profile':'',
 	'notes': 'Seam is easy to break by applying force or breaking printed stitches.',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 20,
@@ -188,6 +192,7 @@ var printedBastePull = {
 	'profile':'',
 	'notes': 'Seam can be undone just by pulling with a little force.',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 20,
@@ -204,6 +209,7 @@ var printedWhip = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'seam pattern width': 5,
@@ -220,6 +226,7 @@ var printedZigZag = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'seam pattern width': 5,
@@ -236,6 +243,7 @@ var printedFlex = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'seam pattern width': 5,
@@ -253,6 +261,7 @@ var printedCross = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'seam pattern width': 5,
@@ -269,6 +278,7 @@ var printedDecorative = {
 	'profile':'',
 	'notes': 'notes',
 	'param': {
+		'do not cut outline': false,
 		'hem offset': 8,
 		'hole diameter': 1.5,
 		'hole spacing': 10,
@@ -338,7 +348,8 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
+var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, noneJoint];
+	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
 
@@ -1832,12 +1843,18 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	var edgeA = shape[shapeA].children[pathA+'_joint'].children[0];
 	var edgeB = shape[shapeB].children[pathB+'_joint'].children[0];
 
-	// Original path needs to part of the laser cut 
-	returnALaser.push(edgeA);
-	returnBLaser.push(edgeB);
+	// Original path needs to part of the laser cut, but not if the joint says otherwise
+	if (param['do not cut outline'] == false) {
+		returnALaser.push(edgeA);
+		returnBLaser.push(edgeB);
+	}
 
 	if (param['hem offset'] < (targetPatternWidth / 2)) {
 		console.error({message:"hem offset must be larger than seam width"}); // TODO: Should we be going in the outside direction?
+	}
+
+	if (param['hem offset'] == 0) {
+		param['hem offset'] = 0.0001;
 	}
 
 	if (param['pinking cut'] == true) {
@@ -1959,16 +1976,16 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		// returnB.push(offsetPB);
 	}
 
-	var targetingPathA = getOffsetPath(edgeA, (param['hem offset']+1), joints[index]['dirM']);
-	var targetingPathB = getOffsetPath(edgeB, (param['hem offset']+1), joints[index]['dirF']);
-	var holePathFarA = getOffsetPath(edgeA, (param['hem offset']), joints[index]['dirM']);
-	var holePathFarB = getOffsetPath(edgeB, (param['hem offset']), joints[index]['dirF']);
-	var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-targetPatternWidth), joints[index]['dirM']);
-	var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-targetPatternWidth), joints[index]['dirF']);
+	// var targetingPathA = getOffsetPath(edgeA, (param['hem offset']+1), joints[index]['dirM']);
+	// var targetingPathB = getOffsetPath(edgeB, (param['hem offset']+1), joints[index]['dirF']);
+	// var holePathFarA = getOffsetPath(edgeA, (param['hem offset']), joints[index]['dirM']);
+	// var holePathFarB = getOffsetPath(edgeB, (param['hem offset']), joints[index]['dirF']);
+	// var holePathNearA = getOffsetPath(edgeA, (param['hem offset']-targetPatternWidth), joints[index]['dirM']);
+	// var holePathNearB = getOffsetPath(edgeB, (param['hem offset']-targetPatternWidth), joints[index]['dirF']);
 
 
-	returnALaser.push(holePathNearA);
-	returnA.push(holePathFarA);
+	// returnALaser.push(holePathNearA);
+	// returnA.push(holePathFarA);
 
 	var refLineA = getOffsetPath(edgeA, param['hem offset'], joints[index]['dirM']);
 	var refLineB = getOffsetPath(edgeB, param['hem offset'], joints[index]['dirF']);
@@ -1984,7 +2001,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			bLines.push(holePathOffsetB);
 		} else {
 			var holePathOffsetA = getOffsetPath(edgeA, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirM']);
-			holePathOffsetA.strokeColor = laserColor;
+			// holePathOffsetA.strokeColor = laserColor;
 			var holePathOffsetB = getOffsetPath(edgeB, (param['hem offset']+parsedPL.dist-(targetPatternWidth*0.5)), joints[index]['dirF']);
 			aLines.push(holePathOffsetA);
 			bLines.push(holePathOffsetB);
@@ -1997,15 +2014,15 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	// console.log('patternLocations: ', patternLocations);
 
 
-	for (let oneALine of aLines) {
-		// console.log({oneALine:oneALine});
-		returnALaser.push(oneALine);
-	}
+	// for (let oneALine of aLines) {
+	// 	// console.log({oneALine:oneALine});
+	// 	returnALaser.push(oneALine);
+	// }
 
-	for (let oneBLine of bLines) {
-		// console.log({oneBLine:oneBLine});
-		returnBLaser.push(oneBLine);
-	}
+	// for (let oneBLine of bLines) {
+	// 	// console.log({oneBLine:oneBLine});
+	// 	returnBLaser.push(oneBLine);
+	// }
 
 	// console.log('aLines: ', aLines);
 
@@ -2203,8 +2220,8 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0, jointShapeList:shapeList}];
 		console.log({jobs:jobs});
 		while (startIndex < (laserHoleList.length-1)) {
-			console.log({startIndex:startIndex, endIndex:endIndex, laserHoleList:laserHoleList});
-			console.log({jobs:jobs});
+			// console.log({startIndex:startIndex, endIndex:endIndex, laserHoleList:laserHoleList});
+			// console.log({jobs:jobs});
 			var lastJob = jobs[jobs.length-1];
 
 			// // console.log({thePath:lastJob.path, patternedOffset:laserHoleList[endIndex].patternedOffset});
@@ -2359,7 +2376,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 	if (!emptyIDs) {
 		var testPath = generateAsciiPolygons(".PB", projectBounds.minX, projectBounds.minY, -90, 10);
-		// console.log({testPath:testPath});
+		console.log({testPath:testPath});
 		returnA.push(testPath);
 		var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
 		text.fillColor = 'black';
