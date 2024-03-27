@@ -14,7 +14,7 @@ const FormData = require('form-data');
 const axios = require('axios');
 var request = require('request-promise');
 // const { OctoPrintServer } = require('octoprint');
-const svelteApp = require('./App.svelte').default;
+// const svelteApp = require('./App.svelte').default;
 
 
 const debug = false;
