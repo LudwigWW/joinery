@@ -144,7 +144,7 @@ var printedRivets = {
 		'seam pattern width': 0,
 		'hole spacing': 10,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'skip # holes': 0,
@@ -163,7 +163,7 @@ var printedRunning = {
 		'hole diameter': 1.5,
 		'hole spacing': 10,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -180,7 +180,7 @@ var printedBaste = {
 		'hole diameter': 1.5,
 		'hole spacing': 20,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -197,7 +197,7 @@ var printedBastePull = {
 		'hole diameter': 1.5,
 		'hole spacing': 20,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -215,7 +215,7 @@ var printedWhip = {
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -232,7 +232,7 @@ var printedZigZag = {
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -249,7 +249,7 @@ var printedFlex = {
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -267,7 +267,7 @@ var printedCross = {
 		'seam pattern width': 5,
 		'hole spacing': 7,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -283,7 +283,7 @@ var printedDecorative = {
 		'hole diameter': 1.5,
 		'hole spacing': 10,
 		'skip # holes': 0,
-		'printing area width': 240,
+		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
@@ -2172,10 +2172,10 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		}
 
 
-		// Align entire path width-wise (printing build plate left/right-wise)
+		// Align entire path width-wise (printing build plate left/right-wise) --> lowest height
 		let rotationDegs = 10;
 		let fullCircle = 0;
-		let longestW = {deg:0, width:0};
+		let smallestH = {deg:0, height:Infinity};
 		let rotP = new Point(laserPointsPath.strokeBounds.x, laserPointsPath.strokeBounds.y);
 		while (fullCircle < 360) {
 			pathsGroup.rotate(rotationDegs, rotP);
@@ -2185,26 +2185,39 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			// copyPath.rotate(rotationDegs);
 			laserPointsPath.rotate(rotationDegs, rotP);
 			fullCircle += rotationDegs;
-			if (laserPointsPath.strokeBounds.width > longestW.width) {
-				longestW.width = laserPointsPath.strokeBounds.width;
-				longestW.deg = fullCircle;
+			if (laserPointsPath.strokeBounds.height < smallestH.height) {
+				smallestH.height = laserPointsPath.strokeBounds.height;
+				smallestH.deg = fullCircle;
 			}
 		}
 
-		if (longestW.deg != 0) {
-			pathsGroup.rotate(longestW.deg, rotP);
+		if (smallestH.deg != 0) {
+			pathsGroup.rotate(smallestH.deg, rotP);
 			// for (let onePath of copyPaths) {
-			// 	onePath.rotate(longestW.deg);
+			// 	onePath.rotate(smallestH.deg);
 			// }
-			// copyPath.rotate(longestW.deg);
-			laserPointsPath.rotate(longestW.deg, rotP);
+			// copyPath.rotate(smallestH.deg);
+			laserPointsPath.rotate(smallestH.deg, rotP);
 		}
 
 
 		// Rotate to ensure Left To Right on print build plate
 		let startP = laserPointsPath.getPointAt(0);
 		let endP = laserPointsPath.getPointAt(laserPointsPath.length);
-		if (endP.x < startP.x) {
+		let sampleCount = 10;
+		let samplePoints = [];
+		for (let i = 0; i <= sampleCount; i++) {
+			let t = i / sampleCount;
+			t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
+			let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
+			samplePoints.push(point);
+		}
+		let averageX = 0;
+		for (let samplePoint of samplePoints) {
+			averageX += samplePoint.x;
+		}
+		averageX /= samplePoints.length;
+		if (averageX < startP.x) {
 			pathsGroup.rotate(180, rotP);
 			// for (let onePath of copyPaths) {
 			// 	onePath.rotate(180);
@@ -2319,26 +2332,39 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			// Rotate job for Left to Right printing
 			let rotationDegs = 10;
 			let fullCircle = 0;
-			let longestW = {deg:0, width:0};
+			let smallestH = {deg:0, height:Infinity};
 			let rotPoint = new Point(job.path.strokeBounds.x, job.path.strokeBounds.y);
 			while (fullCircle < 360) {
 				// // console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
 				job.originSourcePathPart.rotate(rotationDegs, rotPoint);
 				job.path.rotate(rotationDegs, rotPoint);
 				fullCircle += rotationDegs;
-				if (job.path.strokeBounds.width > longestW.width) {
-					longestW.width = job.path.strokeBounds.width;
-					longestW.deg = fullCircle;
+				if (job.path.strokeBounds.height < smallestH.height) {
+					smallestH.height = job.path.strokeBounds.height;
+					smallestH.deg = fullCircle;
 				}
 			}		
 
-			if (longestW.deg != 0) {
-				job.path.rotate(longestW.deg, rotPoint);
-				job.originSourcePathPart.rotate(longestW.deg, rotPoint);
+			if (smallestH.deg != 0) {
+				job.path.rotate(smallestH.deg, rotPoint);
+				job.originSourcePathPart.rotate(smallestH.deg, rotPoint);
 				// Rotate to ensure Left To Right on print build plate
 				let startP = job.path.getPointAt(0);
 				let endP = job.path.getPointAt(job.path.length);
-				if (endP.x < startP.x) {
+				let sampleCount = 10;
+				let samplePoints = [];
+				for (let i = 0; i <= sampleCount; i++) {
+					let t = i / sampleCount;
+					t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
+					let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
+					samplePoints.push(point);
+				}
+				let averageX = 0;
+				for (let samplePoint of samplePoints) {
+					averageX += samplePoint.x;
+				}
+				averageX /= samplePoints.length;
+				if (averageX < startP.x) {
 					job.path.rotate(180, rotPoint);
 					job.originSourcePathPart.rotate(180, rotPoint);
 				}
@@ -4079,9 +4105,9 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 
 	var blob = new Blob([GCODE], {type: 'text/plain'});
 	var d = new Date();
-	saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
+	// saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
 	// refreshShapeDisplay();
-	setMessage('<b>GCODE Exported</b>', '#444');
+	// setMessage('<b>GCODE Exported</b>', '#444');
 
 	var printShapes = [...addedOutputs];
 	var printObj = {relevantShapes:addedShapes, printedThreads:printShapes, printJobs:addedPrintJobs};
@@ -4264,12 +4290,23 @@ function is_server() {
 }
 
 function exportProject() {
+	setMessage('<b>Opening Control Panel. Please wait.</b>', '#393');
+	// refreshShapeDisplay();
+	setTimeout(function() {
+		exportProjectNow();
+	}, 5); // TODO wait for server responses. Make list of open requests and check if all are done before exporting
+}
+
+function exportProjectNow() {
+
 	emptyAll();
 	activateDim(false);
 	paper.view.zoom = 1;
 	var prints = [];
 	var allShapeIDs = new Set();
 
+
+	
 
 	// console.log({markerGCodesExport:markerGCodes});
 
@@ -4757,9 +4794,9 @@ function exportProject() {
 
 		var blob = new Blob([svgString], {type: 'image/svg+xml'});
 		var d = new Date();
-		saveAs(blob, 'joinery_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
+		// saveAs(blob, 'joinery_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
 		
-		setMessage('<b>SVG Exported</b>', '#444');
+		// setMessage('<b>SVG Exported</b>', '#444');
 
 		const url = URL.createObjectURL(blob);
 		const image = document.createElement('img');

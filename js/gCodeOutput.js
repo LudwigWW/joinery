@@ -104,7 +104,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     var d = new Date();
     saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
     // refreshShapeDisplay();
-    setMessage('<b>GCODE Exported</b>', '#444');
+    // setMessage('<b>GCODE Exported</b>', '#444');
 
     var printShapes = [...addedOutputs];
     var printObj = {relevantShapes:addedShapes, printedThreads:printShapes, printJobs:addedPrintJobs, fabricated:false, gCodeBlob:blob, gcodeString:GCODE};
