@@ -4575,7 +4575,7 @@ function exportProject() {
 			for (let shapeID of bucket.shapeIDs) {
 				let theShape = shape[shapeID];
 
-				const typeObj = {detail:0, string:"Cut"};
+				const typeObj = {detail:0, string:"Lasercut"};
 				shape[shapeID].imageData.imageType = 'cutSVG for bucket';
 				var imageDataList = [shape[shapeID].imageData];
 				var cutObj = {bucketStep:bucket.bucketOrder, type:typeObj, imageDatas:imageDataList, cutSVG:shape[shapeID].cutSVGdata, shape:shape[shapeID], fabricated:false};
@@ -4679,7 +4679,7 @@ function exportProject() {
 					// console.log({shapeImages:shapeImages});
 					// console.log({printList:printList, threadList:threadList, prints:prints});
 	
-					const typeObj = {detail:1, string:"Print"};
+					const typeObj = {detail:1, string:"Printed Needle&Thread"};
 					var imageDataList = [print.imageData];
 					print.imageDatas = imageDataList;
 					print.type = typeObj;

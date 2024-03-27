@@ -330,8 +330,10 @@ function makeImage(imageData, width=200, height=150) {
 }
 
 function makeButton(id, text, onclick) {
-	return '<div class="buttonExport"><label for="export'+id.toString()+'" class="button2" onclick="'+onclick+'">'+text+'</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
-
+	let htmlString = '<div class="buttonExport"><label for="export';
+	htmlString += id.toString() + '" class="button2" onclick="' + onclick + '">' + text + '</label></div>  <span class="extraHigh">';
+	return htmlString;
+	return +id.toString()+'" class="button2" onclick="'+onclick+'">'+text+'</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
 }
 
 function makeColorStyle(status) {
@@ -355,11 +357,12 @@ function addListBucketBox(bucket, status=0) {
 	html += makeColorStyle(status);
 
 	html += '> ';
-	html += '<span>Group '+(id+1).toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	html += '<span>Group '+(id+1).toString()+':</span> '
+	// html += '<input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
 	// if (completed) {
 	// 	html += ' checked';
 	// } 
-	html += '> '
+	// html += '> '
 	// html += '<span id="type'+id.toString()+'">'+ type.string +'</span> '
 	// html += '<img src="';
 	
@@ -378,7 +381,7 @@ function addListBucketBox(bucket, status=0) {
 
 
 	// html += makeButton(id, "Download", 'downloadFile(\'exp'+id.toString()+'\')');
-	html += '<br>';
+	html += '<br />';
 	
 	html += '<div class="cutsHolder">';
 	for (let cutObj of bucket.cutObjs) {
@@ -398,7 +401,7 @@ function addListBucketBox(bucket, status=0) {
 	html += '</div>';
 
 	html += '<div class="hruleHolder">';
-	html += '<hr>';
+	html += '<hr />';
 	html += '</div>';
 	html += '<div class="printsHolder">';
 	for (let set of bucket.printSets) {
@@ -452,14 +455,15 @@ function addListBox(id, type, imageDatas, completed) {
 
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'exp'+id.toString()+'\')');
-	html += '<br>';
+	html += '<br />';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
-			html += '<span>'+imageType+'</span>';
+			html += '<span>'+imageType+'</span><br />';
 			let image = makeImage(imageData);
 			html += image;
+			html += '<br />';
 		}
 	}
 	html += '</div>';
@@ -472,7 +476,7 @@ function addStepsHTML(flatList) {
     if (flatList.length > 0) {
 		for (let listItem of flatList) {
 			html += addListBox(listItem.listID, listItem.type, listItem.imageDatas, false);
-			html += '<br>';
+			html += '<br />';
 		}
 	}
 	return html;
@@ -491,7 +495,7 @@ function addBucketsHTML(buckets) {
 				status = 1;
 			}  
 			html += addListBucketBox(bucket, status);
-			html += '<br>';
+			html += '<br />';
 		}
 	}
 	return html;
@@ -530,11 +534,19 @@ function addParallelCuts(cutObj, showNr, status, completed=false) {
 	html += makeColorStyle(status);
 	html += '> ';
 	
-	html += '<span>Fabric Cut C'+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
-	if (completed) {
-		html += ' checked';
-	} 
-	html += '> <span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
+	let fabricWidth = Math.ceil((cutObj.cutSVG.width + 35) / 10); 
+	let fabricHeight = Math.ceil((cutObj.cutSVG.height + 35) / 10); 
+	let fabricSize = "~" + fabricWidth + "x" + fabricHeight + "cm ";
+
+	html += '<span>' + fabricSize + 'FABRIC CUT C'+id.toString()+':</span> '
+	// checkbox
+	// html += '<input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	// if (completed) {
+	// 	html += ' checked';
+	// } 
+	// html += '> ';
+
+	html += '<span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
 	
 	switch(type.detail) {
 		case 0:
@@ -549,14 +561,15 @@ function addParallelCuts(cutObj, showNr, status, completed=false) {
 
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'cut_'+id.toString()+'\')');
-	html += '<br>';
+	html += '<br />';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
-			html += '<span>'+imageType+'</span>';
+			html += '<span>'+imageType+'</span><br />';
 			let image = makeImage(imageData);
 			html += image;
+			html += '<br />';
 		}
 	}
 	html += '</div>';
@@ -572,11 +585,13 @@ function addParallelJobs(print, id, status, completed=false) {
 	html += makeColorStyle(status);
 
 	html += '> ';
-	html += '<span>Seam S'+id.toString()+':</span> <input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
-	if (completed) {
-		html += ' checked';
-	} 
-	html += '> <span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
+	html += '<span>Seam S'+id.toString()+':</span> ';
+	// html += '<input id="done'+id.toString()+'" class="checkbox" type="checkbox"'
+	// if (completed) {
+	// 	html += ' checked';
+	// } 
+	// html += '>';
+	html += ' <span id="type'+id.toString()+'">'+ type.string +'</span> <img src="';
 	
 	switch(type.detail) {
 		case 0:
@@ -591,14 +606,15 @@ function addParallelJobs(print, id, status, completed=false) {
 
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')');
-	html += '<br>';
+	html += '<br />';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
-			html += '<span>'+imageType+'</span>';
+			html += '<span>'+imageType+'</span><br />';
 			let image = makeImage(imageData);
 			html += image;
+			html += '<br />';
 		}
 	}
 
@@ -606,9 +622,10 @@ function addParallelJobs(print, id, status, completed=false) {
 		for (let imageData of print.shapeImages) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
-			html += '<span>'+imageType+'</span>';
+			html += '<span>'+imageType+'</span><br />';
 			let image = makeImage(imageData);
 			html += image;
+			html += '<br />';
 		}
 	}
 
