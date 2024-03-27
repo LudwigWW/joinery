@@ -1636,8 +1636,9 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
 	// console.log(rad)
-
-	var textGroup = generateAsciiPolygons(fabID+"_M2", startP.x, startP.y, rad, 20);
+	let markerText2 = fabID;
+	if (fabID.length > 0) markerText2 += "_M2";
+	var textGroup = generateAsciiPolygons(markerText2, startP.x, startP.y, rad, 20);
 	// console.log({textGroup:textGroup});
 	for (let childpath of textGroup.children) {
 		childpath.name = 'printedText'
@@ -2066,6 +2067,8 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		const remainderA = refLineA.length-(holeCount*param['hole spacing']);
 		const remainderB = refLineB.length-(holeCount*param['hole spacing']);
 		var patternIndex = 0;
+
+		let holesMinusSkipped = holeCount - skipHoles;
 				
 		for (var i=0; i<holeCount; i++) {
 			
@@ -2112,7 +2115,10 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 			if (skipHoles >= 1) {
 				skipHoles -= 1;
-			} else {
+			} else if (i >= holesMinusSkipped){
+				// pass
+			}
+			else {
 				var closeToOtherPrints = checkMinDist(ptA, ptB, minDist);
 				// console.log('closeToOtherPrints: ', closeToOtherPrints);
 				if (!closeToOtherPrints) {
