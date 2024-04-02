@@ -147,7 +147,6 @@ var printedRivets = {
 		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 3,
-		'skip # holes': 0,
 		'pinking cut': false,
 		'anti-overlap spacing': 5,
 	}
@@ -167,6 +166,25 @@ var printedRunning = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+	}
+};
+
+var printedOverlapping = {
+	'name':'printed continuous',
+	'profile':'',
+	'notes': 'Seam is great for applying patches or to sue with flexible filament.',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.5,
+		'seam pattern width': 2,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 3,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
 	}
 };
 
@@ -348,7 +366,7 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, noneJoint];
+var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -677,6 +695,20 @@ function generateJoint(index) {
 						spikes:printTemplate.G91Commands.spikesTall, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.dotsTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed continuous':
+					// var printTemplate = template;
+					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
+					
+					var G91 = {base:printTemplate.G91Commands.overlappingLine, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.overlappingLineTop
 					};
 
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
@@ -1296,10 +1328,12 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	placeBConnectionList = [];
 	svgHoleList = [];
 	svgBHoleList = [];
+	console.log({jobLaserHoles:job.laserHoles});
 	for (let laserHole of job.laserHoles) {
 		svgHoleList.push(laserHole.pointOrigin);
 		svgBHoleList.push(laserHole.bOrigin);
 	}
+	console.log({svgHoleList:svgHoleList, svgBHoleList:svgBHoleList});
 	addGCodePart("", param, svgHoleList, commandObj.base, 0, false, placeConnectionList); // Just getting the order reference
 	addGCodePart("", param, svgBHoleList, commandObj.top, 0, true, placeBConnectionList);
 	// console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
@@ -1308,12 +1342,15 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 
 	returnList = returnAPrint;
 	returnRef = job.renderRef.a;
+	console.log({placeConnLists:placeConnLists});
+
 	for (let placeConnL of placeConnLists) {
-		// console.log({placeConnL:placeConnL});
+		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
-			// // console.log({connection:connection});
+			console.log({connection:connection});
 			// console.log(connection.to !== null);
-			if (connection.to !== null) {
+			if (connection.to !== null && connection.from !== null) {
+				console.log({connection:connection});
 				switch (commandObj.base.renderDetails.type) {
 					case "circle":
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
@@ -1325,6 +1362,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 					case "line":
 						var renderPath = new Path([connection.from, connection.to]);
 						renderPath.name = 'printedLine';
+						console.log({connection:connection});
 						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
 						// // console.log({dist:connection.from.getDistance(connection.to)});
 						renderPath.renderWidth = outWidth;
@@ -1333,7 +1371,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						// // console.log({renderPath:renderPath});
 						break;
 				}
-			} else {
+			} 
+			else if (connection.from !== null) {
 				switch (commandObj.base.renderDetails.type) {
 					case "circle":
 						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
@@ -1352,6 +1391,14 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						// // console.log({rCircle:renderPath});
 						break;
 				}
+			} else if (connection.to !== null) {
+				console.warn('Rendering from unknown point');
+				var renderPath = new Path.Circle(connection.to, commandObj.base.renderDetails.diameter/2);
+				renderPath.name = 'printedCircle';
+				renderPath.renderWidth = 10;
+				renderPath.strokeColor = '#F03';
+				returnList.push(renderPath);
+				returnRef.printOutlines.push(renderPath);
 			}
 		}
 		returnList = returnBPrint;
@@ -2108,7 +2155,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 				// console.log('offsetA: ', offsetA);
 			}
 
-			var minDist = 10;
+			var minDist = 1;
 			if (param['anti-overlap spacing'] != undefined) minDist = param['anti-overlap spacing'];
 
 			// check whether the points are close to other prints (within minDist) through shape
@@ -2143,6 +2190,21 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 						circleB.fillColor = noColor;
 						returnALaser.push(circleA);
 						returnBLaser.push(circleB);
+					} else {
+						if (debug) {
+							circleA = new Path.Circle(ptA, param['hole diameter']/2);
+							circleB = new Path.Circle(ptB, param['hole diameter']/2);
+							circleA.name = 'debug';
+							circleB.name = 'debug';
+							circleA.strokeColor = '#FF4';
+							circleB.strokeColor = '#FF4';
+							circleA.strokeWidth = laserWidth;
+							circleB.strokeWidth = laserWidth;
+							circleA.fillColor = noColor;
+							circleB.fillColor = noColor;
+							returnA.push(circleA);
+							returnB.push(circleB);
+						}
 					}
 
 					patternIndex += 1;
@@ -4061,15 +4123,20 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 							noOut = false;
 						}
 					}
-					if (noOut) outString += commandObj.skipGCode;
+					if (noOut) {
+						outString += commandObj.skipGCode;
+						memoryList.push({from:null, to:place}); //TODO: Check if it makes sense to have a memoryList entry if there is no FROM // Or if there should be one for noOut True
+					}
 				}
 				// else if () {
 	
 				// }
 	
 				// "Default" outcome (for rotation variant patterns)
-				else outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
-				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); //TODO: Check for undefined in from spot here // Perhaps only if reverse is missing but needed
+				else {
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
+				}
 			}
 		}
 

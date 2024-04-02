@@ -102,7 +102,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 
     var blob = new Blob([GCODE], {type: 'text/plain'});
     var d = new Date();
-    saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
+    // saveAs(blob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
     // refreshShapeDisplay();
     // setMessage('<b>GCODE Exported</b>', '#444');
 
@@ -332,15 +332,20 @@ function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjus
 							noOut = false;
 						}
 					}
-					if (noOut) outString += commandObj.skipGCode;
+					if (noOut) {
+						outString += commandObj.skipGCode;
+						memoryList.push({from:null, to:place}); //TODO: Check if it makes sense to have a memoryList entry if there is no FROM // TODO: Or if there should be one for noOut True
+					}
 				}
 				// else if () {
 	
 				// }
 	
 				// "Default" outcome (for rotation variant patterns)
-				else outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
-				memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); //TODO: Check for undefined in from spot here // Perhaps only if reverse is missing but needed
+				else {
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
+				}
 			}
 		}
 

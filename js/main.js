@@ -18,7 +18,7 @@ const laserColorDone = '#933';
 const printColor = '#05D';
 const printColorDone = '#339';
 var noColor;
-const debug = false;
+const debug = true;
 
 function init() {
 	if (!initialized) {

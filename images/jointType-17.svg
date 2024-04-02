@@ -22,11 +22,13 @@
   <g>
     <path id="joint" class="cls-1" d="M35,25V225"/>
     <path id="joint-2" class="cls-1" d="M215,25V225"/>
-    <g id="_0_joint" data-name=" 0 joint">
-      <path class="cls-2" d="M35,25H49.18V65H35v40H49.18v40H35v40H49.18v40H35"/>
-    </g>
-    <g id="_1_joint" data-name=" 1 joint">
-      <path class="cls-2" d="M215,25h0V65H200.82v40H215v40H200.82v40H215v40h0"/>
-    </g>
+    <path class="cls-1" d="M35,25V225"/>
+    <path class="cls-1" d="M215,25V225"/>
+    <path class="cls-1" d="M35,25V225"/>
+    <path class="cls-1" d="M215,25V225"/>
+    <path class="cls-1" d="M35,25V225"/>
+    <path class="cls-1" d="M215,25V225"/>
+    <path class="cls-2" d="M35,25L52.62,35A21.26,21.26,0,0,1,63.35,53.5v143A21.26,21.26,0,0,1,52.62,215L35,225"/>
+    <path class="cls-2" d="M215,25L197.39,35a21.26,21.26,0,0,0-10.73,18.5v143A21.26,21.26,0,0,0,197.39,215L215,225"/>
   </g>
 </svg>
