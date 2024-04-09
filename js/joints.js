@@ -425,7 +425,7 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 	var testGCode = '';
 
 	req2.success(function(response){
-		if (debug) {
+		if (false) {
 			// console.log({response:response});
 			testGCode = response.text;
 
@@ -1334,8 +1334,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 		svgBHoleList.push(laserHole.bOrigin);
 	}
 	console.log({svgHoleList:svgHoleList, svgBHoleList:svgBHoleList});
-	addGCodePart("", param, svgHoleList, commandObj.base, 0, false, placeConnectionList); // Just getting the order reference
-	addGCodePart("", param, svgBHoleList, commandObj.top, 0, true, placeBConnectionList);
+	addGCodePart("", param, svgHoleList, commandObj.base, 0, 0, false, placeConnectionList); // Just getting the order reference
+	addGCodePart("", param, svgBHoleList, commandObj.top, 0, 0, true, placeBConnectionList);
 	// console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
 
 	var placeConnLists = [placeConnectionList, placeBConnectionList];
@@ -1518,6 +1518,11 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	var ptAB2;
 	if (rotPath) {
 		ptAB2 = rotPath.getPointAt(rotOffset);
+		console.log({ptAB2:ptAB2});
+		console.log({rotPath:rotPath});
+		console.log({edgeAB:edgeAB});
+		console.log("edgeAB.strokeBounds.height: "+ edgeAB.strokeBounds.height + " edgeAB.strokeBounds.width: " + edgeAB.strokeBounds.width);
+		console.log("rotPath.strokeBounds.height: "+ rotPath.strokeBounds.height + " rotPath.strokeBounds.width: " + rotPath.strokeBounds.width);
 	}
 
 	if (markerParams.type == "circle") {
@@ -2225,7 +2230,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 		var pathsGroup = new Group(copyPaths);
 		// console.log({pathsGroup:pathsGroup});
-		// pathsGroup.children.push(edgeACopy);
+		pathsGroup.children.push(edgeACopy); // Rotate copy as well to ensure markers rotate with laser hole path
 		var laserPointSet = [];
 		for (let laserHole of laserHoleList) {
 			laserPointSet.push(laserHole.pointOrigin);
@@ -2240,62 +2245,64 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		}
 
 
-		// Align entire path width-wise (printing build plate left/right-wise) --> lowest height
-		let rotationDegs = 10;
-		let fullCircle = 0;
-		let smallestH = {deg:0, height:Infinity};
-		let rotP = new Point(laserPointsPath.strokeBounds.x, laserPointsPath.strokeBounds.y);
-		while (fullCircle < 360) {
-			pathsGroup.rotate(rotationDegs, rotP);
-			// for (let onePath of copyPaths) {
-			// 	onePath.rotate(rotationDegs);
-			// }
-			// copyPath.rotate(rotationDegs);
-			laserPointsPath.rotate(rotationDegs, rotP);
-			fullCircle += rotationDegs;
-			if (laserPointsPath.strokeBounds.height < smallestH.height) {
-				smallestH.height = laserPointsPath.strokeBounds.height;
-				smallestH.deg = fullCircle;
+		if (true) {
+			// Align entire path width-wise (printing build plate left/right-wise) --> lowest height
+			let rotationDegs = 10;
+			let fullCircle = 0;
+			let smallestH = {deg:0, height:Infinity};
+			let rotP = new Point(laserPointsPath.strokeBounds.x, laserPointsPath.strokeBounds.y);
+			while (fullCircle < 360) {
+				pathsGroup.rotate(rotationDegs, rotP);
+				// for (let onePath of copyPaths) {
+				// 	onePath.rotate(rotationDegs);
+				// }
+				// copyPath.rotate(rotationDegs);
+				laserPointsPath.rotate(rotationDegs, rotP);
+				fullCircle += rotationDegs;
+				if (laserPointsPath.strokeBounds.height < smallestH.height) {
+					smallestH.height = laserPointsPath.strokeBounds.height;
+					smallestH.deg = fullCircle;
+				}
 			}
-		}
 
-		if (smallestH.deg != 0) {
-			pathsGroup.rotate(smallestH.deg, rotP);
-			// for (let onePath of copyPaths) {
-			// 	onePath.rotate(smallestH.deg);
-			// }
-			// copyPath.rotate(smallestH.deg);
-			laserPointsPath.rotate(smallestH.deg, rotP);
-		}
+			if (smallestH.deg != 0) {
+				pathsGroup.rotate(smallestH.deg, rotP);
+				// for (let onePath of copyPaths) {
+				// 	onePath.rotate(smallestH.deg);
+				// }
+				// copyPath.rotate(smallestH.deg);
+				laserPointsPath.rotate(smallestH.deg, rotP);
+			}
+			edgeACopy
 
+			// TODO: Does it make sense to rotate here already when we rotate separately for each print job?
+			// Rotate to ensure Left To Right on print build plate
+			let startP = laserPointsPath.getPointAt(0);
+			let endP = laserPointsPath.getPointAt(laserPointsPath.length);
+			let sampleCount = 10;
+			let samplePoints = [];
+			for (let i = 0; i <= sampleCount; i++) {
+				let t = i / sampleCount;
+				t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
+				let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
+				samplePoints.push(point);
+			}
+			let averageX = 0;
+			for (let samplePoint of samplePoints) {
+				averageX += samplePoint.x;
+			}
+			averageX /= samplePoints.length;
+			if (averageX < startP.x) {
+				pathsGroup.rotate(180, rotP);
+				// for (let onePath of copyPaths) {
+				// 	onePath.rotate(180);
+				// }
+				// copyPath.rotate(180);
+				laserPointsPath.rotate(180, rotP);
+			}
 
-		// Rotate to ensure Left To Right on print build plate
-		let startP = laserPointsPath.getPointAt(0);
-		let endP = laserPointsPath.getPointAt(laserPointsPath.length);
-		let sampleCount = 10;
-		let samplePoints = [];
-		for (let i = 0; i <= sampleCount; i++) {
-			let t = i / sampleCount;
-			t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
-			let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
-			samplePoints.push(point);
+			// returnAFold.push(laserPointsPath);
 		}
-		let averageX = 0;
-		for (let samplePoint of samplePoints) {
-			averageX += samplePoint.x;
-		}
-		averageX /= samplePoints.length;
-		if (averageX < startP.x) {
-			pathsGroup.rotate(180, rotP);
-			// for (let onePath of copyPaths) {
-			// 	onePath.rotate(180);
-			// }
-			// copyPath.rotate(180);
-			laserPointsPath.rotate(180, rotP);
-		}
-
-		// returnAFold.push(laserPointsPath);
-
 
 		let startIndex = 0;
 		let endIndex = 0;
@@ -2338,6 +2345,9 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			if ((endIndex < laserHoleList.length-1) && ((testPath.strokeBounds.width+10) > param['printing area width'])) {
 				// console.log("Splitting job at: ", laserHoleList[endIndex].patternedOffset, lastJob.path.length, lastJob.offset, lastJob.path.strokeBounds.width, param['printing area width']);
 				// console.log("endIndex", endIndex);
+
+				// TODO: Also check length of 90 degrees rotated path to also split too high prints here... 
+
 				let splitPointLength = (laserHoleList[endIndex].patternedOffset + laserHoleList[endIndex+1].patternedOffset)/2;
 
 				// const originSourceSplitPL = laserHoleList[endIndex].offsetOriginSource; // Why? offsetOriginSource not far along enough somehow?
@@ -2397,50 +2407,71 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			if (emptyIDs) printJobID = "";
 			printCounter++;
 
+			var jobRef = job;
+
+			var laserHolesRef = [];
+			for (let laserHole of jobRef.laserHoles) {
+				laserHolesRef.push(laserHole.pointOrigin);
+			}
+			var laserHolesRefPath = new Path(laserHolesRef);
+
+
+			// Make path to also rotate the laser holes
+			var laserHolesPath = new Path(jobRef.laserHoles);
+
+
 			// Rotate job for Left to Right printing
 			let rotationDegs = 10;
 			let fullCircle = 0;
-			let smallestH = {deg:0, height:Infinity};
+			let smallestH = {deg:0, height:job.path.strokeBounds.height};
 			let rotPoint = new Point(job.path.strokeBounds.x, job.path.strokeBounds.y);
 			while (fullCircle < 360) {
 				// // console.log({rotPoint:rotPoint, x:job.path.strokeBounds.x, y:job.path.strokeBounds.y});
 				job.originSourcePathPart.rotate(rotationDegs, rotPoint);
 				job.path.rotate(rotationDegs, rotPoint);
+				laserHolesPath.rotate(rotationDegs, rotPoint);
 				fullCircle += rotationDegs;
 				if (job.path.strokeBounds.height < smallestH.height) {
+					console.log("Previous smallestH: ", smallestH.height, "New smallestH: ", job.path.strokeBounds.height, "Width: ", job.path.strokeBounds.width, "Rotation: ", fullCircle)
 					smallestH.height = job.path.strokeBounds.height;
 					smallestH.deg = fullCircle;
 				}
-			}		
-
+			}	
+			
 			if (smallestH.deg != 0) {
+				console.log("Rotating job by: ", smallestH.deg);
 				job.path.rotate(smallestH.deg, rotPoint);
 				job.originSourcePathPart.rotate(smallestH.deg, rotPoint);
-				// Rotate to ensure Left To Right on print build plate
-				let startP = job.path.getPointAt(0);
-				let endP = job.path.getPointAt(job.path.length);
-				let sampleCount = 10;
-				let samplePoints = [];
-				for (let i = 0; i <= sampleCount; i++) {
-					let t = i / sampleCount;
-					t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
-					let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
-					samplePoints.push(point);
-				}
-				let averageX = 0;
-				for (let samplePoint of samplePoints) {
-					averageX += samplePoint.x;
-				}
-				averageX /= samplePoints.length;
-				if (averageX < startP.x) {
-					job.path.rotate(180, rotPoint);
-					job.originSourcePathPart.rotate(180, rotPoint);
-				}
+				laserHolesPath.rotate(smallestH.deg, rotPoint);
 			}
+
+			// Rotate to ensure Left To Right on print build plate
+			let startP = job.path.getPointAt(0);
+			let endP = job.path.getPointAt(job.path.length);
+			let sampleCount = 10;
+			let samplePoints = [];
+			for (let i = 0; i <= sampleCount; i++) {
+				let t = i / sampleCount;
+				t = Math.max(0, Math.min(t, 1)); // Ensure t is between 0 and 1
+				let point = laserPointsPath.getPointAt(t * laserPointsPath.length);
+				samplePoints.push(point);
+			}
+			let averageX = 0;
+			for (let samplePoint of samplePoints) {
+				averageX += samplePoint.x;
+			}
+			averageX /= samplePoints.length;
+			if (averageX < startP.x) {
+				job.path.rotate(180, rotPoint);
+				job.originSourcePathPart.rotate(180, rotPoint);
+				laserHolesPath.rotate(180, rotPoint);
+				smallestH.deg += 180;
+				console.log("Flipping job");
+			}
+			
 
 			// console.log("strokeBoundHeightAfter " + job.path.strokeBounds.height + " Width " + job.path.strokeBounds.width );
 
-			var jobRef = job;
 			
 			var holeList = [];
 			var holeCount = job.laserHoles.length;//Math.floor(job.length/param['hole spacing']);
@@ -2449,7 +2480,9 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			var maxY = 0;
 			var minY = 0;
 			for (var i=0; i<holeCount; i++) {
-				var ptA = job.laserHoles[i].point; //job.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderA/2);
+				// var ptA = job.laserHoles[i].point; //job.getPointAt(i*param['hole spacing']+param['hole spacing']/2+remainderA/2);
+				// console.log({laserHolesPath:laserHolesPath});
+				var ptA = laserHolesPath.segments[i].point; // Using the rotated path segements instead of the actual laserHoles Array
 				// // console.log({ptA:ptA});
 				if (i === 0) {
 					startPoint = ptA;
@@ -2465,17 +2498,24 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 				}
 			}
 
-			var laserHolesRef = [];
-			for (let laserHole of jobRef.laserHoles) {
-				laserHolesRef.push(laserHole.pointOrigin);
+			// Find left-most point and save offset from start hole
+			var leftMost = Infinity;
+			var leftPoint = null;
+			for (var i = 0; i < holeList.length; i++) {
+				var hole = holeList[i];
+				if (hole.x < leftMost) {
+					leftMost = hole.x;
+					leftPoint = hole;
+				}
 			}
-			var laserHolesRefPath = new Path(laserHolesRef);
+			var print_Offset_X = (holeList[0].x - leftMost) + constXShift;
+			
 
 			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, printJobID);
 
 			renderThreads(job, G91Obj, returnAPrint, returnBPrint, param);
 
-			printJobs.push({featureType:featureType, fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false, handled2:false, printShapeList:job.jointShapeList});
+			printJobs.push({featureType:featureType, fabID:printJobID, holeList:holeList, renderRef:job.renderRef, mOrF:mOrF, G91:G91Obj, sourcePath:jobRef.path, usedParam:param, relativeHeight:{max: maxY, min:minY}, print_Offset_X:print_Offset_X, markers:markers, laserHolesRefPath:laserHolesRefPath, handled:false, handled2:false, printShapeList:job.jointShapeList});
 
 		}
 		
@@ -3905,7 +3945,7 @@ function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
 }
 
 // Combination of printed needle and thread
-function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustment, reverse=false) {
+function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
 
@@ -3915,7 +3955,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
 		let addString = "";
 		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		addString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		addString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		addString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (onlyAim) {
@@ -3958,7 +3998,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 
 	for (let place of placeListLocal) {
 		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		// outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		// outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
@@ -4052,7 +4092,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 	return outString;
 } 
 
-function addGCodePart(outString, params, placeList, commandObj, depthAdjustment, reverse=false, memoryList=[], memoryObj={}) {
+function addGCodePart(outString, params, placeList, commandObj, depthAdjustment, print_Offset_X, reverse=false, memoryList=[], memoryObj={}) {
 	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
@@ -4079,7 +4119,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 
 	for (let place of placeListLocal) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
@@ -4158,7 +4198,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 	for (let outputContainer of addedOutputs) {
 		// console.log('output: ', outputContainer);
 		GCODE += outputContainer.output.G91.spikes.precode;
-		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed);
+		GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X);
 	}
 
 	for (let outputContainer of addedOutputs) {
@@ -4168,7 +4208,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs) {
 		// GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
 
 		let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
-		GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, true);
+		GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true);
 
 	}
 
@@ -4464,7 +4504,7 @@ function exportProjectNow() {
 							
 							let localHeight = heightUsed - output.relativeHeight.min + 20;
 							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
-							addedOutputs.push({output:output, heightUsed:localHeight, usedParam:output.usedParam});
+							addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam});
 							addedShapes.push({shape: shape[i], ID:i});
 							addedPrintJobs.push(output);
 							allShapeIDs.add(i);
@@ -4476,7 +4516,7 @@ function exportProjectNow() {
 								for (let marker of output.markers) {
 									for (let pT of marker.sourceObj.printedText) {
 										let outString = `G1 Z1.00 F3000\n`; // Safety lift
-										outString += `G1 X${(output.holeList[0].x + pT.relVector.x + constXShift).toFixed(3)} Y${(pT.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+										outString += `G1 X${(output.holeList[0].x + pT.relVector.x + output.print_Offset_X).toFixed(3)} Y${(pT.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
 										outString += `G1 Z${0.2} F3000\n`; // Z positioning
 										GCODE += outString;
 										for (let line of pT.lines) {
@@ -4492,7 +4532,7 @@ function exportProjectNow() {
 									// console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
 
 									let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
-									outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + constXShift).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+									outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + output.print_Offset_X).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
 									outString += `G1 Z${0.2} F3000\n`; // Z positioning
 
 									GCODE += outString;
@@ -4501,7 +4541,7 @@ function exportProjectNow() {
 								}
 							else // console.log({Warning:"Server marker data unavailable"});
 
-							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
+							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
 						}
 					}
 				}

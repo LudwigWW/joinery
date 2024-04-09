@@ -21,7 +21,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             
             let localHeight = heightUsed - output.relativeHeight.min + 20;
             heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
-            addedOutputs.push({output:output, heightUsed:localHeight, usedParam:output.usedParam});
+            addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam});
             addedShapes.push({shape: shape[i], ID:i});
             addedPrintJobs.push(output);
             allShapeIDs.add(i);
@@ -33,7 +33,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 for (let marker of output.markers) {
                     for (let pT of marker.sourceObj.printedText) {
                         let outString = `G1 Z1.00 F3000\n`; // Safety lift
-                        outString += `G1 X${(output.holeList[0].x + pT.relVector.x + constXShift).toFixed(3)} Y${(pT.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+                        outString += `G1 X${(output.holeList[0].x + pT.relVector.x + output.print_Offset_X).toFixed(3)} Y${(pT.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
                         outString += `G1 Z${0.2} F3000\n`; // Z positioning
                         GCODE += outString;
                         for (let line of pT.lines) {
@@ -49,7 +49,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                     // console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
 
                     let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
-                    outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + constXShift).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+                    outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + output.print_Offset_X).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
                     outString += `G1 Z${0.2} F3000\n`; // Z positioning
 
                     GCODE += outString;
@@ -58,7 +58,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 }
             else // console.log({Warning:"Server marker data unavailable"});
 
-            GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight);
+            GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
         }
     }
     return [GCODE, heightUsed];
@@ -82,7 +82,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     for (let outputContainer of addedOutputs) {
         // console.log('output: ', outputContainer);
         GCODE += outputContainer.output.G91.spikes.precode;
-        GCODE = addGCodePartGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed);
+        GCODE = addGCodePartGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X);
     }
 
     for (let outputContainer of addedOutputs) {
@@ -92,7 +92,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
         // GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
 
         let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
-        GCODE = addGCodePartsCGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, true);
+        GCODE = addGCodePartsCGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true);
 
     }
 
@@ -114,7 +114,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 
 
 // Combination of printed needle and thread
-function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAdjustment, reverse=false) {
+function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
 
@@ -124,7 +124,7 @@ function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAd
 	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
 		let addString = "";
 		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		addString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		addString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		addString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (onlyAim) {
@@ -167,7 +167,7 @@ function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAd
 
 	for (let place of placeListLocal) {
 		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		// outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		// outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
@@ -261,7 +261,7 @@ function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAd
 	return outString;
 } 
 
-function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjustment, reverse=false, memoryList=[], memoryObj={}) {
+function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjustment, print_Offset_X, reverse=false, memoryList=[], memoryObj={}) {
 	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
@@ -288,7 +288,7 @@ function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjus
 
 	for (let place of placeListLocal) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${(place.x + constXShift + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
