@@ -37,7 +37,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                         outString += `G1 Z${0.2} F3000\n`; // Z positioning
                         GCODE += outString;
                         for (let line of pT.lines) {
-                            GCODE += aimGCodePart(line.start, line.end, defaultLineLength, defaultLineGCode);
+                            GCODE += aimGCodePart(line.start, line.end, defaultLineCommandObj);
                         }
                     }
                 }
@@ -245,7 +245,7 @@ function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAd
 						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
@@ -343,7 +343,7 @@ function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjus
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
 				}
 			}

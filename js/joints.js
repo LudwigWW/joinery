@@ -13,11 +13,17 @@ const constXShift = 5;
 const defaultLineLength = 10;
 const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
+const defaultLineCommandObj = {
+	gCodeOptions: [
+		{gcode:defaultLineGCode, defaultLength: defaultLineLength, renderOptions: [{"renderDetails":{"type":"line", "dLength":10, "dWidth":2, "skipDiameter":3}}]}
+	]
+};
+
 const emptyIDs = true;
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
-}
+};
 
 var paramInteger = [
 	'hook count',
@@ -154,6 +160,23 @@ var printedRivets = {
 
 var printedRunning = {
 	'name':'printed running stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.5,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 3,
+		'pinking cut': false,
+	}
+};
+
+var printedRunningStrong = {
+	'name':'printed strong running stitch',
 	'profile':'',
 	'notes': 'notes',
 	'param': {
@@ -366,7 +389,7 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, noneJoint];
+var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, printedRunningStrong, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -429,7 +452,6 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 			// console.log({response:response});
 			testGCode = response.text;
 
-			// // console.log("🚀 ~ file: joints.js:335 ~ initJoint ~ testGCode", testGCode);
 			axios.post('http://127.0.0.1:5505/printer/status.cmd', {
 				testGCode: testGCode,
 				x: 0, //markerObj.targetPoint.x,
@@ -531,7 +553,6 @@ function generateJoint(index) {
 
 	req.success(function(response){
 		// // console.log({response:response});
-		// // console.log("🚀 ~ file: joints.js:216 ~ generateJoint ~ value", response)
 		
 		for (let printer of response.printerList) {
 			if (printer.name === "default") {
@@ -544,8 +565,19 @@ function generateJoint(index) {
 				chosenLaser = laser;
 			}
 		}
+
+		for (let commands in response.G91Commands) {
+			commandsObj = response.G91Commands[commands];
+			if (commandsObj.importCommon) {
+				let propString = commandsObj.importCommon;
+				let set = response.commonSets[propString];
+				Object.assign(commandsObj, set);
+			}
+		}
 		
 		printTemplate = response;
+
+		console.log({printTemplate:printTemplate});
 		var shapeA, shapeB, pathA, pathB;
 
 		if (joints[index]['m']==0) {
@@ -689,7 +721,6 @@ function generateJoint(index) {
 	
 				case 'printed rivets':
 					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.dots, 
 						spikes:printTemplate.G91Commands.spikesTall, 
@@ -703,7 +734,6 @@ function generateJoint(index) {
 
 				case 'printed continuous':
 					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.overlappingLine, 
 						spikes:printTemplate.G91Commands.spikesTall, 
@@ -715,9 +745,20 @@ function generateJoint(index) {
 					
 					break;
 					
+				case 'printed strong running stitch':
+						
+						var G91 = {base:printTemplate.G91Commands.alternatingLineStrong, 
+							spikes:printTemplate.G91Commands.spikes, 
+							spikesTop:printTemplate.G91Commands.spikesTop, 
+							top:printTemplate.G91Commands.alternatingLineStrongTop
+						};
+	
+						handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+						
+						break;
+
 				case 'printed running stitch':
 					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.alternatingLine, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -801,9 +842,6 @@ function generateJoint(index) {
 					break;
 
 				case 'printed baste stitch':
-					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
-					
 					var G91 = {base:printTemplate.G91Commands.baste, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
@@ -880,9 +918,6 @@ function generateJoint(index) {
 
 
 				case 'printed decorative stitch':
-					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:736 ~ req.success ~ printTemplate:", printTemplate)
-					
 					var G91 = {base:printTemplate.G91Commands.spiral, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
@@ -917,9 +952,7 @@ function generateJoint(index) {
 					break;
 
 				case 'printed whip stitch':
-					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
-					
+			
 					var G91 = {base:printTemplate.G91Commands.whip, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
@@ -1004,8 +1037,6 @@ function generateJoint(index) {
 					break;
 
 				case 'printed flexible stitch':
-						// var printTemplate = template;
-						// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 						
 						var G91 = {base:printTemplate.G91Commands.flex, 
 							spikes:printTemplate.G91Commands.spikes, 
@@ -1018,9 +1049,7 @@ function generateJoint(index) {
 						break;
 
 				case 'printed zig zag stitch':
-					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
-					
+				
 					var G91 = {base:printTemplate.G91Commands.zigzag, 
 						spikes:printTemplate.G91Commands.spikes, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
@@ -1055,7 +1084,6 @@ function generateJoint(index) {
 					break;
 				case 'printed cross stitch':
 					// var printTemplate = template;
-					// console.log("🚀 ~ file: joints.js:358 ~ generateJoint ~ printTemplate", printTemplate)
 					
 					var G91 = {base:printTemplate.G91Commands.cross, 
 						spikes:printTemplate.G91Commands.spikes, 
@@ -1344,26 +1372,59 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	returnRef = job.renderRef.a;
 	console.log({placeConnLists:placeConnLists});
 
+
+	let baseRenderDetails = null;
+	if (commandObj.base.renderDetails) {	
+		baseRenderDetails = commandObj.base.renderDetails;
+	} else if (commandObj.base.renderDetailsOptions) {
+		baseRenderDetails = commandObj.base.renderDetailsOptions[0];
+	} else {
+		console.error('No render details found');
+		return;
+	}
+	console.log({baseRenderDetails:baseRenderDetails});
+	console.log({commandObj:commandObj});
+
 	for (let placeConnL of placeConnLists) {
 		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
-			console.log({connection:connection});
 			// console.log(connection.to !== null);
 			if (connection.to !== null && connection.from !== null) {
-				console.log({connection:connection});
-				switch (commandObj.base.renderDetails.type) {
+				switch (baseRenderDetails.type) { // TODO differentiate between base and top
 					case "circle":
-						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
+						var renderPath = new Path.Circle(connection.from, baseRenderDetails.diameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
 						returnRef.printOutlines.push(renderPath);
 						break;
 					case "line":
+						const deltaX = connection.to.x - connection.from.x;
+						const deltaY = connection.to.y - connection.from.y;
+						const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
+
+						let bestOption = null;
+						// Get best option from gCodeOptions in commandObj that is closest to the length
+						if (commandObj.base.renderDetailsOptions) {
+							bestOption = commandObj.base.renderDetailsOptions[0];
+							let closestLength = Math.abs(length - bestOption.dLength);
+							for (let option of commandObj.base.renderDetailsOptions) {
+								let optionLength = Math.abs(length - option.dLength);
+								if (optionLength < closestLength) {
+									bestOption = option;
+									closestLength = optionLength;
+								}
+							}
+						} else {
+							bestOption = commandObj.base.renderDetails;
+						}
+						// Log which option was chosen based on what input data
+						console.log('Chosen render option:', bestOption);
+						console.log('Input data:', { length });
+
 						var renderPath = new Path([connection.from, connection.to]);
 						renderPath.name = 'printedLine';
-						console.log({connection:connection});
-						const outWidth = (connection.from.getDistance(connection.to) / commandObj.base.renderDetails.dLength) * commandObj.base.renderDetails.dWidth;
+						const outWidth = (connection.from.getDistance(connection.to) / bestOption.dLength) * bestOption.dWidth;
 						// // console.log({dist:connection.from.getDistance(connection.to)});
 						renderPath.renderWidth = outWidth;
 						returnList.push(renderPath);
@@ -1373,9 +1434,9 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				}
 			} 
 			else if (connection.from !== null) {
-				switch (commandObj.base.renderDetails.type) {
+				switch (baseRenderDetails.type) {
 					case "circle":
-						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.diameter/2);
+						var renderPath = new Path.Circle(connection.from, baseRenderDetails.diameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
@@ -1383,7 +1444,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						// // console.log({rCircle:renderPath});
 						break;
 					case "line":
-						var renderPath = new Path.Circle(connection.from, commandObj.base.renderDetails.skipDiameter/2);
+						var renderPath = new Path.Circle(connection.from, baseRenderDetails.skipDiameter/2);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
@@ -1393,7 +1454,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				}
 			} else if (connection.to !== null) {
 				console.warn('Rendering from unknown point');
-				var renderPath = new Path.Circle(connection.to, commandObj.base.renderDetails.diameter/2);
+				var renderPath = new Path.Circle(connection.to, baseRenderDetails.diameter/2);
 				renderPath.name = 'printedCircle';
 				renderPath.renderWidth = 10;
 				renderPath.strokeColor = '#F03';
@@ -1404,7 +1465,6 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 		returnList = returnBPrint;
 		returnRef = job.renderRef.b;
 	}
-	// commandObj.base.renderDetails
 }
 
 function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, fabID) {
@@ -3853,11 +3913,9 @@ function lineIntersection(line1Start, line1End, line2Start, line2End) {
 };
 
 async function getTemplate(templateName) {
-	// console.log("🚀 ~ file: joints.js:1751 ~ getTemplate ~ template", template)
 	if (template == undefined) {
 		
 		$.getJSON(templateName, function(data){
-			// console.log("🚀 ~ file: joints.js:1753 ~ $.getJSON ~ data", data)
 			template = data;
 			return data;
 		}).fail(function(){
@@ -3868,11 +3926,33 @@ async function getTemplate(templateName) {
 	else return template;
 }
 
-function aimGCodePart(startPlace, endPlace, patternDefaultLength, gcode) {
+function aimGCodePart(startPlace, endPlace, commandObj) {
 	var outGCode = '\n';
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;
 	const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
+
+	let patternDefaultLength = null;
+	let gcode = null;
+
+	if (commandObj.gCodeOptions) {
+		// Get best option from gCodeOptions in commandObj that is closest to the length
+		console.log({length:length, commandObj:commandObj});
+		let bestOption = commandObj.gCodeOptions[0];
+		let closestLength = Math.abs(length - bestOption.defaultLength);
+		for (let option of commandObj.gCodeOptions) {
+			let optionLength = Math.abs(length - option.defaultLength);
+			if (optionLength < closestLength) {
+				bestOption = option;
+				closestLength = optionLength;
+			}
+		}
+		patternDefaultLength = bestOption.defaultLength;
+		gcode = bestOption.gcode;
+	} else {
+		patternDefaultLength = commandObj.defaultLength;
+		gcode = commandObj.gcode;
+	}
 	
 	lengthFactor = length / patternDefaultLength;
 	// console.log({length:length, lengthFactor:lengthFactor});
@@ -4076,7 +4156,7 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
@@ -4174,7 +4254,7 @@ function addGCodePart(outString, params, placeList, commandObj, depthAdjustment,
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj.defaultLength, commandObj.gcode); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
 				}
 			}
@@ -4520,7 +4600,7 @@ function exportProjectNow() {
 										outString += `G1 Z${0.2} F3000\n`; // Z positioning
 										GCODE += outString;
 										for (let line of pT.lines) {
-											GCODE += aimGCodePart(line.start, line.end, defaultLineLength, defaultLineGCode);
+											GCODE += aimGCodePart(line.start, line.end, defaultLineCommandObj);
 										}
 									}
 								}

@@ -1,0 +1,11 @@
+Remove status lines
+^M73.*$
+
+
+Remove empty lines
+^\s*\n
+
+
+Explicit newlines in string
+\n -->  \\n
+
