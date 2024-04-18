@@ -77,7 +77,16 @@ function handleLeftoverGCode(GCODE, prints, addedOutputs, addedShapes, addedPrin
 }
 
 function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter) {
-    GCODE = chosenPrinter.startCode + GCODE;
+	let targetTemp = 215;
+	console.log('addedOutputs: ', addedOutputs);
+	console.log('addedShapes: ', addedShapes);
+	if (addedOutputs[0].usedParam["printing temperature"]) {
+		targetTemp = addedOutputs[0].usedParam["printing temperature"];
+	}
+	let adjustedStartCode = chosenPrinter.startCode;
+	adjustedStartCode = adjustedStartCode.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
+
+    GCODE = adjustedStartCode + GCODE;
     
     for (let outputContainer of addedOutputs) {
         // console.log('output: ', outputContainer);
@@ -86,7 +95,15 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     }
 
     for (let outputContainer of addedOutputs) {
-        GCODE += chosenPrinter.pauseCode;
+        let adjustedPauseCode = chosenPrinter.pauseCode;
+
+		if (outputContainer.usedParam["printing temperature"]) { 
+			targetTemp = outputContainer.usedParam["printing temperature"];
+		}
+		adjustedPauseCode = adjustedPauseCode.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
+		
+		GCODE += adjustedPauseCode;
+
         // GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikesTop, outputContainer.heightUsed, true);
 
         // GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.top, outputContainer.heightUsed);
@@ -114,9 +131,11 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 
 
 // Combination of printed needle and thread
-function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false) {
+function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
+
+	outString = "";
 
 	commandObj = commandObjs[0];
 	needleObj = commandObjs[1];
@@ -258,10 +277,19 @@ function addGCodePartsCGlobal(outString, params, placeList, commandObjs, depthAd
 		placeCounter += 1;
 	}
 	// // console.log("outStringAdded: " + outString.length);
-	return outString;
+
+	let targetTemp = 215;
+	if (params["printing temperature"]) { 
+		targetTemp = params["printing temperature"];
+	}
+	outString = outString.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
+
+	inString += outString;
+
+	return inString;
 } 
 
-function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjustment, print_Offset_X, reverse=false, memoryList=[], memoryObj={}) {
+function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjustment, print_Offset_X, reverse=false, memoryList=[], memoryObj={}) {
 	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
@@ -271,6 +299,8 @@ function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjus
 	// for (let i = -5; i < 5; i++) { 
 	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
+
+	let outString = "";
 
 	let pattern = [...commandObj.pattern];
 	// // console.log('pattern: ', pattern);
@@ -357,5 +387,13 @@ function addGCodePartGlobal(outString, params, placeList, commandObj, depthAdjus
 		placeCounter += 1;
 	}
 	// // console.log("outStringAdded: " + outString.length);
-	return outString;
+	let targetTemp = 215;
+	if (params["printing temperature"]) { 
+		targetTemp = params["printing temperature"];
+	}
+	outString = outString.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
+
+	inString += outString;
+
+	return inString;
 } 

@@ -13,6 +13,9 @@ const constXShift = 5;
 const defaultLineLength = 10;
 const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.600 Y0.000 E2.8504\nG1 F8640\nG1 X-3.291 Y0.000 E-0.76\nG1 X3.291 E-0.04 F2100\nG90\n"; // \nG1 Z0.400 F720
 
+const defaultTPUTemp = 230;
+
+
 const defaultLineCommandObj = {
 	gCodeOptions: [
 		{gcode:defaultLineGCode, defaultLength: defaultLineLength, renderOptions: [{"renderDetails":{"type":"line", "dLength":10, "dWidth":2, "skipDiameter":3}}]}
@@ -29,7 +32,8 @@ var paramInteger = [
 	'hook count',
 	'skip # holes',
 	'printing area width',
-	'printing area depth'
+	'printing area depth',
+	'printing temperature',
 ];
 
 var paramAngle = [
@@ -155,6 +159,7 @@ var printedRivets = {
 		'marker height': 3,
 		'pinking cut': false,
 		'anti-overlap spacing': 5,
+		'printing temperature': 215,
 	}
 };
 
@@ -172,6 +177,7 @@ var printedRunning = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 215,
 	}
 };
 
@@ -189,6 +195,7 @@ var printedRunningStrong = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 215,
 	}
 };
 
@@ -208,6 +215,7 @@ var printedOverlapping = {
 		'marker height': 3,
 		'pinking cut': false,
 		'anti-overlap spacing': 2,
+		'printing temperature': 215,
 	}
 };
 
@@ -225,6 +233,7 @@ var printedBaste = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 215,
 	}
 };
 
@@ -242,6 +251,7 @@ var printedBastePull = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 215,
 	}
 };
 
@@ -260,6 +270,7 @@ var printedWhip = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 230,
 	}
 };
 var printedZigZag = {
@@ -277,6 +288,7 @@ var printedZigZag = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 230,
 	}
 };
 var printedFlex = {
@@ -294,6 +306,7 @@ var printedFlex = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 230,
 	}
 };
 
@@ -312,6 +325,7 @@ var printedCross = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 230,
 	}
 };
 var printedDecorative = {
@@ -328,6 +342,7 @@ var printedDecorative = {
 		'printing area depth': 210,
 		'marker height': 3,
 		'pinking cut': false,
+		'printing temperature': 215,
 	}
 };
 
