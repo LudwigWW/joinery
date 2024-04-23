@@ -58,7 +58,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 }
             else // console.log({Warning:"Server marker data unavailable"});
 
-            GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
+            GCODE += addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
         }
     }
     return [GCODE, heightUsed];
