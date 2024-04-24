@@ -19,9 +19,21 @@ var currentPrint = 0;
 let currentCutObj = null;
 let currentPrintObj = null;
 
-window.onbeforeunload = function() {
-    return "Have you finished fabricating the project?";
-};
+
+window.onbeforeunload = null;
+
+window.addEventListener('beforeunload', function(event) {
+    delete event['returnValue'];
+});
+
+// window.onbeforeunload = function() {
+//     // return "Have you finished fabricating the project?";
+// };
+
+// window.addEventListener('beforeunload', function(event) {
+// 	event.preventDefault();
+// 	event.returnValue = '';
+// });
 
 
 function init() {
@@ -329,9 +341,16 @@ function makeImage(imageData, width=200, height=150) {
     return image.outerHTML;
 }
 
-function makeButton(id, text, onclick) {
+function makeButton(id, text, onclick, groupOnclick = null) {
 	let htmlString = '<div class="buttonExport"><label for="export';
-	htmlString += id.toString() + '" class="button2" onclick="' + onclick + '">' + text + '</label></div>  <span class="extraHigh">';
+	htmlString += id.toString() + '" class="button2" onclick="' + onclick + '">' + text + '</label></div>';
+	if (groupOnclick != null) {
+		//htmlString += '<span class="extraHigh">';
+		htmlString += '<div class="buttonExport"><label for="groupExport';
+		htmlString += id.toString() + '" class="button2" onclick="' + groupOnclick + '">' + "Group DL" + '</label></div>';
+		htmlString += '<input id="'+ id.toString() + '_groupDL" class="checkbox" type="checkbox">';
+	}  
+	
 	return htmlString;
 	return +id.toString()+'" class="button2" onclick="'+onclick+'">'+text+'</label></div> <span class="extraHigh"> <input id="dl'+id.toString()+'" class="checkbox" type="checkbox"> <br> download</span>';
 }
@@ -605,7 +624,7 @@ function addParallelJobs(print, id, status, completed=false) {
 	}
 
 	html += '" style="width:16px">';
-	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')');
+	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')', 'groupExport(\'print_'+id.toString()+'\')');
 	html += '<br />';
 	if (imageDatas.length > 0) {
 		for (let imageData of imageDatas) {
@@ -861,6 +880,73 @@ function downloadFile(e) {
 		}
 	}
 
+	// refresh page
+	refreshPage();
+}
+
+function groupExport(e) {
+    console.log({e:e});
+
+	var checkedCheckboxes = [];
+	$('#bucketListContainer input[type="checkbox"]:checked').each(function() {
+		checkedCheckboxes.push($(this).attr('id')); // Get the ID of the checkbox
+	});
+
+	console.log({checkedCheckboxes:checkedCheckboxes});
+
+	// Sort the checked checkboxes by their printStep numbers
+	checkedCheckboxes.sort((a, b) => {
+		const printStepA = parseInt(a.split('_')[0]);
+		const printStepB = parseInt(b.split('_')[0]);
+		return printStepA - printStepB;
+	});
+
+	var printSetsList = [];
+	for (let checkbox of checkedCheckboxes) {
+		var parts = checkbox.split('_');
+		var id = parseInt(parts[0]);
+		console.log({id:id});
+		for (let bucket of jobBucketsByShape) {
+			console.log({bucket:bucket});
+			for (let set of bucket.printSets) {
+				console.log({set:set});
+				if (set.printStep === id) {
+					console.log({printStep:set.printStep});
+					printSetsList.push(set);
+				}
+			}
+		}
+	}
+
+	console.log({printSetsList:printSetsList});
+	console.log({chosenPrinter:chosenPrinter});
+	console.log({shape:shape});
+
+	let combinedPrints = exportPrintSets(printSetsList, chosenPrinter);
+
+	console.log({combinedPrints:combinedPrints});
+
+	for (let printFile of combinedPrints) {
+		// download job gcode
+		var d = new Date();
+		saveAs(printFile.gCodeBlob, 'joinery_print_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.gcode');
+	}
+
+	// Update fabrication status
+	for (let bucket of jobBucketsByShape) {
+		for (let set of bucket.printSets) {
+			for (let checkboxId of checkedCheckboxes) {
+				var parts = checkboxId.split('_');
+				var id = parseInt(parts[0]);
+				if (set.printStep == id) {
+					for (let print of set.singlePrints) {
+						print.fabricated = true;
+					}
+					set.fabricated = true;
+				}
+			}
+		}
+	}
 	// refresh page
 	refreshPage();
 }

@@ -1,4 +1,24 @@
-function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, addedShapes, addedPrintJobs, allShapeIDs, chosenPrinter) {
+// Original combining printJobs into few prints
+function exportPrintSets(printSetsList, chosenPrinter) {
+	var prints2 = [];
+	var heightUsed2 = 0.0;
+	var addedOutputs2 = [];
+	var addedShapes2 = [];
+	var addedPrintJobs2 = [];
+	let fakeShapeIDs = new Set();
+	for (let printSet of printSetsList) {
+		var GCODE2 = "";
+		console.log('printSet: ', printSet);
+		console.log({shapeID:printSet.parentshapeID});
+		[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, fakeShapeIDs, chosenPrinter, printSet.parentshapeID);
+	}
+	[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
+	var combinedPrints = prints2;
+	return combinedPrints;
+}
+
+
+function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, addedShapes, addedPrintJobs, allShapeIDs, chosenPrinter, shape_i) {
     for (let output of printJobs) {
         if (true || output.handled2 === false) {
             output.handled2 = true;
@@ -22,10 +42,10 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             let localHeight = heightUsed - output.relativeHeight.min + 20;
             heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
             addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam});
-            addedShapes.push({shape: shape[i], ID:i});
+            addedShapes.push({shape: shape[shape_i], ID:shape_i});
             addedPrintJobs.push(output);
-            allShapeIDs.add(i);
-            // console.log({allShapeIDs:allShapeIDs, i:i});
+            allShapeIDs.add(shape_i);
+            // console.log({allShapeIDs:allShapeIDs, i:shape_i});
 
             // Add "Inject here" G-Code flag for printed markers?  
             // console.log({output:output, printedTextsOutput:output.markers[0].sourceObj.printedText});

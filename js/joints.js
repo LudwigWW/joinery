@@ -1,6 +1,7 @@
 // import * as STLExports from '../js/lib/STLExport.js';
 // // console.log('fromMesh: ', STLExports);
 
+
 var jointProfileCount = 0;
 var chosenPrinter = {};
 var chosenLaser = {};
@@ -23,6 +24,19 @@ const defaultLineCommandObj = {
 };
 
 const emptyIDs = true;
+
+let exportWindow = undefined;
+
+window.addEventListener('beforeunload', function(event) {
+	event.preventDefault();
+	event.returnValue = '';
+});
+
+window.addEventListener('unload', function() {
+	if (exportWindow && !exportWindow.closed) {
+		exportWindow.close();
+	}
+});
 
 function mod(n, m) {
 	return ((n % m) + m) % m;
@@ -4845,7 +4859,7 @@ function exportProjectNow() {
 			var addedPrintJobs2 = [];
 			for (let printSet of bucket.printSets) {
 				var GCODE2 = "";
-				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter, printSet.parentshapeID);
 			}
 			[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
 			var combinedPrints = prints2;
@@ -4861,7 +4875,7 @@ function exportProjectNow() {
 				var addedOutputs2 = [];
 				var addedShapes2 = [];
 				var addedPrintJobs2 = [];
-				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter);
+				[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, allShapeIDs, chosenPrinter, printSet.parentshapeID);
 				[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
 				var singlePrints = prints2;
 				printSet.singlePrints = singlePrints;
@@ -5015,12 +5029,15 @@ function exportProjectNow() {
 		var urlString = url.substring(5);
 		var imgHtml = "<img source=\""+urlString+"\" target=\"_BLANK\">";
 		$("#TestDiv").append(image);
-		var exportWindow = window.open("pages/export-status.html?"+"none", "Export", "width=800,height=600");// "width=200,height=100");
+		exportWindow = window.open("pages/export-status.html?"+"none", "Export", "width=800,height=600");// "width=200,height=100");
 		exportWindow.prints = prints;
 		exportWindow.laserObjects = laserObjects;
 		exportWindow.allShapeIDs = allShapeIDs;
 		exportWindow.svgContent = svgContent;
 		exportWindow.jobBucketsByShape = jobBucketsByShape;
+		exportWindow.chosenPrinter = chosenPrinter;
+		exportWindow.chosenLaser = chosenLaser;
+		exportWindow.shape = shape;
 
 		exportWindow["myVar"] = "Hello World";
 		
