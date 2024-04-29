@@ -6,8 +6,8 @@ function exportPrintSets(printSetsList, chosenPrinter) {
 	var addedShapes2 = [];
 	var addedPrintJobs2 = [];
 	let fakeShapeIDs = new Set();
+	var GCODE2 = "";
 	for (let printSet of printSetsList) {
-		var GCODE2 = "";
 		console.log('printSet: ', printSet);
 		console.log({shapeID:printSet.parentshapeID});
 		[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, fakeShapeIDs, chosenPrinter, printSet.parentshapeID);
@@ -29,6 +29,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 break;
             }
             if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
+				console.log("Height exceeded, new print");
                 prints.push(exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
                 GCODE = "";
                 heightUsed = 0;
@@ -76,9 +77,12 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 
                     GCODE += marker.serverData.markerGC;
                 }
-            else // console.log({Warning:"Server marker data unavailable"});
-
-            GCODE += addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
+            else {
+				// console.log({Warning:"Server marker data unavailable"}); 
+			}
+            GCODE = addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
+			console.log('+Bottom GCode');
+			// console.log(GCODE);
         }
     }
     return [GCODE, heightUsed];
@@ -112,6 +116,8 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
         // console.log('output: ', outputContainer);
         GCODE += outputContainer.output.G91.spikes.precode;
         GCODE = addGCodePartGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X);
+		console.log("+Spikes GCode in exportPreviousGcodeGlobal");
+		// console.log(GCODE);
     }
 
     for (let outputContainer of addedOutputs) {
@@ -130,7 +136,8 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 
         let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
         GCODE = addGCodePartsCGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true);
-
+		console.log("+TopWithSpikes GCode in exportPreviousGcodeGlobal");
+		// console.log(GCODE);
     }
 
     GCODE += chosenPrinter.endCode;
@@ -310,6 +317,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 } 
 
 function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjustment, print_Offset_X, reverse=false, memoryList=[], memoryObj={}) {
+	console.log('in string length: ', inString.length);	
 	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
@@ -414,6 +422,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	outString = outString.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
 
 	inString += outString;
+	console.log('out string length: ', inString.length);
 
 	return inString;
 } 
