@@ -58,7 +58,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                         outString += `G1 Z${0.2} F3000\n`; // Z positioning
                         GCODE += outString;
                         for (let line of pT.lines) {
-                            GCODE += aimGCodePart(line.start, line.end, defaultLineCommandObj);
+                            GCODE += aimGCodePartG(line.start, line.end, defaultLineCommandObj);
                         }
                     }
                 }
@@ -291,7 +291,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
@@ -401,7 +401,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
+					outString += aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
 					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
 				}
 			}
@@ -426,3 +426,105 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 
 	return inString;
 } 
+
+function mod(n, m) {
+	return ((n % m) + m) % m;
+};
+
+
+function aimGCodePartG(startPlace, endPlace, commandObj) {
+	var outGCode = '\n';
+	var deltaX = endPlace.x - startPlace.x;
+	var deltaY = endPlace.y - startPlace.y;
+	const length = Math.sqrt((deltaX*deltaX) + (deltaY*deltaY));
+
+	let patternDefaultLength = null;
+	let gcode = null;
+
+	if (commandObj.gCodeOptions) {
+		// Get best option from gCodeOptions in commandObj that is closest to the length
+		console.log({length:length, commandObj:commandObj});
+		let bestOption = commandObj.gCodeOptions[0];
+		let closestLength = Math.abs(length - bestOption.defaultLength);
+		for (let option of commandObj.gCodeOptions) {
+			let optionLength = Math.abs(length - option.defaultLength);
+			if (optionLength < closestLength) {
+				bestOption = option;
+				closestLength = optionLength;
+			}
+		}
+		patternDefaultLength = bestOption.defaultLength;
+		gcode = bestOption.gcode;
+	} else {
+		patternDefaultLength = commandObj.defaultLength;
+		gcode = commandObj.gcode;
+	}
+	
+	lengthFactor = length / patternDefaultLength;
+	// console.log({length:length, lengthFactor:lengthFactor});
+	var rad = Math.atan2(deltaY, deltaX); // In radians
+	// if (Math.abs(rad) > 0.001) {
+	if (true) {
+		var originP = new Point(0.0, 0.0);
+		var lines = gcode.split('\n');
+		for (let line of lines) {
+			const preCommentLine = line.split(';')[0];
+			var remainingPartString = '';
+			if (preCommentLine.length > 0) {
+				var parts = preCommentLine.split(' ');
+				if (parts[0] === 'G0' || parts[0] === 'G1' || parts[0] === 'g0' || parts[0] === 'g1') {
+					var skipped1 = false;
+					let xLen = 0.0;
+					let yLen = 0.0;
+					let zLen = 0.0;
+					let extrusion = 0.0;
+					parts.forEach(function (part) {
+						if (part[0] === 'X' || part[0] === 'x') {
+							xLen = parseFloat(part.substring(1));
+						}
+						else if (part[0] === 'Y' || part[0] === 'y') {
+							yLen = parseFloat(part.substring(1));
+						}
+						else if (part[0] === 'Z' || part[0] === 'z') {
+							zLen = parseFloat(part.substring(1));
+						}
+						else if (part[0] === 'E' || part[0] === 'e') {
+							extrusion = parseFloat(part.substring(1));
+						}
+
+						// remaining parts that need no handling
+						else {
+							if (skipped1) {
+								remainingPartString = remainingPartString + ' ' + part;
+							}
+							else {
+								skipped1 = true;
+							}
+						}
+					});
+
+					var xOut = ((xLen * Math.cos(rad)) - (yLen * Math.sin(rad)))*lengthFactor;
+					var yOut = ((xLen * Math.sin(rad)) + (yLen * Math.cos(rad)))*lengthFactor;
+					var zOut = zLen;
+					var eOut = extrusion*lengthFactor*lengthFactor; // area increases twice with length, so we extrude accordingly
+
+					let outLine = parts[0];
+					if (Math.abs(xOut) > 0.0001) outLine += (' X' + xOut.toFixed(3));
+					if (Math.abs(yOut) > 0.0001) outLine += (' Y' + yOut.toFixed(3));
+					if (Math.abs(zOut) > 0.0001) outLine += (' Z' + zOut.toFixed(3));
+					if (Math.abs(eOut) > 0.0001) outLine += (' E' + eOut.toFixed(3)); 
+					outLine += remainingPartString;
+					outLine += '\n';
+					outGCode += outLine;
+				}
+				else {
+					outGCode += line;
+					outGCode += '\n';
+				}
+			}
+		}
+		return outGCode;
+	} else {
+		return gcode;
+	}
+}

@@ -2590,14 +2590,26 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			// Find left-most point and save offset from start hole
 			var leftMost = Infinity;
 			var leftPoint = null;
+			var rightMost = -Infinity;
 			for (var i = 0; i < holeList.length; i++) {
 				var hole = holeList[i];
 				if (hole.x < leftMost) {
 					leftMost = hole.x;
 					leftPoint = hole;
 				}
+				if (hole.x > rightMost) {
+					rightMost = hole.x;
+				}
 			}
-			var print_Offset_X = (holeList[0].x - leftMost) + constXShift;
+
+			let leftExtend = (holeList[0].x - leftMost);
+			// var print_Offset_X = (holeList[0].x - leftMost) + constXShift;
+
+			// Calculate the X offset to center the print on the build plate
+			// First get width
+			let printWidth = rightMost - leftMost;
+			// Then calculate the offset
+			let print_Offset_X = (param['printing area width'] - printWidth) / 2 - leftExtend;
 			
 
 			var markers = doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, printJobID);
