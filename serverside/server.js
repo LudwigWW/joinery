@@ -161,6 +161,32 @@ function send_error_response(res, err) {
 }
 
 app.use(cors({ origin: true }));
+app.use(express.json());
+
+app.get('/machines.json', (req, res) => {
+    fs.readFile('machines.json', 'utf8', (err, data) => {
+        if (err) {
+            res.status(500).send('Error reading file');
+        } else {
+            res.send(JSON.parse(data));
+        }
+    });
+});
+
+app.post('/updateMachines.cmd', (req, res) => {
+    if (req.body) {
+        fs.writeFile('machines.json', JSON.stringify(req.body, null, 2), 'utf8', (err) => {
+            if (err) {
+                res.status(500).send('Error writing file');
+            } else {
+                res.send('File updated successfully');
+            }
+        });
+    } else {
+        res.status(400).send('Request body is undefined');
+    }
+});
+
 
 // Example route to get printer status
 app.post('/printer/status.cmd', async (req, res) => {

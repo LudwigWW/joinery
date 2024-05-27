@@ -290,6 +290,42 @@ function initForms() {
 		}
 		activateDim(dimBool);
 	});
+
+	var req = $.getJSON('http://127.0.0.1:5505/machines.json');
+
+	req.success(function(response){
+		let chosenName = response.chosenPrinterName;
+		for (let printer of response.printerList) {
+			if (printer.name === chosenName) {
+				chosenPrinter = printer;
+			}
+		}
+		var printerSelect = $('#printerSelect');
+		for (let printer of response.printerList) {
+			printerSelect.append(`<option value="${printer.name}">${printer.name}</option>`);
+		}
+		printerSelect.val(chosenPrinter.name);
+
+		printerSelect.on('change', function() {
+			chosenPrinter = response.printerList.find(printer => printer.name === $(this).val());
+			response.chosenPrinterName = chosenPrinter.name;
+
+			var jsonString = JSON.stringify(response, null, 2);
+			console.log({jsonString: jsonString, response: response});	
+			// Use AJAX to save the changes to the file
+			$.ajax({
+				url: 'http://127.0.0.1:5505/updateMachines.cmd',
+				type: 'POST',
+				data: jsonString,
+				contentType: 'application/json',
+				success: function() {
+				},
+				error: function() {
+					console.warn('Failed to update machines.json');
+				}
+			});
+		});
+	});
 }
 
 function arrangeClick() {

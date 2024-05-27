@@ -33,7 +33,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e5e5e5', end
 	top: 12px;
 	left: -200px;
 	width: 212px;
-	height: 290px;
+	height: 330px;
 	-webkit-transition: all 300ms ease-in-out;
 	-moz-transition: all 300ms ease-in-out;
 	-o-transition: all 300ms ease-in-out;
@@ -51,7 +51,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e5e5e5', end
 	position: relative;
 	float: left;
 	width: 200px;
-	height: 270px;
+	height: 330px;
 	padding: 20px 15px 15px 25px;
 	box-sizing: border-box;
 }
@@ -65,7 +65,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e5e5e5', end
 
 #leftMenu2 {
 	position: absolute;
-	top: 306px;
+	top: 346px;
 	left: -200px;
 	width: 212px;
 	height: 285px;

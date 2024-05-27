@@ -58,7 +58,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                         outString += `G1 Z${0.2} F3000\n`; // Z positioning
                         GCODE += outString;
                         for (let line of pT.lines) {
-                            GCODE += aimGCodePartG(line.start, line.end, defaultLineCommandObj);
+                            GCODE += getCodeWRetraction(aimGCodePartG(line.start, line.end, defaultLineCommandObj), chosenPrinter);
                         }
                     }
                 }
@@ -75,7 +75,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 
                     GCODE += outString;
 
-                    GCODE += marker.serverData.markerGC;
+					GCODE += getCodeWRetraction(marker.serverData.markerGC, chosenPrinter);;
                 }
             else {
 				// console.log({Warning:"Server marker data unavailable"}); 
@@ -108,6 +108,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 		targetTemp = addedOutputs[0].usedParam["printing temperature"];
 	}
 	let adjustedStartCode = chosenPrinter.startCode;
+	adjustedStartCode += `G1 E-${chosenPrinter.retractionLength} F${chosenPrinter.retractionSpeed*60}; Retraction\n`; // Retraction;
 	adjustedStartCode = adjustedStartCode.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
 
     GCODE = adjustedStartCode + GCODE;
@@ -140,6 +141,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 		// console.log(GCODE);
     }
 
+	GCODE += `G1 E${chosenPrinter.retractionLength} F${chosenPrinter.deretractionSpeed*60}; De-retraction\n`; // De-Retraction;
     GCODE += chosenPrinter.endCode;
 
     // // console.log('ExportedGCODE: ', GCODE);
@@ -177,10 +179,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 			return addString;
 		}
 		if (skip) {
-			addString += commandObj.skipGCode;
+			addString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter);
 		}
 		else {
-			addString += commandObj.gcode;
+			addString += getCodeWRetraction(commandObj.gcode, chosenPrinter);
 		}
 		return addString;
 	}
@@ -219,8 +221,8 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		if (commandObj.directional == false) {
 			if (pattern[patternIndex] !== 0) {
 				// outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
-				outString += produceCode(needleObj, place, depthAdjustment);
-				outString += produceCode(commandObj, place, depthAdjustment, false);
+				outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
+				outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, false), chosenPrinter);
 			}
 		}
 		else {
@@ -233,10 +235,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
 								// outString += commandObj.skipGCode;
 								if (place.handled == false) {
-									outString += produceCode(needleObj, place, depthAdjustment);
+									outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
 									place.handled = true;
 								}
-								outString += produceCode(commandObj, place, depthAdjustment, true);
+								outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
 								break;
 							}
 						}
@@ -250,10 +252,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
 					// outString += commandObj.skipGCode;
 					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment);
+						outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
 						place.handled = true;
 					}
-					outString += produceCode(commandObj, place, depthAdjustment, true);
+					outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
 				}
 
 			} else { 
@@ -269,10 +271,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 					if (noOut)  {
 						// outString += commandObj.skipGCode;
 						if (place.handled == false) {
-							outString += produceCode(needleObj, place, depthAdjustment);
+							outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
 							place.handled = true;
 						}
-						outString += produceCode(commandObj, place, depthAdjustment, true);
+						outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
 					}
 				}
 				// else if () {
@@ -283,15 +285,15 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 				
 				else {
 					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment);
+						outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
 						place.handled = true;
 					}
 					if (lastPlace[lastPlace.length-pattern[patternIndex]].handled == false) {
-						outString += produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment);
+						outString += getCodeWRetraction(produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment), chosenPrinter);
 						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
 					}
-					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
-					outString += aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
+					outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, false, true), chosenPrinter); // only aim
+					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
@@ -351,7 +353,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 		
 		if (commandObj.directional == false) {
 			if (pattern[patternIndex] !== 0) {
-				outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
+				outString += getCodeWRetraction(commandObj.gcode, chosenPrinter); // Adding plug&play/drag&drop G-Code
 				memoryList.push({from:place, to:null});
 			}
 		}
@@ -363,7 +365,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 					if (((placeCounter+i-patternIndex+1) > placeList.length)) { // only parts of the pattern that would come after line ends 
 						if ((Math.abs(pattern[patternPlace]) > 0.5)) { // Only if the pattern actually connects to something
 							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
-								outString += commandObj.skipGCode;
+								outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter);
 								memoryList.push({from:place, to:null});
 								break;
 							}
@@ -376,7 +378,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 
 			} else if (pattern[patternIndex] == 0.5) {
 				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
-					outString += commandObj.skipGCode;
+					outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter);
 					memoryList.push({from:place, to:null});
 				}
 
@@ -391,7 +393,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 						}
 					}
 					if (noOut) {
-						outString += commandObj.skipGCode;
+						outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter);
 						memoryList.push({from:null, to:place}); //TODO: Check if it makes sense to have a memoryList entry if there is no FROM // TODO: Or if there should be one for noOut True
 					}
 				}
@@ -401,7 +403,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
+					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter);
 					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
 				}
 			}
@@ -527,4 +529,11 @@ function aimGCodePartG(startPlace, endPlace, commandObj) {
 	} else {
 		return gcode;
 	}
+}
+
+function getCodeWRetraction(inString, chosenPrinter) {
+	let outString = `G1 E${chosenPrinter.retractionLength + chosenPrinter.extraDeretractionLength} F${chosenPrinter.deretractionSpeed*60}; De-retraction\n`; // De-Retraction;
+	outString += inString;
+	outString += `G1 E-${chosenPrinter.retractionLength} F${chosenPrinter.retractionSpeed*60}; Retraction\n`; // Retraction;
+	return outString;
 }

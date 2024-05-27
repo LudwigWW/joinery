@@ -583,11 +583,11 @@ function generateJoint(index) {
 	req.success(function(response){
 		// // console.log({response:response});
 		
-		for (let printer of response.printerList) {
-			if (printer.name === "default") {
-				chosenPrinter = printer;
-			}
-		}
+		// for (let printer of response.printerList) {
+		// 	if (printer.name === "default") {
+		// 		chosenPrinter = printer;
+		// 	}
+		// }
 
 		for (let laser of response.laserList) {
 			if (laser.name === "default") {
