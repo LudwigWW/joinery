@@ -164,7 +164,7 @@ var printedRivets = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 0,
 		'hole spacing': 10,
 		'skip # holes': 0,
@@ -184,7 +184,7 @@ var printedRunning = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'hole spacing': 10,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -202,7 +202,7 @@ var printedRunningStrong = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'hole spacing': 10,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -220,7 +220,7 @@ var printedOverlapping = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 2,
 		'hole spacing': 10,
 		'skip # holes': 0,
@@ -240,7 +240,7 @@ var printedBaste = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'hole spacing': 20,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -258,7 +258,7 @@ var printedBastePull = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'hole spacing': 20,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -276,7 +276,7 @@ var printedWhip = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
@@ -294,7 +294,7 @@ var printedZigZag = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
@@ -312,7 +312,7 @@ var printedFlex = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 5,
 		'hole spacing': 9,
 		'skip # holes': 0,
@@ -331,7 +331,7 @@ var printedCross = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'seam pattern width': 5,
 		'hole spacing': 7,
 		'skip # holes': 0,
@@ -349,7 +349,7 @@ var printedDecorative = {
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
-		'hole diameter': 1.5,
+		'hole diameter': 1.25,
 		'hole spacing': 10,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -764,10 +764,10 @@ function generateJoint(index) {
 				case 'printed continuous':
 					// var printTemplate = template;
 					
-					var G91 = {base:printTemplate.G91Commands.overlappingLine, 
-						spikes:printTemplate.G91Commands.spikesTall, 
+					var G91 = {base:printTemplate.G91Commands.overlappingLine4mm, 
+						spikes:printTemplate.G91Commands.spikes08, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
-						top:printTemplate.G91Commands.overlappingLineTop
+						top:printTemplate.G91Commands.overlappingLine4mmTop
 					};
 
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);

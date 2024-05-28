@@ -169,7 +169,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	commandObj = commandObjs[0];
 	needleObj = commandObjs[1];
 	
-	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
+	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false, last=false) {
 		let addString = "";
 		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
 		addString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
@@ -180,6 +180,9 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		}
 		if (skip) {
 			addString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter);
+		}
+		else if (last) {
+			addString += getCodeWRetraction(commandObj.postCode, chosenPrinter);
 		}
 		else {
 			addString += getCodeWRetraction(commandObj.gcode, chosenPrinter);
@@ -211,6 +214,13 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 
 	for (let place of placeListLocal) {
 		place.handled = false;
+	}
+
+	if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(placeListLocal[0].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(placeListLocal[0].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
 	}
 
 	for (let place of placeListLocal) {
@@ -307,6 +317,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	}
 	// // console.log("outStringAdded: " + outString.length);
 
+	if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
+		outString += getCodeWRetraction(produceCode(commandObj, lastPlace[lastPlace.length-1], depthAdjustment, false, false, true), chosenPrinter);
+	}
+
 	let targetTemp = 215;
 	if (params["printing temperature"]) { 
 		targetTemp = params["printing temperature"];
@@ -326,6 +340,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
+	let firstPlacement = true;
 	// for (let i = -5; i < 5; i++) { 
 	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
@@ -345,6 +360,13 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	}
 
 	memoryObj.placeList = placeListLocal;
+
+	if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(placeListLocal[0].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(placeListLocal[0].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
+	}
 
 	for (let place of placeListLocal) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
@@ -416,6 +438,14 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 		lastPlace.push(place);
 		placeCounter += 1;
 	}
+
+	if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(lastPlace[lastPlace.length-1].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(lastPlace[lastPlace.length-1].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += getCodeWRetraction(commandObj.postCode, chosenPrinter);
+	}
+
 	// // console.log("outStringAdded: " + outString.length);
 	let targetTemp = 215;
 	if (params["printing temperature"]) { 
@@ -532,8 +562,8 @@ function aimGCodePartG(startPlace, endPlace, commandObj) {
 }
 
 function getCodeWRetraction(inString, chosenPrinter) {
-	let outString = `G1 E${chosenPrinter.retractionLength + chosenPrinter.extraDeretractionLength} F${chosenPrinter.deretractionSpeed*60}; De-retraction\n`; // De-Retraction;
+	let outString = `G1 E${(chosenPrinter.retractionLength + chosenPrinter.extraDeretractionLength).toFixed(3)} F${(chosenPrinter.deretractionSpeed*60).toFixed(3)}; De-retraction\n`; // De-Retraction;
 	outString += inString;
-	outString += `G1 E-${chosenPrinter.retractionLength} F${chosenPrinter.retractionSpeed*60}; Retraction\n`; // Retraction;
+	outString += `G1 E-${chosenPrinter.retractionLength} F${(chosenPrinter.retractionSpeed*60).toFixed(3)}; Retraction\n`; // Retraction;
 	return outString;
 }
