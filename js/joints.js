@@ -16,6 +16,7 @@ const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.60
 
 const defaultTPUTemp = 230;
 
+const switchMoveDuration = 1;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
