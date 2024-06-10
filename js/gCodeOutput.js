@@ -1,3 +1,5 @@
+const { get } = require("request-promise");
+
 // Original combining printJobs into few prints
 function exportPrintSets(printSetsList, chosenPrinter) {
 	var prints2 = [];
@@ -168,6 +170,15 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 
 	commandObj = commandObjs[0];
 	needleObj = commandObjs[1];
+
+	function handlePreCode(commandObj, place, depthAdjustment) {
+		let preCodeString = `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		preCodeString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		preCodeString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		preCodeString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
+		handleFirstPlace = false;
+		return preCodeString;
+	}
 	
 	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false, last=false) {
 		let addString = "";
@@ -187,12 +198,17 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		else {
 			addString += getCodeWRetraction(commandObj.gcode, chosenPrinter);
 		}
+		addString = addString;
 		return addString;
 	}
 	
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
+	let handleFirstPlace = false;
+	if (commandObj.preCode) {
+		handleFirstPlace = true;
+	}
 	// for (let i = -5; i < 5; i++) { 
 	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
@@ -216,12 +232,13 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		place.handled = false;
 	}
 
-	if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
-		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		outString += `G1 X${(placeListLocal[0].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(placeListLocal[0].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
-		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
-		outString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
-	}
+	// This puts it before the needle...
+	// if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
+	// 	outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+	// 	outString += `G1 X${(placeListLocal[0].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(placeListLocal[0].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+	// 	outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+	// 	outString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
+	// }
 
 	for (let place of placeListLocal) {
 		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
@@ -231,8 +248,11 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		if (commandObj.directional == false) {
 			if (pattern[patternIndex] !== 0) {
 				// outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
-				outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
-				outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, false), chosenPrinter);
+				outString += produceCode(needleObj, place, depthAdjustment);
+				if (handleFirstPlace) {
+					outString += handlePreCode(commandObj, place, depthAdjustment);
+				}
+				outString += produceCode(commandObj, place, depthAdjustment, false);
 			}
 		}
 		else {
@@ -245,10 +265,13 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
 								// outString += commandObj.skipGCode;
 								if (place.handled == false) {
-									outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
+									outString += produceCode(needleObj, place, depthAdjustment);
 									place.handled = true;
 								}
-								outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
+								if (handleFirstPlace) {
+									outString += handlePreCode(commandObj, place, depthAdjustment);
+								}
+								outString += produceCode(commandObj, place, depthAdjustment, true);
 								break;
 							}
 						}
@@ -262,10 +285,13 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
 					// outString += commandObj.skipGCode;
 					if (place.handled == false) {
-						outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
+						outString += produceCode(needleObj, place, depthAdjustment);
 						place.handled = true;
 					}
-					outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
+					if (handleFirstPlace) {
+						outString += handlePreCode(commandObj, place, depthAdjustment);
+					}
+					outString += produceCode(commandObj, place, depthAdjustment, true);
 				}
 
 			} else { 
@@ -281,10 +307,13 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 					if (noOut)  {
 						// outString += commandObj.skipGCode;
 						if (place.handled == false) {
-							outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
+							outString += produceCode(needleObj, place, depthAdjustment);
 							place.handled = true;
 						}
-						outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, true), chosenPrinter);
+						if (handleFirstPlace) {
+							outString += handlePreCode(commandObj, place, depthAdjustment);
+						}
+						outString += produceCode(commandObj, place, depthAdjustment, true);
 					}
 				}
 				// else if () {
@@ -295,14 +324,17 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 				
 				else {
 					if (place.handled == false) {
-						outString += getCodeWRetraction(produceCode(needleObj, place, depthAdjustment), chosenPrinter);
+						outString += produceCode(needleObj, place, depthAdjustment);
 						place.handled = true;
 					}
 					if (lastPlace[lastPlace.length-pattern[patternIndex]].handled == false) {
-						outString += getCodeWRetraction(produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment), chosenPrinter);
+						outString += produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment);
 						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
 					}
-					outString += getCodeWRetraction(produceCode(commandObj, place, depthAdjustment, false, true), chosenPrinter); // only aim
+					if (handleFirstPlace) {
+						outString += handlePreCode(commandObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment); // first target place should be the actual first hole
+					}
+					outString += produceCode(commandObj, place, depthAdjustment, false, true), chosenPrinter; // only aim
 					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter); // rotate and add aimed plug&play G-Code
 				}
 			}
@@ -318,7 +350,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	// // console.log("outStringAdded: " + outString.length);
 
 	if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
-		outString += getCodeWRetraction(produceCode(commandObj, lastPlace[lastPlace.length-1], depthAdjustment, false, false, true), chosenPrinter);
+		outString += produceCode(commandObj, lastPlace[lastPlace.length-1], depthAdjustment, false, false, true);
 	}
 
 	let targetTemp = 215;
