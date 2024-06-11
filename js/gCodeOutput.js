@@ -1,25 +1,7 @@
 // const { get } = require("request-promise");
 
-// Original combining printJobs into few prints
-function exportPrintSets(printSetsList, chosenPrinter) {
-	var prints2 = [];
-	var heightUsed2 = 0.0;
-	var addedOutputs2 = [];
-	var addedShapes2 = [];
-	var addedPrintJobs2 = [];
-	let fakeShapeIDs = new Set();
-	var GCODE2 = "";
-	for (let printSet of printSetsList) {
-		console.log('printSet: ', printSet);
-		console.log({shapeID:printSet.parentshapeID});
-		[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, fakeShapeIDs, chosenPrinter, printSet.parentshapeID);
-	}
-	[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
-	var combinedPrints = prints2;
-	return combinedPrints;
-}
 
-function calculateDurationEstimate(printJobs, simulatedHeight, types) {
+function calculateDurationEstimate(printJobs, simulatedHeight, types, remainingPrintJobs=null) {
 	// parse types string, split by ;
 	let typeList = types.split(";");
 	let calcBase = false, calcSpikes = false, calcTop = false, calcSpikesTop = false;
@@ -35,6 +17,10 @@ function calculateDurationEstimate(printJobs, simulatedHeight, types) {
 		if ((outputHeight + simulatedHeight) > output.usedParam["printing area depth"]) {
 			return durationEstimate;
 		}
+		simulatedHeight = simulatedHeight + outputHeight + 40;
+		if (remainingPrintJobs) remainingPrintJobs.shift();
+		console.log({printJobs:printJobs, output:output, simulatedHeight:simulatedHeight, outputHeight:outputHeight, outputUsedParam:output.usedParam["printing area depth"]});
+		console.log({listLength:output.holeList.length, smd: switchMoveDuration, baseDur:output.G91.base.duration, spikesDur:output.G91.spikes.duration, topDur:output.G91.top.duration, spikesTopDur:output.G91.spikesTop.duration});
 		if (calcBase) {
 			if (output.G91.base.duration) {
 				durationEstimate += output.holeList.length * (output.G91.base.duration + switchMoveDuration);
@@ -88,40 +74,41 @@ function calculateTopDurationEstimate(printJob, types) {
 	if (typeList.includes("spikesTop")) calcSpikesTop = true;
 	let durationEstimate = 0;
 	let warn = false;
+	console.log({top:"top", listLength:printJob.holeList.length, smd: switchMoveDuration, baseDur:printJob.G91.base.duration, spikesDur:printJob.G91.spikes.duration, topDur:printJob.G91.top.duration, spikesTopDur:printJob.G91.spikesTop.duration});
 	if (calcBase) {
 		if (printJob.G91.base.duration) {
-			durationEstimate += printJob.holeList.length * (printJob.G91.base.duration + switchMoveDuration);
-			durationEstimate += printJob.holeList.length * switchMoveDuration;
+			durationEstimate += printJob.holeList.length * (printJob.G91.base.duration + switchMoveDuration);	
 		}
 		else {
 			warn = true;
+			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 	}
 	if (calcSpikes) {
 		if (printJob.G91.spikes.duration) {
 			durationEstimate += printJob.holeList.length * (printJob.G91.spikes.duration + switchMoveDuration);
-			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 		else {
 			warn = true;
+			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 	}
 	if (calcTop) {
 		if (printJob.G91.top.duration) {
 			durationEstimate += printJob.holeList.length * (printJob.G91.top.duration + switchMoveDuration);
-			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 		else {
 			warn = true;
+			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 	} 
 	if (calcSpikesTop) {
 		if (printJob.G91.spikesTop.duration) {
 			durationEstimate += printJob.holeList.length * (printJob.G91.spikesTop.duration + switchMoveDuration);
-			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 		else {
 			warn = true;
+			durationEstimate += printJob.holeList.length * switchMoveDuration;
 		}
 	} 
 
@@ -131,16 +118,65 @@ function calculateTopDurationEstimate(printJob, types) {
 	return durationEstimate;
 }
 
-function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, addedShapes, addedPrintJobs, allShapeIDs, chosenPrinter, shape_i) {
+
+// Original combining printJobs into few prints
+function exportPrintSets(printSetsList, chosenPrinter) {
+	var prints2 = [];
+	var heightUsed2 = 0.0;
+	var addedOutputs2 = [];
+	var addedShapes2 = [];
+	var addedPrintJobs2 = [];
+	let fakeShapeIDs = new Set();
+	var GCODE2 = "";
+
+	// Already look ahead here to calculate duration estimate
+	let allPrintJobs = [];
+	for (let printSet of printSetsList) {
+		// First collect all printJobs
+		allPrintJobs = allPrintJobs.concat(printSet.printJobs);
+	}
+
+	let timingsLists = [];
+
+	while (allPrintJobs.length > 0) {
+		console.log({allPrintJobs:allPrintJobs, length:allPrintJobs.length});
+		let listCopy = [...allPrintJobs];
+		let listCopy2 = [...allPrintJobs];
+		let durE = calculateDurationEstimate(allPrintJobs, 0, "base;spikes", listCopy);
+		let toCome = calculateDurationEstimate(allPrintJobs, 0, "top;spikesTop", listCopy2);
+		allPrintJobs = listCopy;
+		let durETotal = durE + toCome;
+		console.log({allPrintJobs:allPrintJobs, listCopy:listCopy});
+		timingsLists.push({ durationEstimate: durE, toComeEstimate: toCome, durationEstimateTotal: durETotal });
+		console.log({durationEstimate: durE, toComeEstimate: toCome, durationEstimateTotal: durETotal});
+	}
+
+	console.log({timingsLists:timingsLists});
+
+	for (let printSet of printSetsList) {
+		console.log('printSet: ', printSet);
+		console.log({shapeID:printSet.parentshapeID});
+		[GCODE2, heightUsed2] = handlePrintJobs(printSet.printJobs, GCODE2, prints2, heightUsed2, addedOutputs2, addedShapes2, addedPrintJobs2, fakeShapeIDs, chosenPrinter, printSet.parentshapeID, timingsLists);
+	}
+	[GCODE2, heightUsed2] = handleLeftoverGCode(GCODE2, prints2, addedOutputs2, addedShapes2, addedPrintJobs2, chosenPrinter, heightUsed2);
+	var combinedPrints = prints2;
+	return combinedPrints;
+}
+
+function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, addedShapes, addedPrintJobs, allShapeIDs, chosenPrinter, shape_i, timingsLists=[{durationEstimate:0, toComeEstimate:0, durationEstimateTotal:0}]) {
     // First simulate process of adding jobs until export, to calculate duration estimate
 	let simulatedHeight = heightUsed*1.0;
 	let remainingPrintJobs = [...printJobs];
-	let durationEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes"); // Pause only after both base+spikes
-	// let durationEstimateTotal = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes;top;spikesTop");
-	let toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
-	let durationEstimateTotal = durationEstimate + toComeEstimate;
-	console.log("Handle Jobs. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + durationEstimateTotal);
-	let durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: durationEstimateTotal};
+	// let durationEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes"); // Pause only after both base+spikes
+	//// let durationEstimateTotal = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes;top;spikesTop");
+	// let toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
+	// let durationEstimateTotal = durationEstimate + toComeEstimate;
+	
+	// let durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: durationEstimateTotal};
+	let currentTimings = 0;
+	let durations = {durationEstimate: timingsLists[currentTimings].durationEstimate, toComeEstimate: timingsLists[currentTimings].toComeEstimate, durationEstimateTotal: timingsLists[currentTimings].durationEstimateTotal};
+	console.log("Handle Jobs. Duration estimate: " + timingsLists[currentTimings].durationEstimate + " toComeEstimate: " + timingsLists[currentTimings].toComeEstimate + " total: " + timingsLists[currentTimings].durationEstimateTotal);
+
 	for (let output of printJobs) {
         if (true || output.handled2 === false) {
             output.handled2 = true;
@@ -160,18 +196,19 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 addedShapes = [];
                 addedPrintJobs = [];
 				simulatedHeight = heightUsed*1.0;
-				durationEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes");
-				toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
-				durationEstimateTotal = durationEstimate + toComeEstimate;
+				// durationEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes");
+				// toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
+				// durationEstimateTotal = durationEstimate + toComeEstimate;
+				currentTimings += 1;
 				console.log("Post split Jobs. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + durationEstimateTotal);
-				durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: durationEstimateTotal};
+				durations = {durationEstimate: timingsLists[currentTimings].durationEstimate, toComeEstimate: timingsLists[currentTimings].toComeEstimate, durationEstimateTotal: timingsLists[currentTimings].durationEstimateTotal};
             }
 
             // console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
             
             let localHeight = heightUsed - output.relativeHeight.min + 20;
             heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
-            addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam, duration:durationEstimateTotal});
+            addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam, duration:durations.durationEstimateTotal});
             addedShapes.push({shape: shape[shape_i], ID:shape_i});
             addedPrintJobs.push(output);
             allShapeIDs.add(shape_i);
@@ -213,6 +250,8 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 			}
             GCODE = addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X, durations);
 			console.log('+Bottom GCode');
+			// update duration estimate
+			timingsLists[currentTimings].durationEstimate = durations.durationEstimate;
 			// console.log(GCODE);
         }
     }
@@ -259,6 +298,8 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     }
 	if (durations.durationEstimate > 0) {
 		console.warn({message:"Duration estimate not fully used: "+durations.durationEstimate, durationEstimate:durations.durationEstimate});
+	} else if (durations.durationEstimate < 0) {
+		console.warn({message:"Duration estimate reached negative value: "+durations.durationEstimate, durationEstimate:durations.durationEstimate});
 	}
 
     for (let outputContainer of addedOutputs) {
