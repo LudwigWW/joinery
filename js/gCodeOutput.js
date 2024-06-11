@@ -1,4 +1,4 @@
-const { get } = require("request-promise");
+// const { get } = require("request-promise");
 
 // Original combining printJobs into few prints
 function exportPrintSets(printSetsList, chosenPrinter) {
