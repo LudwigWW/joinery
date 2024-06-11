@@ -139,6 +139,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 	// let durationEstimateTotal = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes;top;spikesTop");
 	let toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
 	let durationEstimateTotal = durationEstimate + toComeEstimate;
+	console.log("Handle Jobs. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + durationEstimateTotal);
 	let durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: durationEstimateTotal};
 	for (let output of printJobs) {
         if (true || output.handled2 === false) {
@@ -162,6 +163,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 				durationEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "base;spikes");
 				toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
 				durationEstimateTotal = durationEstimate + toComeEstimate;
+				console.log("Post split Jobs. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + durationEstimateTotal);
 				durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: durationEstimateTotal};
             }
 
@@ -246,7 +248,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
     let toComeEstimate = calculateDurationEstimate(addedPrintJobs, -Infinity, "top;spikesTop"); 
 	console.log({durationType: "spikesOnly", durationEstimate:durationEstimate, toComeEstimate:toComeEstimate});
 	let durations = {durationEstimate: durationEstimate, toComeEstimate: toComeEstimate, durationEstimateTotal: addedOutputs[0].duration};
-
+	console.log("Export previous. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + addedOutputs[0].duration);
     for (let outputContainer of addedOutputs) {
 		durations.durationEstimateTotal = outputContainer.duration;
         // console.log('output: ', outputContainer);
@@ -277,6 +279,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 		durations.durationEstimate = calculateTopDurationEstimate(outputContainer.output, "top;spikesTop");
 		durations.toComeEstimate -= durations.durationEstimate; // Subtract duration of one job from total toComeEstimate
         let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
+		console.log("per output export: durationEstimate: " + durations.durationEstimate + " toComeEstimate: " + durations.toComeEstimate + " total: " + durations.durationEstimateTotal);
         GCODE = addGCodePartsCGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true, durations);
 		console.log("+TopWithSpikes GCode in exportPreviousGcodeGlobal");
 		// console.log(GCODE);
