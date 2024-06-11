@@ -5051,6 +5051,7 @@ function exportProjectNow() {
 		exportWindow.chosenPrinter = chosenPrinter;
 		exportWindow.chosenLaser = chosenLaser;
 		exportWindow.shape = shape;
+		exportWindow.switchMoveDuration = switchMoveDuration;
 
 		exportWindow["myVar"] = "Hello World";
 		

@@ -19,6 +19,7 @@ var currentPrint = 0;
 let currentCutObj = null;
 let currentPrintObj = null;
 
+let switchMoveDuration;
 
 window.onbeforeunload = null;
 
@@ -39,6 +40,8 @@ window.addEventListener('beforeunload', function(event) {
 function init() {
 	console.log({jobBucketsByShape:window.jobBucketsByShape});
     console.log({images:window.imageList, myVar:window.myVar});
+
+	switchMoveDuration = window.switchMoveDuration;
 
 	jobBucketsByShape = window.jobBucketsByShape;
     // var query = window.location.search.substring(1);
