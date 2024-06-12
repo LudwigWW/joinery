@@ -59,7 +59,7 @@ function calculateDurationEstimate(printJobs, simulatedHeight, types, remainingP
 		}
 	}
 	if (warn) {
-		console.warn({message:"Duration estimate not available for output", output:output});
+		console.warn({message:"Duration estimate not available for output", output:printJobs[0].output});
 	}
 	return durationEstimate;
 }
@@ -797,6 +797,6 @@ function getCodeWRetraction(inString, chosenPrinter, durationEstimate=0, duratio
 	outString += inString;
 	outString += `G1 E-${chosenPrinter.retractionLength} F${(chosenPrinter.retractionSpeed*60).toFixed(3)}; Retraction\n`; // Retraction;
 	outString += `M73 P${percentage} R${Math.floor(durationEstimate/60)}; Progress\n`; // Progress update
-	outString += `M73 Q${percentage} S${Math.floor(durationEstimate/60)}; Progress\n`; // Silent progress update
+	outString += `M73 Q${percentage} S${Math.floor(durationEstimate/60)};\n`; // Silent progress update
 	return outString;
 }
