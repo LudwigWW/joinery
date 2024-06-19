@@ -765,12 +765,19 @@ function generateJoint(index) {
 				case 'printed continuous':
 					// var printTemplate = template;
 					
-					var G91 = {base:printTemplate.G91Commands.overlappingLine4mm, 
-						spikes:printTemplate.G91Commands.spikes08, 
-						spikesTop:printTemplate.G91Commands.spikesTop, 
-						top:printTemplate.G91Commands.overlappingLine4mmTop
+					// var G91 = {base:printTemplate.G91Commands.overlappingLine4mm, 
+					// 	spikes:printTemplate.G91Commands.spikesTall08, 
+					// 	spikesTop:printTemplate.G91Commands.spikesTopMergeH30, 
+					// 	top:printTemplate.G91Commands.overlappingLine4mmTop
+					// };
+
+					var G91 = {base:printTemplate.G91Commands.zigzagOverlap, 
+						spikes:printTemplate.G91Commands.spikesTall08, 
+						spikesTop:printTemplate.G91Commands.spikesTopMergeH30, 
+						top:printTemplate.G91Commands.zigzagTopOverlap
 					};
 
+					
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
 					
 					break;

@@ -363,7 +363,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		return preCodeString;
 	}
 	
-	function produceCode(commandObj, place, depthAdjustment, durations, skip=false, onlyAim=false, last=false) {
+	function produceCode(commandObj, place, depthAdjustment, durations, skip=false, onlyAim=false, last=false, first=false) {
 		let addString = "";
 		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
 		addString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
@@ -377,6 +377,10 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 		}
 		else if (last) {
 			addString += getCodeWRetraction(commandObj.postCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+		}
+		else if (first) {
+			addString += getCodeWRetraction(commandObj.preCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+			handleFirstPlace = false;
 		}
 		else {
 			addString += getCodeWRetraction(commandObj.gcode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
@@ -452,7 +456,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 									place.handled = true;
 								}
 								if (handleFirstPlace) {
-									outString += handlePreCode(commandObj, place, depthAdjustment, durations);
+									outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
 								}
 								outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 								break;
@@ -472,7 +476,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 						place.handled = true;
 					}
 					if (handleFirstPlace) {
-						outString += handlePreCode(commandObj, place, depthAdjustment, durations);
+						outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 				}
@@ -494,7 +498,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 							place.handled = true;
 						}
 						if (handleFirstPlace) {
-							outString += handlePreCode(commandObj, place, depthAdjustment, durations);
+							outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
 						}
 						outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 					}
