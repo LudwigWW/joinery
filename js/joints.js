@@ -8,6 +8,7 @@ var chosenLaser = {};
 var requestCounter = 0;
 var markerGCodes = [];
 var printCounter = 1; // Starts at A
+
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
 
@@ -17,6 +18,8 @@ const defaultLineGCode = "G91;\nG1 X0.0 E0.8 F2100\nM204 S800\nG1 F900\nG1 X9.60
 const defaultTPUTemp = 230;
 
 const switchMoveDuration = 1;
+
+const verbose = false;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
@@ -478,12 +481,12 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 	var testGCode = '';
 
 	req2.success(function(response){
-		if (false) {
+		if (true) {
 			// console.log({response:response});
 			testGCode = response.text;
 
 			axios.post('http://127.0.0.1:5505/printer/status.cmd', {
-				testGCode: testGCode,
+				// testGCode: testGCode,
 				x: 0, //markerObj.targetPoint.x,
 				y: 0 //markerObj.targetPoint.y
 			}).then(function (response) {
@@ -602,6 +605,7 @@ function generateJoint(index) {
 				let propString = commandsObj.importCommon;
 				let set = response.commonSets[propString];
 				Object.assign(commandsObj, set);
+				// TODO: Should pick/adjust duration estimate based on average length between stitch holes
 			}
 		}
 		
@@ -1507,47 +1511,107 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnAPrint, returnBPrint, joints, param, fabID) {
 
 	var markerParams = {size:1, type:"arrow"};
-	var markerParams = {size:2, type:"circle"};
+	// var markerParams = {size:2, type:"circle"};
+	// var markerParams = {size:2, type:"rectangle"};
+	// var markerParams = {size:2, type:"hexagon"};
+	var markerParams = {size:2, type:"mixed"};
+	let groupType = "mixed";
 	if (param['markertype']) {
 		markerParams.type = param['markertype'];
+		groupType = param['markertype'];
 	}
 
 	// console.log({job:job});
 
 	var markers = [];
 
-	// TODO: At least make marker offset based on length of the shorter path. How to handle the size difference better?
-	const minDist = 4;
-	let partLength = job.originSourcePathPart.length;
-	// random position between 5 and partLength
-	const randomOffset = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
+    // TODO: At least make marker offset based on length of the shorter path. How to handle the size difference better?
+    const minDist = markerParams.size*2;
+    let partLength = job.originSourcePathPart.length;
+    const markerSize = markerParams.size * 2; // Assuming size is the radius for circles and half the width for rectangles
 
-	let markerOffset = job.originSourceOffset + randomOffset; // From start
-	let markerOffsetRotated = randomOffset; // From part cut point
-	let rotatedPath = job.originSourcePathPart; 
-	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
-	var startHole = job.laserHoles[0].point;
+    // Calculate the maximum number of markers that can fit without overlapping
+    const maxMarkers = Math.floor(partLength / (markerSize + minDist));
+    const numMarkers = Math.min(Math.floor(Math.random() * 3) + 3, maxMarkers);
+
+    if (numMarkers === 0) {
+        console.warn('Path is too short for markers');
+		let zeroPoint = new Point(0, 0); 
+        return {outlines:[], targetPoint:zeroPoint, printedText:[]};
+    }
+
+    // Generate random offsets for markers
+    let markerOffsets = [];
+    for (let i = 0; i < numMarkers; i++) {
+        let randomOffset;
+        let validOffset = false;
+        while (!validOffset) {
+            randomOffset = Math.floor(Math.random() * (partLength - markerSize)) + markerSize / 2;
+            validOffset = true;
+            for (let offset of markerOffsets) {
+                if (Math.abs(randomOffset - offset) < markerSize + minDist) {
+                    validOffset = false;
+                    break;
+                }
+            }
+        }
+        markerOffsets.push(randomOffset);
+    }
+
+    markerOffsets.sort((a, b) => a - b);
+
+    for (let randomOffset of markerOffsets) {
+		if (groupType === "mixed") {
+			const shapes = ["circle", "rectangle", "hexagon"];
+			markerParams.type = shapes[Math.floor(Math.random() * shapes.length)];
+		}
+
+        let markerOffset = job.originSourceOffset + randomOffset; // From start
+        let markerOffsetRotated = randomOffset; // From part cut point
+        let rotatedPath = job.originSourcePathPart;
+        var startHole = job.laserHoles[0].point;
+
+        var markerObj;
+        setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+        markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+        if (markerObj.outlines.length > 0) { // If there is something to print // TODO: Or if only text is printed
+            markers.push(serverSlicing(markerObj, job, param));
+        }
+    }
+
+
+	// // TODO: At least make marker offset based on length of the shorter path. How to handle the size difference better?
+	// const minDist = 4;
+	// let partLength = job.originSourcePathPart.length;
+	// // random position between 5 and partLength
+	// const randomOffset = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
+
+	// let markerOffset = job.originSourceOffset + randomOffset; // From start
+	// let markerOffsetRotated = randomOffset; // From part cut point
+	// let rotatedPath = job.originSourcePathPart; 
+	// // // console.log({markerOffsetRotated:markerOffsetRotated, markerOffset:markerOffset});
+	// var startHole = job.laserHoles[0].point;
 	
-	var markerObj;
-	setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
-	markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
-	if (markerObj.outlines.length > 0) { // If there is something to print // TODO: Or if only text is printed
-		markers.push(serverSlicing(markerObj, job, param)); 
-	}
+	// var markerObj;
+	// setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+	// markerObj = setPrintedMarkers(markerOffset, markerOffsetRotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+	// if (markerObj.outlines.length > 0) { // If there is something to print // TODO: Or if only text is printed
+	// 	markers.push(serverSlicing(markerObj, job, param)); 
+	// }
 	
-	const randomOffsetE = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
+	// const randomOffsetE = Math.floor(Math.random() * (partLength/2 - minDist)) + minDist;
 
-	let markerOffsetE = job.originSourceOffsetEnd - randomOffsetE; 
-	let markerOffsetERotated = (job.originSourcePathPart.length - randomOffsetE);
-	// // console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
+	// let markerOffsetE = job.originSourceOffsetEnd - randomOffsetE; 
+	// let markerOffsetERotated = (job.originSourcePathPart.length - randomOffsetE);
+	// // // console.log({markerOffsetRotated:markerOffsetRotated, markerOffsetE:markerOffsetE});
 
-	var markerObjEnd;
-	if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
-		// console.log({status:"MarkingEnd"});
-		setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
-		markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
-		if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
-	}
+	// var markerObjEnd;
+	// if (Math.abs(markerOffset-markerOffsetE) > markerParams.size) {
+	// 	// console.log({status:"MarkingEnd"});
+	// 	setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeB, returnBLaser, returnBPrint, job.renderRef.b, joints, false);
+	// 	markerObjEnd = setPrintedMarkers(markerOffsetE, markerOffsetERotated, markerParams, fabID, index, edgeA, returnALaser, returnAPrint, job.renderRef.a, joints, true, rotatedPath);
+	// 	if (markerObj.outlines.length > 0) markers.push(serverSlicing(markerObjEnd, job, param));
+	// }
 
 	
 
@@ -1560,6 +1624,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	
 
 	function serverSlicing(markerObj, job, param) {
+		console.log("Marker server slicing for: ", markerObj);
 		var currentID = requestCounter + 0;
 		requestCounter += 1;
 
@@ -1569,9 +1634,9 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	
 		const relVector = new Point(markerObj.targetPoint.x - job.laserHoles[0].point.x, markerObj.targetPoint.y - job.laserHoles[0].point.y);
 	
-		// console.log({relVector:relVector, targetP:markerObj.targetPoint, startHole: job.laserHoles[0].point});
+		if (debug) console.log({relVector:relVector, targetP:markerObj.targetPoint, startHole: job.laserHoles[0].point});
 	
-		// console.log({markerDetails:markerDetails});
+		if (debug) console.log({markerDetails:markerDetails});
 		
 	
 		var returnObj = {details:markerDetails, sourceObj:markerObj, serverData:undefined};
@@ -1586,15 +1651,15 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 			x: 0, //markerObj.targetPoint.x,
 			y: 0 //markerObj.targetPoint.y
 		}).then(function (response) {
-			// if (debug) // console.log(response);
+			if (debug) console.log(response);
 			var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode, relVector:relVector} ;
-			// console.log('markerGCode: ', markerGCode);
+			if (debug) console.log('markerGCode: ', markerGCode);
 			markerGCodes.push(markerGCode);
 	
 			returnObj.serverData = markerGCode;
 	
 		}).catch(function (error) {
-			// console.log(error);
+			console.log(error);
 		});	
 		return returnObj;
 	}
@@ -1716,7 +1781,115 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			// 	}
 			// }
 		}
-	} else if (markerParams.type == "arrow") {
+	} 
+	else if (markerParams.type == "rectangle") {
+        var rectSize = markerParams.size * 2;
+        var marker = new Path.Rectangle({
+            point: [ptAB.x - markerParams.size, ptAB.y - markerParams.size],
+            size: [rectSize, rectSize],
+            rotation: edgeAB.getTangentAt(offset).angle
+        });
+        var crossings = marker.getCrossings(edgeAB);
+
+        if (crossings.length == 2) {
+            var openMarker = marker.split(crossings[0]);
+            var splitMarker = openMarker.split(crossings[1]);
+
+            var tinyOffset;
+            if (isA) {
+                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
+            } else {
+                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
+            }
+            var tinyOffsetPath = new Path(tinyOffset[0].segments);
+            var openC = openMarker.getCrossings(tinyOffsetPath);
+            var splitC = splitMarker.getCrossings(tinyOffsetPath);
+
+            if (openC.length < splitC.length) {
+                clonePath = splitMarker.clone();
+                splitMarker.closePath();
+                splitMarker.lastCurve._segment1._handleOut._x = 0;
+                splitMarker.lastCurve._segment1._handleOut._y = 0;
+                splitMarker.lastCurve._segment2._handleIn._x = 0;
+                splitMarker.lastCurve._segment2._handleIn._y = 0;
+            } else {
+                clonePath = openMarker.clone();
+                openMarker.closePath();
+                openMarker.lastCurve._segment1._handleOut._x = 0;
+                openMarker.lastCurve._segment1._handleOut._y = 0;
+                openMarker.lastCurve._segment2._handleIn._x = 0;
+                openMarker.lastCurve._segment2._handleIn._y = 0;
+            }
+            clonePath.name = 'cut';
+            returnAB.push(clonePath);
+            renderRefAB.laserLines.push(clonePath);
+
+            var ouputClone = clonePath.clone();
+            ouputClone.name = 'printedMarker';
+            returnABPrint.push(ouputClone);
+            renderRefAB.printOutlines.push(ouputClone);
+        }
+
+        if (isA && rotPath.length > (rotOffset + markerParams.size)) {
+            var marker2 = new Path.Rectangle({
+                point: [ptAB2.x - markerParams.size, ptAB2.y - markerParams.size],
+                size: [rectSize, rectSize],
+                rotation: rotPath.getTangentAt(rotOffset).angle
+            });
+            var crossings2 = marker2.getCrossings(rotPath);
+            markerSTLOutlines.push(marker2);
+        }
+    }
+	else if (markerParams.type == "hexagon") {
+        var marker = new Path.RegularPolygon(ptAB, 6, markerParams.size);
+        var crossings = marker.getCrossings(edgeAB);
+
+        if (crossings.length == 2) {
+            var openMarker = marker.split(crossings[0]);
+            var splitMarker = openMarker.split(crossings[1]);
+
+            var tinyOffset;
+            if (isA) {
+                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
+            } else {
+                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
+            }
+            var tinyOffsetPath = new Path(tinyOffset[0].segments);
+            var openC = openMarker.getCrossings(tinyOffsetPath);
+            var splitC = splitMarker.getCrossings(tinyOffsetPath);
+
+            if (openC.length < splitC.length) {
+                clonePath = splitMarker.clone();
+                splitMarker.closePath();
+                splitMarker.lastCurve._segment1._handleOut._x = 0;
+                splitMarker.lastCurve._segment1._handleOut._y = 0;
+                splitMarker.lastCurve._segment2._handleIn._x = 0;
+                splitMarker.lastCurve._segment2._handleIn._y = 0;
+            } else {
+                clonePath = openMarker.clone();
+                openMarker.closePath();
+                openMarker.lastCurve._segment1._handleOut._x = 0;
+                openMarker.lastCurve._segment1._handleOut._y = 0;
+                openMarker.lastCurve._segment2._handleIn._x = 0;
+                openMarker.lastCurve._segment2._handleIn._y = 0;
+            }
+            clonePath.name = 'cut';
+            returnAB.push(clonePath);
+            renderRefAB.laserLines.push(clonePath);
+
+            var ouputClone = clonePath.clone();
+            ouputClone.name = 'printedMarker';
+            returnABPrint.push(ouputClone);
+            renderRefAB.printOutlines.push(ouputClone);
+        }
+
+        if (isA && rotPath.length > (rotOffset + markerParams.size)) {
+            var marker2 = new Path.RegularPolygon(ptAB2, 6, markerParams.size);
+            var crossings2 = marker2.getCrossings(rotPath);
+            markerSTLOutlines.push(marker2);
+        }
+    }
+	else if (markerParams.type == "arrow") {
 		var halfOffsetPath;
 		var fullOffsetPath;
 		if (isA) {
@@ -3986,7 +4159,7 @@ function aimGCodePart(startPlace, endPlace, commandObj) {
 
 	if (commandObj.gCodeOptions) {
 		// Get best option from gCodeOptions in commandObj that is closest to the length
-		console.log({length:length, commandObj:commandObj});
+		if (verbose) console.log({length:length, commandObj:commandObj});
 		let bestOption = commandObj.gCodeOptions[0];
 		let closestLength = Math.abs(length - bestOption.defaultLength);
 		for (let option of commandObj.gCodeOptions) {

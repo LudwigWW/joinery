@@ -17,7 +17,7 @@ var request = require('request-promise');
 // const svelteApp = require('./App.svelte').default;
 
 
-const debug = false;
+const debug = true;
 
 // // Initialize OctoPrint client
 // const octoPrintClient = new OctoPrintClient({
@@ -190,6 +190,7 @@ app.post('/updateMachines.cmd', (req, res) => {
 
 // Example route to get printer status
 app.post('/printer/status.cmd', async (req, res) => {
+    if (debug) console.log('printer/status.cmd');
 
     let test_data = '';
     req.on('data', function(data) {
@@ -197,7 +198,10 @@ app.post('/printer/status.cmd', async (req, res) => {
     });
 
     req.on('end', function() {
+        console.log('Request ended');
+        console.log({test_data:test_data});
         test_data = JSON.parse(test_data);
+        console.log({test_data:test_data});
 
         const testPath = '../../fabricfuse-data/gcode/test.gcode';
         fs.writeFile(testPath, test_data.testGCode, function (er) {
@@ -268,6 +272,7 @@ app.post('/print2.cmd', async (req, res) => {
 });
 
 app.post('/send.cmd', async (req, res) => {
+    if (debug) console.log('send.cmd');
     try {
         // Set the URL of the OctoPrint instance
         const octoPrintUrl = 'http://10.42.0.1/op-prusa/';
@@ -404,125 +409,137 @@ app.post('/print.cmd', async (req, res) => {
 
 });
 
+
 app.post('/exportMarkersSTL.cmd', (req, res) => {
     
-    let geometry_data = '';
-    req.on('data', function(data) {
-        geometry_data += data
-    });
+    if(debug) console.log('exportMarkersSTL');
 
-    req.on('end', function() {
-        // console.log(JSON.parse(data).todo); // 'Buy the milk'
-        geometry_data = JSON.parse(geometry_data);
-        if(debug) console.log({geometry_data:geometry_data});
-        // res.end();
-        var jscadText = STL.extrudePolygonJscad(geometry_data);
-        // console.log({jscadText:jscadText});
+    const testD = req.body;
+    if (debug) console.log('Data received:', testD);
+
     
-        const jscadPath = '../../fabricfuse-data/jscad/geo'+geometry_data.ID+'.jscad';
-        const stlPath = '../../fabricfuse-data/stl/geo'+geometry_data.ID+'.stl';
-        const gcodePath = '../../fabricfuse-data/gcode/geo'+geometry_data.ID+'.gcode';
-        const configPath = './data/autoexport.ini';
-        fs.writeFile(jscadPath, jscadText, function (er) {
-            if (er) {
-                // throw err;
-                console.log(`File writeopen error: ${er}`);
-                scream = "FILE ERROR";
-                eventEmitter.emit('scream', scream);
-                send_error_response(res, er);
-            }
-            // eventEmitter.emit('scream', [2,3,4]);
 
-            const jscadCmd = "jscad "+jscadPath+" -o "+stlPath;
-            const stlCmd = "prusa-slicer-console.exe -g "+stlPath+" --load "+configPath+" --center "+geometry_data.x+","+geometry_data.y+" --output "+gcodePath;
+    // let geometry_data = '';
+    // req.on('data', function(data) {
+    //     if(debug) console.log('Data receiving:', data);
+    //     geometry_data += data
+    // });
 
-            execAsync(jscadCmd, res, function() {
-                execAsync(stlCmd, res, function() {
-                    fs.readFile(gcodePath, function(err, data) {
-                        if (err) {
-                            console.log(`File read error: ${err}`);
-                            // send_error_response(res, err);
-                        } else {
-                            try {
-                                var lines = data.toString().split('\n');
-                                var start_index = lines.indexOf(";=====startF=====;");
-                                var end_index = lines.indexOf(";=====end=====;");
-                                lines = lines.slice(start_index+2, end_index); // cut off one extra at start (M107)
+    let geometry_data = req.body;
 
-                                // lines.unshift("\nG91;\n");
-                                // lines.push("\nG90;\n");
+    // req.on('end', function() {
+    // if(debug) console.log('Request ended');
+    // console.log(JSON.parse(data).todo); // 'Buy the milk'
+    // geometry_data = JSON.parse(geometry_data);
+    // if(debug) console.log({geometry_data:geometry_data});
+    // res.end();
+    var jscadText = STL.extrudePolygonJscad(geometry_data);
+    // console.log({jscadText:jscadText});
 
-                                // Remove intro line retractions
-                                for (lineIndex in lines) {
-                                    if (lines[lineIndex].search("E-1.5") >= 0) {
-                                        lines.splice(lineIndex, 1);
-                                        break;
-                                    }
+    const jscadPath = '../../fabricfuse-data/jscad/geo'+geometry_data.ID+'.jscad';
+    const stlPath = '../../fabricfuse-data/stl/geo'+geometry_data.ID+'.stl';
+    const gcodePath = '../../fabricfuse-data/gcode/geo'+geometry_data.ID+'.gcode';
+    const configPath = './data/autoexport.ini';
+    fs.writeFile(jscadPath, jscadText, function (er) {
+        if (er) {
+            // throw err;
+            console.log(`File writeopen error: ${er}`);
+            scream = "FILE ERROR";
+            eventEmitter.emit('scream', scream);
+            send_error_response(res, er);
+        }
+        // eventEmitter.emit('scream', [2,3,4]);
+
+        const jscadCmd = "jscad "+jscadPath+" -o "+stlPath;
+        const stlCmd = "prusa-slicer-console.exe -g "+stlPath+" --load "+configPath+" --center "+geometry_data.x+","+geometry_data.y+" --output "+gcodePath;
+
+        execAsync(jscadCmd, res, function() {
+            execAsync(stlCmd, res, function() {
+                fs.readFile(gcodePath, function(err, data) {
+                    if (err) {
+                        console.log(`File read error: ${err}`);
+                        // send_error_response(res, err);
+                    } else {
+                        try {
+                            var lines = data.toString().split('\n');
+                            var start_index = lines.indexOf(";=====startF=====;");
+                            var end_index = lines.indexOf(";=====end=====;");
+                            lines = lines.slice(start_index+2, end_index); // cut off one extra at start (M107)
+
+                            // lines.unshift("\nG91;\n");
+                            // lines.push("\nG90;\n");
+
+                            // Remove intro line retractions
+                            for (lineIndex in lines) {
+                                if (lines[lineIndex].search("E-1.5") >= 0) {
+                                    lines.splice(lineIndex, 1);
+                                    break;
                                 }
-
-                                for (lineIndex in lines) {
-                                    if (lines[lineIndex].search("E1.5") >= 0) {
-                                        lines.splice(lineIndex, 1);
-                                        break;
-                                    }
-                                }
-
-                                // Transform into G91
-                                var concatLines = STL.g91Conversion(lines);
-                                concatLines = "G91;\n" + concatLines; // First move is already in G91 style since slicing happened at 0/0
-
-
-                                // var concatLines = "";
-                                // lines.forEach(function (line) { 
-                                //     concatLines += line;
-                                //     concatLines += "\n";
-                                // });
-
-                                res.writeHead(200, {'Content-Type': 'application/json'});
-                                var responseGcode = {gcode:concatLines, ID:geometry_data.ID};
-                                var jsonGcode = JSON.stringify(responseGcode);
-                                res.write(jsonGcode);
-                                return res.end();
-                            } catch (e) {
-                                // send_error_response(res, e);
                             }
-                            
+
+                            for (lineIndex in lines) {
+                                if (lines[lineIndex].search("E1.5") >= 0) {
+                                    lines.splice(lineIndex, 1);
+                                    break;
+                                }
+                            }
+
+                            // Transform into G91
+                            var concatLines = STL.g91Conversion(lines);
+                            concatLines = "G91;\n" + concatLines; // First move is already in G91 style since slicing happened at 0/0
+
+
+                            // var concatLines = "";
+                            // lines.forEach(function (line) { 
+                            //     concatLines += line;
+                            //     concatLines += "\n";
+                            // });
+
+                            res.writeHead(200, {'Content-Type': 'application/json'});
+                            var responseGcode = {gcode:concatLines, ID:geometry_data.ID};
+                            var jsonGcode = JSON.stringify(responseGcode);
+                            res.write(jsonGcode);
+                            return res.end();
+                        } catch (e) {
+                            // send_error_response(res, e);
                         }
-                    });
-                    // res.end(`{"message": "This is a JSON response after getting there"}`);
+                        
+                    }
                 });
+                // res.end(`{"message": "This is a JSON response after getting there"}`);
             });
-
-            // const jscadOut = execSync("jscad "+jscadPath+" -o "+stlPath, (error, stdout, stderr) => {
-            
-            //     if (error) {
-            //         console.log(`error: ${error.message}`);
-            //         return;
-            //     }
-            //     if (stderr) {
-            //         console.log(`stderr: ${stderr}`);
-            //         return;
-            //     }
-            //     console.log(`stdout: ${stdout}`);
-
-
-            //     const prusaOut = execSync("prusa-slicer-console.exe -g "+stlPath+" --load "+configPath+" --output "+gcodePath, (error, stdout, stderr) => {
-            
-            //         if (error) {
-            //             console.log(`error: ${error.message}`);
-            //             return;
-            //         }
-            //         if (stderr) {
-            //             console.log(`stderr: ${stderr}`);
-            //             return;
-            //         }
-            //         // console.log(`stdout: ${stdout}`);
-            //     });
-            // });
-            
-            
         });
-    })
+
+        // const jscadOut = execSync("jscad "+jscadPath+" -o "+stlPath, (error, stdout, stderr) => {
+        
+        //     if (error) {
+        //         console.log(`error: ${error.message}`);
+        //         return;
+        //     }
+        //     if (stderr) {
+        //         console.log(`stderr: ${stderr}`);
+        //         return;
+        //     }
+        //     console.log(`stdout: ${stdout}`);
+
+
+        //     const prusaOut = execSync("prusa-slicer-console.exe -g "+stlPath+" --load "+configPath+" --output "+gcodePath, (error, stdout, stderr) => {
+        
+        //         if (error) {
+        //             console.log(`error: ${error.message}`);
+        //             return;
+        //         }
+        //         if (stderr) {
+        //             console.log(`stderr: ${stderr}`);
+        //             return;
+        //         }
+        //         // console.log(`stdout: ${stdout}`);
+        //     });
+        // });
+        
+        
+    });
+    // ])
 })
 
 app.get('/control-panel', async (req, res) => {

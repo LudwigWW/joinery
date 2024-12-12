@@ -200,8 +200,14 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 				// toComeEstimate = calculateDurationEstimate(remainingPrintJobs, simulatedHeight, "top;spikesTop");
 				// durationEstimateTotal = durationEstimate + toComeEstimate;
 				currentTimings += 1;
-				console.log("Post split Jobs. Duration estimate: " + durationEstimate + " toComeEstimate: " + toComeEstimate + " total: " + durationEstimateTotal);
-				durations = {durationEstimate: timingsLists[currentTimings].durationEstimate, toComeEstimate: timingsLists[currentTimings].toComeEstimate, durationEstimateTotal: timingsLists[currentTimings].durationEstimateTotal};
+				if (currentTimings >= timingsLists.length) {
+					console.log("No durations in timingsLists");
+					console.log({timingsLists:timingsLists, currentTimings:currentTimings});
+				}
+				else {
+					console.log("Post split Jobs. Duration estimate: " + timingsLists[currentTimings].durationEstimate + " toComeEstimate: " + timingsLists[currentTimings].toComeEstimate + " total: " + timingsLists[currentTimings].durationEstimateTotal);
+					durations = {durationEstimate: timingsLists[currentTimings].durationEstimate, toComeEstimate: timingsLists[currentTimings].toComeEstimate, durationEstimateTotal: timingsLists[currentTimings].durationEstimateTotal};
+				}
             }
 
             // console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
@@ -246,12 +252,17 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 					GCODE += getCodeWRetraction(marker.serverData.markerGC, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
                 }
             else {
-				// console.log({Warning:"Server marker data unavailable"}); 
+				console.log({Warning:"Server marker data unavailable"}); 
 			}
             GCODE = addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X, durations);
 			console.log('+Bottom GCode');
 			// update duration estimate
-			timingsLists[currentTimings].durationEstimate = durations.durationEstimate;
+			if (currentTimings >= timingsLists.length) {
+				console.log("No durations in timingsLists for update");
+				console.log({currentTimings:currentTimings, timingsLists:timingsLists, durations:durations});
+			} else {		
+				timingsLists[currentTimings].durationEstimate = durations.durationEstimate;
+			}
 			// console.log(GCODE);
         }
     }
@@ -412,6 +423,11 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
+		pattern.map(function(item) {if (item !== 0.5) item = -item; return item;});
+		let reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		for (let i = 0; i < reversePatternOffsetLength; i++) {
+			pattern.push(pattern.shift());
+		} 
 		placeListLocal = placeListLocal.reverse();
 	}
 
@@ -583,6 +599,11 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
+		pattern.map(function(item) {if (item !== 0.5) item = -item; return item;});
+		let reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		for (let i = 0; i < reversePatternOffsetLength; i++) {
+			pattern.push(pattern.shift());
+		} 
 		placeListLocal = placeListLocal.reverse();
 	}
 
