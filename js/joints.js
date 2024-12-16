@@ -1672,6 +1672,23 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	return markers;
 }
 
+function generateMarkerShape(markerParams, ptAB, edgeAB, offset) {
+	let marker;
+	if (markerParams.type == "circle") {
+		marker = new Path.Circle(ptAB, markerParams.size);
+	} else if (markerParams.type == "rectangle") {
+		var rectSize = markerParams.size * 2;
+        marker = new Path.Rectangle({
+            point: [ptAB.x - markerParams.size, ptAB.y - markerParams.size],
+            size: [rectSize, rectSize],
+            rotation: edgeAB.getTangentAt(offset).angle
+        });
+	} else if (markerParams.type == "hexagon") {
+		marker = new Path.RegularPolygon(ptAB, 6, markerParams.size);
+	} 
+	return marker;
+}
+
 function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB, returnAB, returnABPrint, renderRefAB, joints, isA, rotPath = undefined) {
 	var markerSTLOutlines = [];
 
@@ -1687,48 +1704,49 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		console.log("rotPath.strokeBounds.height: "+ rotPath.strokeBounds.height + " rotPath.strokeBounds.width: " + rotPath.strokeBounds.width);
 	}
 
-	if (markerParams.type == "circle") {
-		var marker = new Path.Circle(ptAB, markerParams.size);
-		var crossings = marker.getCrossings(edgeAB);
-		// var crossingsB = markerB.getCrossings(edgeB);
 
-		// console.log({ptAB:ptAB, markerParams:markerParams});
+	if (markerParams.type == "circle" || markerParams.type == "rectangle" || markerParams.type == "hexagon") {
+		var marker = generateMarkerShape(markerParams, ptAB, edgeAB, offset);
+
+		var crossings = marker.getCrossings(edgeAB);
 
 		// First, add laser paths
 		if (crossings.length == 2) {
 			var openMarker = marker.split(crossings[0]);
 			var splitMarker = openMarker.split(crossings[1]);
 
-			var tinyOffset;
-			if (isA) {
-				tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
-			}
-			else {
-				tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
-			}
-			var tinyOffsetPath = new Path(tinyOffset[0].segments);
-			var openC = openMarker.getCrossings(tinyOffsetPath);
-			var splitC = splitMarker.getCrossings(tinyOffsetPath);
-
-			// // console.log("joints[index]['dirM']: ", joints[index]['dirM']);
+			// Calculate the center points of each half
+			var openMarkerCenter = openMarker.bounds.center;
+			var splitMarkerCenter = splitMarker.bounds.center;
 			
-			if (openC.length < splitC.length) {
-				clonePath = splitMarker.clone();
-				splitMarker.closePath();
-				splitMarker.lastCurve._segment1._handleOut._x = 0;
-				splitMarker.lastCurve._segment1._handleOut._y = 0;
-				splitMarker.lastCurve._segment2._handleIn._x = 0;
-				splitMarker.lastCurve._segment2._handleIn._y = 0;
-				// markerSTLOutlines.push(splitMarker); // Only 
-			} else {
+			// Determine which half is on the inside of the path using vector cross product
+			let localPathVector = edgeAB.getPointAt(offset - 0.1).subtract(edgeAB.getPointAt(offset + 0.1));
+
+			var openMarkerVector = openMarkerCenter.subtract(ptAB);
+
+	        var crossProductOpen = localPathVector.x * openMarkerVector.y - localPathVector.y * openMarkerVector.x;
+
+			let relevantDir = joints[index]['dirM'];
+			if (!isA) relevantDir = joints[index]['dirF'];
+
+			if ((crossProductOpen > 0 && relevantDir > 0) || (crossProductOpen < 0 && relevantDir < 0)) {
+				console.log("Correct");
 				clonePath = openMarker.clone();
 				openMarker.closePath();
 				openMarker.lastCurve._segment1._handleOut._x = 0;
 				openMarker.lastCurve._segment1._handleOut._y = 0;
 				openMarker.lastCurve._segment2._handleIn._x = 0;
 				openMarker.lastCurve._segment2._handleIn._y = 0;
-				// markerSTLOutlines.push(openMarker);
+			} else {
+				console.log("Flipped");
+				clonePath = splitMarker.clone();
+				splitMarker.closePath();
+				splitMarker.lastCurve._segment1._handleOut._x = 0;
+				splitMarker.lastCurve._segment1._handleOut._y = 0;
+				splitMarker.lastCurve._segment2._handleIn._x = 0;
+				splitMarker.lastCurve._segment2._handleIn._y = 0;
 			}
+
 			clonePath.name = 'cut';
 			returnAB.push(clonePath);
 			renderRefAB.laserLines.push(clonePath);
@@ -1736,159 +1754,19 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 			var ouputClone = clonePath.clone();
 			ouputClone.name = 'printedMarker';
 			returnABPrint.push(ouputClone); // Add printed area to display output
-			renderRefAB.printOutlines.push(ouputClone);
+			renderRefAB.printOutlines.push(ouputClone);	
+		} else {
+			console.warn("Marker did not cross path twice");
+			console.log({crossings:crossings, marker:marker, edgeAB:edgeAB});
 		}
-	
-		// Then, add print paths at rotated path piece
+
 		if (isA && rotPath.length > (rotOffset+markerParams.size)) {
-			
-
-			var marker2 = new Path.Circle(ptAB2, markerParams.size);
-			var crossings2 = marker2.getCrossings(rotPath);
-
-			// console.log({ptABRot:ptAB2, markerParams:markerParams, marker:marker2, crossings:crossings2, rotPath:rotPath, rotOffset:rotOffset});
-
-			
+			var marker2 = generateMarkerShape(markerParams, ptAB2, edgeAB, rotOffset);
 			markerSTLOutlines.push(marker2); // Add print output
-
-			// Only doesn't work for perfectly straight lines..........
-			// if (crossings2.length == 2) {
-			// 	var openMarker2 = marker2.split(crossings[0]); // This doesn't work, BUT WHY
-			// 	var splitMarker2 = openMarker2.split(crossings[1]);
-
-			// 	var tinyOffset2 = offsetPath(rotPath, 0.2, joints[index]['dirM']);
-
-			// 	var tinyOffsetPath2 = new Path(tinyOffset2[0].segments);
-			// 	var openC2 = openMarker2.getCrossings(tinyOffsetPath2);
-			// 	var splitC2 = splitMarker2.getCrossings(tinyOffsetPath2);
-
-			// 	// // console.log("joints[index]['dirM']: ", joints[index]['dirM']);
-				
-			// 	if (openC2.length < splitC2.length) {
-			// 		splitMarker.closePath();
-			// 		splitMarker.lastCurve._segment1._handleOut._x = 0;
-			// 		splitMarker.lastCurve._segment1._handleOut._y = 0;
-			// 		splitMarker.lastCurve._segment2._handleIn._x = 0;
-			// 		splitMarker.lastCurve._segment2._handleIn._y = 0;
-			// 		markerSTLOutlines.push(splitMarker2);
-			// 	} else {
-			// 		openMarker.closePath();
-			// 		openMarker.lastCurve._segment1._handleOut._x = 0;
-			// 		openMarker.lastCurve._segment1._handleOut._y = 0;
-			// 		openMarker.lastCurve._segment2._handleIn._x = 0;
-			// 		openMarker.lastCurve._segment2._handleIn._y = 0;
-			// 		markerSTLOutlines.push(openMarker2);
-			// 	}
-			// }
 		}
-	} 
-	else if (markerParams.type == "rectangle") {
-        var rectSize = markerParams.size * 2;
-        var marker = new Path.Rectangle({
-            point: [ptAB.x - markerParams.size, ptAB.y - markerParams.size],
-            size: [rectSize, rectSize],
-            rotation: edgeAB.getTangentAt(offset).angle
-        });
-        var crossings = marker.getCrossings(edgeAB);
+	}
 
-        if (crossings.length == 2) {
-            var openMarker = marker.split(crossings[0]);
-            var splitMarker = openMarker.split(crossings[1]);
 
-            var tinyOffset;
-            if (isA) {
-                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
-            } else {
-                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
-            }
-            var tinyOffsetPath = new Path(tinyOffset[0].segments);
-            var openC = openMarker.getCrossings(tinyOffsetPath);
-            var splitC = splitMarker.getCrossings(tinyOffsetPath);
-
-            if (openC.length < splitC.length) {
-                clonePath = splitMarker.clone();
-                splitMarker.closePath();
-                splitMarker.lastCurve._segment1._handleOut._x = 0;
-                splitMarker.lastCurve._segment1._handleOut._y = 0;
-                splitMarker.lastCurve._segment2._handleIn._x = 0;
-                splitMarker.lastCurve._segment2._handleIn._y = 0;
-            } else {
-                clonePath = openMarker.clone();
-                openMarker.closePath();
-                openMarker.lastCurve._segment1._handleOut._x = 0;
-                openMarker.lastCurve._segment1._handleOut._y = 0;
-                openMarker.lastCurve._segment2._handleIn._x = 0;
-                openMarker.lastCurve._segment2._handleIn._y = 0;
-            }
-            clonePath.name = 'cut';
-            returnAB.push(clonePath);
-            renderRefAB.laserLines.push(clonePath);
-
-            var ouputClone = clonePath.clone();
-            ouputClone.name = 'printedMarker';
-            returnABPrint.push(ouputClone);
-            renderRefAB.printOutlines.push(ouputClone);
-        }
-
-        if (isA && rotPath.length > (rotOffset + markerParams.size)) {
-            var marker2 = new Path.Rectangle({
-                point: [ptAB2.x - markerParams.size, ptAB2.y - markerParams.size],
-                size: [rectSize, rectSize],
-                rotation: rotPath.getTangentAt(rotOffset).angle
-            });
-            var crossings2 = marker2.getCrossings(rotPath);
-            markerSTLOutlines.push(marker2);
-        }
-    }
-	else if (markerParams.type == "hexagon") {
-        var marker = new Path.RegularPolygon(ptAB, 6, markerParams.size);
-        var crossings = marker.getCrossings(edgeAB);
-
-        if (crossings.length == 2) {
-            var openMarker = marker.split(crossings[0]);
-            var splitMarker = openMarker.split(crossings[1]);
-
-            var tinyOffset;
-            if (isA) {
-                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirM']);
-            } else {
-                tinyOffset = offsetPath(edgeAB, 0.2, joints[index]['dirF']);
-            }
-            var tinyOffsetPath = new Path(tinyOffset[0].segments);
-            var openC = openMarker.getCrossings(tinyOffsetPath);
-            var splitC = splitMarker.getCrossings(tinyOffsetPath);
-
-            if (openC.length < splitC.length) {
-                clonePath = splitMarker.clone();
-                splitMarker.closePath();
-                splitMarker.lastCurve._segment1._handleOut._x = 0;
-                splitMarker.lastCurve._segment1._handleOut._y = 0;
-                splitMarker.lastCurve._segment2._handleIn._x = 0;
-                splitMarker.lastCurve._segment2._handleIn._y = 0;
-            } else {
-                clonePath = openMarker.clone();
-                openMarker.closePath();
-                openMarker.lastCurve._segment1._handleOut._x = 0;
-                openMarker.lastCurve._segment1._handleOut._y = 0;
-                openMarker.lastCurve._segment2._handleIn._x = 0;
-                openMarker.lastCurve._segment2._handleIn._y = 0;
-            }
-            clonePath.name = 'cut';
-            returnAB.push(clonePath);
-            renderRefAB.laserLines.push(clonePath);
-
-            var ouputClone = clonePath.clone();
-            ouputClone.name = 'printedMarker';
-            returnABPrint.push(ouputClone);
-            renderRefAB.printOutlines.push(ouputClone);
-        }
-
-        if (isA && rotPath.length > (rotOffset + markerParams.size)) {
-            var marker2 = new Path.RegularPolygon(ptAB2, 6, markerParams.size);
-            var crossings2 = marker2.getCrossings(rotPath);
-            markerSTLOutlines.push(marker2);
-        }
-    }
 	else if (markerParams.type == "arrow") {
 		var halfOffsetPath;
 		var fullOffsetPath;
@@ -1937,13 +1815,13 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	// Set text markers
 	const textOffset = -4;
 	var textOffsetPath;
-	var startOffset = 4;
+	var startOffset = 2;
 	if (isA) {
 		textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirM']);
 	}
 	else {
 		textOffsetPath = disconnectedOffsetPath(edgeAB, textOffset, joints[index]['dirF']);
-		startOffset = -4;
+		startOffset = -2;
 	}
 	const offsetPercentage = (offset / edgeAB.length);
 	const targetOffset = offsetPercentage * textOffsetPath.length;
@@ -1951,9 +1829,10 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	console.log({textOffsetPath:textOffsetPath, offsetPercentage:offsetPercentage, targetOffset:targetOffset, edgeAB:edgeAB.length});
 
 
-	const startP = textOffsetPath.getPointAt(targetOffset-startOffset);
-	const endP = textOffsetPath.getPointAt(targetOffset+startOffset);
+	const startP = textOffsetPath.getPointAt(targetOffset-startOffset*offsetPercentage);
+	const endP = textOffsetPath.getPointAt(targetOffset+startOffset*offsetPercentage);
 
+	console.log({offset:offset, textOffsetPathL: textOffsetPath.length, actualOffsetStart:targetOffset-startOffset*offsetPercentage, actualOffsetEnd:targetOffset+startOffset*offsetPercentage});
 	console.log({startP:startP, endP:endP});
 	
 	const rad = Math.atan2(endP.y-startP.y, endP.x-startP.x)*(180/Math.PI);; // In deg
@@ -3521,6 +3400,162 @@ function offsetPath(pathToOffset, offsetDist, offsetDir) {
 		return returnPath;
 	}
 }
+
+
+function offsetPathEdgy(pathToOffset, offsetDist, offsetDir) {
+	var returnPath = [];
+	var splitAt = [];
+	for (var i=1; i<pathToOffset.segments.length-1; i++) {
+		var h1 = {'x': pathToOffset.segments[i].handleIn.x, 'y': pathToOffset.segments[i].handleIn.y};
+		var h2 = {'x': pathToOffset.segments[i].handleOut.x, 'y': pathToOffset.segments[i].handleOut.y};
+		var d1 = dist2Pt(h1.x, h1.y, 0, 0);
+		var d2 = dist2Pt(h2.x, h2.y, 0, 0);
+		if (d1==0 || d2==0) {
+			splitAt.push(i);
+		} else {
+			var CP = lineCP(h2, {'x':0, 'y':0}, h1);
+			var d = dist2Pt(CP.x, CP.y, 0, 0);
+			if (d > 0.1) {
+				splitAt.push(i);
+			}
+		}
+	}
+	if (splitAt.length > 0) {
+		var paths = [];
+		var pathsOffset = [];
+		paths.push(new Path());
+		pathsOffset.push(new Path());
+		for (var i=0; i<splitAt.length; i++) {
+			paths.push(new Path());
+			pathsOffset.push(new Path());
+		}
+		var counter = 0;
+		for (var i=0; i<pathToOffset.segments.length; i++) {
+			paths[counter].add(pathToOffset.segments[i]);
+			if (splitAt.indexOf(i)>=0) {
+				counter++;
+				paths[counter].add(pathToOffset.segments[i]);
+			}
+		}
+		for (var i=0; i<paths.length; i++) {
+			var amount = Math.floor(paths[i].length/10);
+			amount = amount<3 ? 3 : amount;
+			for (var j=0; j<amount+1; j++) {
+				var pt = paths[i].getPointAt(j/amount*paths[i].length);
+				var normal = paths[i].getNormalAt(j/amount*paths[i].length).multiply(offsetDir);
+				var pt2 = pt.add(normal.multiply(offsetDist));
+				pathsOffset[i].add(pt2);
+			}
+			pathsOffset[i].smooth();
+		}
+		var intersections = [];
+		for (var i=0; i<paths.length-1; i++) {
+			var pts = pathsOffset[i].getIntersections(pathsOffset[i+1]);
+			if (pts.length>0) {
+				if (pts.length==1) {
+					var d = dist2Pt(pathsOffset[i].lastSegment.point.x, pathsOffset[i].lastSegment.point.y, pts[0].point.x, pts[0].point.y);
+					if (d==0) {
+						intersections.push("none");
+					} else {
+						intersections.push(pts[0].point);
+					}
+				} else {
+					intersections.push(pts[0].point);
+				}
+			} else {
+				intersections.push("none");
+			}
+		}
+		for (var i=0; i<pathsOffset.length; i++) {
+			if (i==0 && intersections[i]!="none") {
+				var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i]));
+				splitPath.remove();
+			} else if (i>0 && i<pathsOffset.length-1) {
+				if (intersections[i-1]!="none") {
+					var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i-1]));
+					pathsOffset[i].remove();
+					pathsOffset[i] = splitPath.clone();
+					splitPath.remove();
+				}
+				if (intersections[i]!="none") {
+					var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i]));
+					splitPath.remove();
+				}
+			} else if (i==pathsOffset.length-1 && intersections[i-1]!="none") {
+				var splitPath = pathsOffset[i].split(pathsOffset[i].getNearestLocation(intersections[i-1]));
+				pathsOffset[i].remove();
+				pathsOffset[i] = splitPath.clone();
+				splitPath.remove();
+			}
+		}
+		for (var i=0; i<intersections.length; i++) {
+			if (intersections[i]=="none") {
+				var ptA = pathsOffset[i].lastSegment.point;
+				var tanA = pathsOffset[i].getTangentAt(pathsOffset[i].length);
+				var ptB = pathsOffset[i+1].firstSegment.point;
+				var tanB = pathsOffset[i+1].getTangentAt(0);
+				var pt = lineIntersection(ptA, ptA.add(tanA), ptB, ptB.add(tanB.multiply(-1)));
+				pathsOffset[i].quadraticCurveTo(new Point(pt.x, pt.y), new Point(ptB.x, ptB.y));
+			}
+		}
+		for (var i=1; i<pathsOffset.length; i++) {
+			var len = pathsOffset[0].segments.length;
+			pathsOffset[0].segments[len-1].handleOut = pathsOffset[i].segments[0].handleOut;
+			for (var j=1; j<pathsOffset[i].segments.length; j++) {
+				pathsOffset[0].add(pathsOffset[i].segments[j]);
+			}
+		}
+		pathsOffset[0].insert(0, pathToOffset.firstSegment.point);
+		pathsOffset[0].insert(pathsOffset[0].segments.length, pathToOffset.lastSegment.point);
+		var finalPath = pathsOffset[0].clone();
+		for (i in paths) {
+			paths[i].remove();
+		}
+		for (i in pathsOffset) {
+			pathsOffset[i].remove();
+		}
+
+		// Check the bezier path for two points in the same location, and if so merge them into one point
+		for (var i = finalPath.segments.length - 1; i > 0; i--) {
+			if (finalPath.segments[i].point.isClose(finalPath.segments[i - 1].point, 0.000001)) {
+				console.warn('LegacyFix: Merging identical points');
+				finalPath.segments[i - 1].handleOut = finalPath.segments[i].handleOut;
+				// remove old segment
+				finalPath.removeSegment(i);
+			}
+		}
+
+		returnPath.push(finalPath);
+		return returnPath;
+	} else {
+		var pathsOffset = new Path();
+		var amount = Math.floor(pathToOffset.length/10);
+		amount = amount<3 ? 3 : amount;
+		for (var j=0; j<amount+1; j++) {
+			var pt = pathToOffset.getPointAt(j/amount*pathToOffset.length);
+			var normal = pathToOffset.getNormalAt(j/amount*pathToOffset.length).multiply(offsetDir);
+			var pt2 = pt.add(normal.multiply(offsetDist));
+			pathsOffset.add(pt2);
+		}
+		pathsOffset.smooth();
+		pathsOffset.insert(0, pathToOffset.firstSegment.point);
+		pathsOffset.insert(pathsOffset.segments.length, pathToOffset.lastSegment.point);
+		var finalPath = pathsOffset.clone();
+		pathsOffset.remove();
+		// Check the bezier path for two points in the same location, and if so merge them into one point
+		for (var i = finalPath.segments.length - 1; i > 0; i--) {
+			if (finalPath.segments[i].point.isClose(finalPath.segments[i - 1].point, 0.000001)) {
+				console.warn('LegacyFix: Merging identical points');
+				finalPath.segments[i - 1].handleOut = finalPath.segments[i].handleOut;
+				// remove old segment
+				finalPath.removeSegment(i);
+			}
+		}
+		returnPath.push(finalPath);
+		return returnPath;
+	}
+}
+
 
 
 function offsetPathDeprecated(pathToOffset, offsetDist, offsetDir) {
