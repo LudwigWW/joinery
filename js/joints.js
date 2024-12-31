@@ -1652,7 +1652,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 			y: 0 //markerObj.targetPoint.y
 		}).then(function (response) {
 			if (debug) console.log(response);
-			var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode, relVector:relVector} ;
+			var markerGCode = {ID:response.data.ID, markerGC:response.data.gcode, relVector:relVector, height:markerHeight} ;
 			if (debug) console.log('markerGCode: ', markerGCode);
 			markerGCodes.push(markerGCode);
 	
