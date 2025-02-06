@@ -189,7 +189,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             }
             if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
 				console.log("Height exceeded, new print");
-                prints.push(exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
+                prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
                 GCODE = "";
                 heightUsed = 0;
                 addedOutputs = [];
@@ -232,7 +232,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                         outString += `G1 Z${0.2} F3000\n`; // Z positioning
                         GCODE += outString;
                         for (let line of pT.lines) {
-                            GCODE += getCodeWRetraction(aimGCodePartG(line.start, line.end, defaultLineCommandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+                            GCODE += getCodeWRetraction(aimGCodePart(line.start, line.end, defaultLineCommandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
                         }
                     }
                 }
@@ -254,7 +254,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             else {
 				console.log({Warning:"Server marker data unavailable"}); 
 			}
-            GCODE = addGCodePartGlobal(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X, durations);
+            GCODE = addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X, durations);
 			console.log('+Bottom GCode');
 			// update duration estimate
 			if (currentTimings >= timingsLists.length) {
@@ -271,7 +271,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 
 function handleLeftoverGCode(GCODE, prints, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter, heightUsed) {
     if (heightUsed > 0) {
-        prints.push(exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
+        prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
         GCODE = "";
         heightUsed = 0;
         addedOutputs = [];
@@ -281,7 +281,7 @@ function handleLeftoverGCode(GCODE, prints, addedOutputs, addedShapes, addedPrin
     return [GCODE, heightUsed];
 }
 
-function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter) {
+function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter) {
 	let targetTemp = 215;
 	console.log('addedOutputs: ', addedOutputs);
 	console.log('addedShapes: ', addedShapes);
@@ -303,8 +303,8 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 		durations.durationEstimateTotal = outputContainer.duration;
         // console.log('output: ', outputContainer);
         GCODE += outputContainer.output.G91.spikes.precode;
-        GCODE = addGCodePartGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X, durations);
-		console.log("+Spikes GCode in exportPreviousGcodeGlobal");
+        GCODE = addGCodePart(GCODE, outputContainer.usedParam, outputContainer.output.holeList, outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X, durations);
+		console.log("+Spikes GCode in exportPreviousGcode");
 		// console.log(GCODE);
     }
 	if (durations.durationEstimate > 0) {
@@ -332,8 +332,8 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 		durations.toComeEstimate -= durations.durationEstimate; // Subtract duration of one job from total toComeEstimate
         let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
 		console.log("per output export: durationEstimate: " + durations.durationEstimate + " toComeEstimate: " + durations.toComeEstimate + " total: " + durations.durationEstimateTotal);
-        GCODE = addGCodePartsCGlobal(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true, durations);
-		console.log("+TopWithSpikes GCode in exportPreviousGcodeGlobal");
+        GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.heightUsed, outputContainer.print_Offset_X, true, durations);
+		console.log("+TopWithSpikes GCode in exportPreviousGcode");
 		// console.log(GCODE);
     }
 
@@ -356,7 +356,7 @@ function exportPreviousGcodeGlobal(GCODE, addedOutputs, addedShapes, addedPrintJ
 
 
 // Combination of printed needle and thread
-function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false, durations) {
+function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
 
@@ -538,7 +538,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 						outString += handlePreCode(commandObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment, durations); // first target place should be the actual first hole
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, durations, false, true); // only aim
-					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
+					outString += getCodeWRetraction(aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
@@ -575,7 +575,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	return inString;
 } 
 
-function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjustment, print_Offset_X, durations, reverse=false, memoryList=[], memoryObj={}) {
+function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, print_Offset_X, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}, reverse=false, memoryList=[], memoryObj={}) {
 	console.log('in string length: ', inString.length);	
 	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
@@ -673,7 +673,7 @@ function addGCodePartGlobal(inString, params, placeList, commandObj, depthAdjust
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+					outString += getCodeWRetraction(aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
 					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
 				}
 			}
@@ -719,7 +719,7 @@ function mod(n, m) {
 };
 
 
-function aimGCodePartG(startPlace, endPlace, commandObj) {
+function aimGCodePart(startPlace, endPlace, commandObj) {
 	var outGCode = '\n';
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;
@@ -730,7 +730,7 @@ function aimGCodePartG(startPlace, endPlace, commandObj) {
 
 	if (commandObj.gCodeOptions) {
 		// Get best option from gCodeOptions in commandObj that is closest to the length
-		console.log({length:length, commandObj:commandObj});
+		if (verbose) console.log({length:length, commandObj:commandObj});
 		let bestOption = commandObj.gCodeOptions[0];
 		let closestLength = Math.abs(length - bestOption.defaultLength);
 		for (let option of commandObj.gCodeOptions) {
