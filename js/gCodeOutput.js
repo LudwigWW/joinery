@@ -412,7 +412,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	// }
 
 	let pattern = [...commandObj.pattern];
-	// // console.log('pattern: ', pattern);
+	console.log('source-pattern: ', commandObj.pattern);
+	let reversePatternOffsetLength = null;
 
 	let placeListLocal = [...placeList];
 
@@ -423,8 +424,9 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
-		pattern.map(function(item) {if (item !== 0.5) item = -item; return item;});
-		let reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		console.log('reversed-pattern: ', pattern);
+		pattern = pattern.map(function(item) {if (item !== 0.5 && item !== 0) item = -item; return item;});
+		reversePatternOffsetLength = placeListLocal.length % pattern.length;
 		for (let i = 0; i < reversePatternOffsetLength; i++) {
 			pattern.push(pattern.shift());
 		} 
@@ -434,6 +436,9 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	for (let place of placeListLocal) {
 		place.handled = false;
 	}
+
+	// debug output for the hole handling and order
+	console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
 
 	// This puts it before the needle...
 	// if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
@@ -591,7 +596,8 @@ function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, 
 	let outString = "";
 
 	let pattern = [...commandObj.pattern];
-	// // console.log('pattern: ', pattern);
+	console.log('source-pattern: ', commandObj.pattern);
+	let reversePatternOffsetLength = null;
 
 	let placeListLocal = [...placeList];
 	if (pattern.length == 0) {
@@ -599,15 +605,20 @@ function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, 
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
-		pattern.map(function(item) {if (item !== 0.5) item = -item; return item;});
-		let reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		console.log('reversed-pattern: ', pattern);
+		pattern = pattern.map(function(item) {if (item !== 0.5 && item !== 0) item = -item; return item;});
+		reversePatternOffsetLength = placeListLocal.length % pattern.length;
 		for (let i = 0; i < reversePatternOffsetLength; i++) {
 			pattern.push(pattern.shift());
 		} 
 		placeListLocal = placeListLocal.reverse();
 	}
 
+
 	memoryObj.placeList = placeListLocal;
+
+	// debug output for the hole handling and order
+	console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
 
 	if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
@@ -615,6 +626,8 @@ function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, 
 		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		outString += getCodeWRetraction(commandObj.preCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
 	}
+
+	let placeIndex = 0;	
 
 	for (let place of placeListLocal) {
 		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
@@ -653,8 +666,8 @@ function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, 
 				}
 
 			} else { 
-				
-				if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+				console.log({negativeCheck:pattern[patternIndex] < 0, fitsCheck:placeIndex-pattern[patternIndex] > placeList.length, patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+				if (pattern[patternIndex] > lastPlace.length || (pattern[patternIndex] < 0 && placeIndex-pattern[patternIndex] >= placeList.length)) { // No place saved yet, can't connect here, so add skip-gcode // TODO-Done?: This only makes sense in "forward" direction though, otherwise will end up with skip code in addition to the actual? 
 					let noOut = true;
 					for (let i = patternIndex; i < (patternIndex+pattern.length); i++) { // check whole pattern
 						const patternPlace = mod(i, pattern.length);
@@ -673,13 +686,19 @@ function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, 
 	
 				// "Default" outcome (for rotation variant patterns)
 				else {
-					outString += getCodeWRetraction(aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
-					memoryList.push({from:lastPlace[lastPlace.length-pattern[patternIndex]], to:place}); 
+					// pattern target number log
+
+					// let fromLocation = lastPlace[lastPlace.length-pattern[patternIndex]];
+					let fromLocation = placeListLocal[placeIndex - pattern[patternIndex]];
+					console.log({patternTargeting:pattern[patternIndex], fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+
+					outString += getCodeWRetraction(aimGCodePart(place, fromLocation, commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+					memoryList.push({from:fromLocation, to:place}); 
 				}
 			}
 		}
 
-
+		placeIndex += 1;
 		patternIndex += 1;
 		if (patternIndex >= pattern.length) patternIndex = 0;
 
@@ -720,6 +739,7 @@ function mod(n, m) {
 
 
 function aimGCodePart(startPlace, endPlace, commandObj) {
+	console.log({startPlace:startPlace, endPlace:endPlace});
 	var outGCode = '\n';
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;
