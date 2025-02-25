@@ -1248,6 +1248,11 @@ function refreshShapeDisplay() {
 							printChild.strokeColor = '#02B';
 							printChild.fillColor = new Color(0,0,0,0);
 						}
+						else if (printChild.name == 'printedTriangle') {
+							printChild.strokeWidth = printChild.renderWidth;
+							printChild.strokeColor = '#02B';
+							printChild.fillColor = new Color(0,50,255,255);
+						}
 					}
 				}
 				if (elses) {

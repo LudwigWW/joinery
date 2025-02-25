@@ -19,7 +19,7 @@ const defaultTPUTemp = 230;
 
 const switchMoveDuration = 1;
 
-const verbose = false;
+const verbose = true;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
@@ -1464,14 +1464,40 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						console.log('Chosen render option:', bestOption);
 						console.log('Input data:', { length });
 
-						var renderPath = new Path([connection.from, connection.to]);
-						renderPath.name = 'printedLine';
-						const outWidth = (connection.from.getDistance(connection.to) / bestOption.dLength) * bestOption.dWidth;
-						// // console.log({dist:connection.from.getDistance(connection.to)});
-						renderPath.renderWidth = outWidth;
-						returnList.push(renderPath);
-						returnRef.printLines.push(renderPath);
-						// // console.log({renderPath:renderPath});
+						if (verbose) {
+							const baseWidth = bestOption.dWidth;
+							// Calculate the points for the rounded triangle
+							const angle = connection.from.subtract(connection.to).angle + 90;
+							const halfBase = baseWidth / 2;
+
+							const baseLeft = connection.from.add(new Point(halfBase, 0).rotate(angle));
+							const baseRight = connection.from.add(new Point(-halfBase, 0).rotate(angle));
+
+							const path = new Path();
+							path.add(baseLeft);
+							path.arcTo(connection.from, baseRight);
+							path.lineTo(connection.to);
+							path.closePath();
+
+							path.strokeWidth = 0;
+							path.fillColor = 'black';
+							path.name = 'printedTriangle';
+							path.renderWidth = baseWidth/12;
+
+							returnList.push(path);
+							returnRef.printLines.push(path);
+
+						} else {
+
+							var renderPath = new Path([connection.from, connection.to]);
+							renderPath.name = 'printedLine';
+							const outWidth = (connection.from.getDistance(connection.to) / bestOption.dLength) * bestOption.dWidth;
+							// // console.log({dist:connection.from.getDistance(connection.to)});
+							renderPath.renderWidth = outWidth;
+							returnList.push(renderPath);
+							returnRef.printLines.push(renderPath);
+							// // console.log({renderPath:renderPath});
+						}
 						break;
 				}
 			} 
@@ -1496,10 +1522,20 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				}
 			} else if (connection.to !== null) {
 				console.warn('Rendering from unknown point');
-				var renderPath = new Path.Circle(connection.to, baseRenderDetails.diameter/2);
+				console.log({connection:connection});
+				let diam = 50; // 
+				if (baseRenderDetails.type === "circle") {
+					diam = baseRenderDetails.diameter/2;
+				} else if (baseRenderDetails.type === "line") {
+					diam = baseRenderDetails.skipDiameter/2;
+				} else {
+					console.warn('Unknown render type, rendering huge circle');
+				}
+				var renderPath = new Path.Circle(connection.to, diam);
 				renderPath.name = 'printedCircle';
-				renderPath.renderWidth = 10;
-				renderPath.strokeColor = '#F03';
+				renderPath.renderWidth = 0;
+				// renderPath.renderWidth = 10;
+				// renderPath.strokeColor = '#F03';
 				returnList.push(renderPath);
 				returnRef.printOutlines.push(renderPath);
 			}
