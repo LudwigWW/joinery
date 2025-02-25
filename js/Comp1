@@ -1,64 +1,61 @@
-function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false) {
+function addGCodePart(inString, params, placeList, commandObj, depthAdjustment, print_Offset_X, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}, reverse=false, memoryList=[], memoryObj={}) {
+	console.log('in string length: ', inString.length);	
+	var connectionMemoryList = [];
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
-
-	commandObj = commandObjs[0];
-	needleObj = commandObjs[1];
-	
-	function produceCode(commandObj, place, depthAdjustment, skip=false, onlyAim=false) {
-		let addString = "";
-		addString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		addString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
-		addString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
-		
-		if (onlyAim) {
-			return addString;
-		}
-		if (skip) {
-			addString += commandObj.skipGCode;
-		}
-		else {
-			addString += commandObj.gcode;
-		}
-		return addString;
-	}
-	
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
+	let firstPlacement = true;
 	// for (let i = -5; i < 5; i++) { 
 	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
 
+	let outString = "";
+
 	let pattern = [...commandObj.pattern];
-	// // console.log('pattern: ', pattern);
+	console.log('source-pattern: ', commandObj.pattern);
+	let reversePatternOffsetLength = null;
 
 	let placeListLocal = [...placeList];
-
-	let handledList = [...placeList];
-
 	if (pattern.length == 0) {
 		// pattern = [1];
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
+		console.log('reversed-pattern: ', pattern);
+		pattern = pattern.map(function(item) {if (item !== 0.5 && item !== 0) item = -item; return item;});
+		reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		for (let i = 0; i < reversePatternOffsetLength; i++) {
+			pattern.push(pattern.shift());
+		} 
 		placeListLocal = placeListLocal.reverse();
 	}
 
-	for (let place of placeListLocal) {
-		place.handled = false;
+
+	memoryObj.placeList = placeListLocal;
+
+	// debug output for the hole handling and order
+	console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
+
+	if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(placeListLocal[0].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(placeListLocal[0].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += getCodeWRetraction(commandObj.preCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
 	}
 
+	let placeIndex = 0;	
+
 	for (let place of placeListLocal) {
-		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
-		// outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
-		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
 		if (commandObj.directional == false) {
 			if (pattern[patternIndex] !== 0) {
-				// outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
-				outString += produceCode(needleObj, place, depthAdjustment);
-				outString += produceCode(commandObj, place, depthAdjustment, false);
+				outString += getCodeWRetraction(commandObj.gcode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // Adding plug&play/drag&drop G-Code
+				memoryList.push({from:place, to:null});
 			}
 		}
 		else {
@@ -69,12 +66,8 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 					if (((placeCounter+i-patternIndex+1) > placeList.length)) { // only parts of the pattern that would come after line ends 
 						if ((Math.abs(pattern[patternPlace]) > 0.5)) { // Only if the pattern actually connects to something
 							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
-								// outString += commandObj.skipGCode;
-								if (place.handled == false) {
-									outString += produceCode(needleObj, place, depthAdjustment);
-									place.handled = true;
-								}
-								outString += produceCode(commandObj, place, depthAdjustment, true);
+								outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+								memoryList.push({from:place, to:null});
 								break;
 							}
 						}
@@ -86,17 +79,13 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 
 			} else if (pattern[patternIndex] == 0.5) {
 				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
-					// outString += commandObj.skipGCode;
-					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment);
-						place.handled = true;
-					}
-					outString += produceCode(commandObj, place, depthAdjustment, true);
+					outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+					memoryList.push({from:place, to:null});
 				}
 
 			} else { 
-				
-				if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+				console.log({negativeCheck:pattern[patternIndex] < 0, fitsCheck:placeIndex-pattern[patternIndex] > placeList.length, patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+				if (pattern[patternIndex] > lastPlace.length || (pattern[patternIndex] < 0 && placeIndex-pattern[patternIndex] >= placeList.length)) { // No place saved yet, can't connect here, so add skip-gcode // TODO-Done?: This only makes sense in "forward" direction though, otherwise will end up with skip code in addition to the actual? 
 					let noOut = true;
 					for (let i = patternIndex; i < (patternIndex+pattern.length); i++) { // check whole pattern
 						const patternPlace = mod(i, pattern.length);
@@ -104,13 +93,9 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 							noOut = false;
 						}
 					}
-					if (noOut)  {
-						// outString += commandObj.skipGCode;
-						if (place.handled == false) {
-							outString += produceCode(needleObj, place, depthAdjustment);
-							place.handled = true;
-						}
-						outString += produceCode(commandObj, place, depthAdjustment, true);
+					if (noOut) {
+						outString += getCodeWRetraction(commandObj.skipGCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+						memoryList.push({from:null, to:place}); //TODO: Check if it makes sense to have a memoryList entry if there is no FROM // TODO: Or if there should be one for noOut True
 					}
 				}
 				// else if () {
@@ -118,29 +103,50 @@ function addGCodePartsC(outString, params, placeList, commandObjs, depthAdjustme
 				// }
 	
 				// "Default" outcome (for rotation variant patterns)
-				
 				else {
-					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment);
-						place.handled = true;
-					}
-					if (lastPlace[lastPlace.length-pattern[patternIndex]].handled == false) {
-						outString += produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment);
-						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
-					}
-					outString += produceCode(commandObj, place, depthAdjustment, false, true); // only aim
-					outString += aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj); // rotate and add aimed plug&play G-Code
+					// pattern target number log
+
+					// let fromLocation = lastPlace[lastPlace.length-pattern[patternIndex]];
+					let fromLocation = placeListLocal[placeIndex - pattern[patternIndex]];
+					console.log({patternTargeting:pattern[patternIndex], fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+
+					outString += getCodeWRetraction(aimGCodePart(place, fromLocation, commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+					memoryList.push({from:fromLocation, to:place}); 
 				}
 			}
 		}
 
-
+		placeIndex += 1;
 		patternIndex += 1;
 		if (patternIndex >= pattern.length) patternIndex = 0;
 
 		lastPlace.push(place);
 		placeCounter += 1;
+		if (commandObj.duration) durations.durationEstimate -= commandObj.duration;
+		durations.durationEstimate -= switchMoveDuration;
+		if (durations.durationEstimate < 0) {
+			durations.durationEstimate = 0;
+			console.warn({message:"Duration estimate reached negative value"});
+		}
+		console.log('duration estimate: ', durations.durationEstimate);
 	}
+
+	if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
+		outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
+		outString += `G1 X${(lastPlace[lastPlace.length-1].x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(lastPlace[lastPlace.length-1].y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
+		outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
+		outString += getCodeWRetraction(commandObj.postCode, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
+	}
+
 	// // console.log("outStringAdded: " + outString.length);
-	return outString;
+	let targetTemp = 215;
+	if (params["printing temperature"]) { 
+		targetTemp = params["printing temperature"];
+	}
+	outString = outString.replace(/(M10[49] S)(?!0)\d+/g, `$1${targetTemp}`); // Replace setting and waiting for temp with adjusted temperature
+
+	inString += outString;
+	console.log('out string length: ', inString.length);
+
+	return inString;
 } 

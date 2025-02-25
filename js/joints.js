@@ -4485,7 +4485,7 @@ function exportProjectNow() {
 								break;
 							}
 							if ((outputHeight + heightUsed) > output.usedParam["printing area depth"]) {
-								prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs));
+								prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
 								GCODE = "";
 								heightUsed = 0;
 								addedOutputs = [];
@@ -4542,7 +4542,7 @@ function exportProjectNow() {
 		}
 
 		if (heightUsed > 0) {
-			prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs));
+			prints.push(exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, chosenPrinter));
 			GCODE = "";
 			heightUsed = 0;
 			addedOutputs = [];

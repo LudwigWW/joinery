@@ -1,4 +1,4 @@
-function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false, durations) {
+function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
 
@@ -54,7 +54,8 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	// }
 
 	let pattern = [...commandObj.pattern];
-	// // console.log('pattern: ', pattern);
+	console.log('source-pattern: ', commandObj.pattern);
+	let reversePatternOffsetLength = null;
 
 	let placeListLocal = [...placeList];
 
@@ -65,8 +66,9 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	}
 	if (reverse) {
 		pattern = pattern.reverse();
-		pattern.map(function(item) {if (item !== 0.5) item = -item; return item;});
-		let reversePatternOffsetLength = placeListLocal.length % pattern.length;
+		console.log('reversed-pattern: ', pattern);
+		pattern = pattern.map(function(item) {if (item !== 0.5 && item !== 0) item = -item; return item;});
+		reversePatternOffsetLength = placeListLocal.length % pattern.length;
 		for (let i = 0; i < reversePatternOffsetLength; i++) {
 			pattern.push(pattern.shift());
 		} 
@@ -76,6 +78,9 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 	for (let place of placeListLocal) {
 		place.handled = false;
 	}
+
+	// debug output for the hole handling and order
+	console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
 
 	// This puts it before the needle...
 	// if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
@@ -180,7 +185,7 @@ function addGCodePartsCGlobal(inString, params, placeList, commandObjs, depthAdj
 						outString += handlePreCode(commandObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment, durations); // first target place should be the actual first hole
 					}
 					outString += produceCode(commandObj, place, depthAdjustment, durations, false, true); // only aim
-					outString += getCodeWRetraction(aimGCodePartG(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
+					outString += getCodeWRetraction(aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
