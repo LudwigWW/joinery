@@ -1317,7 +1317,7 @@ function colorForLaser(thisShape) {
 
 
 function colorForPreview(thisShape) {
-	console.log("colorForLaser");
+	console.log("colorForPreview");
 	for (j in thisShape.children) {
 		if (thisShape.children[j].className=='Group') {
 			if (thisShape.children[j].children['laser']) {

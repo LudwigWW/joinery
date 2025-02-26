@@ -330,7 +330,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, c
 
 		durations.durationEstimate = calculateTopDurationEstimate(outputContainer.output, "top;spikesTop");
 		durations.toComeEstimate -= durations.durationEstimate; // Subtract duration of one job from total toComeEstimate
-        let combinedcommands = [outputContainer.output.G91.top, outputContainer.output.G91.spikesTop];
+        let combinedcommands = [outputContainer.output.G91.spikesTop, outputContainer.output.G91.top];
 		console.log("per output export: durationEstimate: " + durations.durationEstimate + " toComeEstimate: " + durations.toComeEstimate + " total: " + durations.durationEstimateTotal);
         GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, combinedcommands, outputContainer.output.G91.top, outputContainer.heightUsed, outputContainer.print_Offset_X, durations, true);
 		console.log("+TopWithSpikes GCode in exportPreviousGcode");
