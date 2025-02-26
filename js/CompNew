@@ -1,11 +1,11 @@
-function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustment, print_Offset_X, reverse=false, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}) {
+function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj, depthAdjustment, print_Offset_X, reverse=false, durations={durationEstimate:0, durationEstimateTotal:0, toComeEstimate:0}) {
 	// // console.log({MSG:"Adding GCode", commandObj:commandObj, depthAdjustment:depthAdjustment, placeList:placeList, params:params});
 	// // console.log("outString: " + outString.length);
 
 	outString = "";
 
-	commandObj = commandObjs[0];
-	needleObj = commandObjs[1];
+	// commandObj = commandObjs[0];
+	// needleObj = commandObjs[1];
 
 	function handlePreCode(commandObj, place, depthAdjustment, durations) {
 		let preCodeString = `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
@@ -45,16 +45,23 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	var lastPlace = [];
 	var patternIndex = 0;
 	let placeCounter = 0;
-	let handleFirstPlace = false;
-	if (commandObj.preCode) {
-		handleFirstPlace = true;
-	}
+	let handleFirstPlace = false; // TODO: Make one first place handled per commandObj
+	let directional = false;
+
+	// commandObjs.forEach(function (cmdObj) {
+		if (guidingCmdObj.preCode) {
+			handleFirstPlace = true;
+		}
+		if (guidingCmdObj.directional == true) {
+			directional = true;
+		}
+	// });
 	// for (let i = -5; i < 5; i++) { 
 	// 	// console.log(mod(i, commandObj.pattern.length));
 	// }
 
-	let pattern = [...commandObj.pattern];
-	console.log('source-pattern: ', commandObj.pattern);
+	let pattern = [...guidingCmdObj.pattern];
+	console.log('source-pattern: ', guidingCmdObj.pattern);
 	let reversePatternOffsetLength = null;
 
 	let placeListLocal = [...placeList];
@@ -90,19 +97,30 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	// 	outString += getCodeWRetraction(commandObj.preCode, chosenPrinter);
 	// }
 
+	let placeIndex = 0;
+
 	for (let place of placeListLocal) {
 		// outString += `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
 		// outString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
 		// outString += `G1 Z${commandObj.zStart} F3000\n`; // Z positioning
 		
-		if (commandObj.directional == false) {
+		if (directional == false) {
 			if (pattern[patternIndex] !== 0) {
-				// outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
-				outString += produceCode(needleObj, place, depthAdjustment, durations);
-				if (handleFirstPlace) {
-					outString += handlePreCode(commandObj, place, depthAdjustment, durations);
-				}
-				outString += produceCode(commandObj, place, depthAdjustment, durations, false);
+				// // outString += commandObj.gcode; // Adding plug&play/drag&drop G-Code
+				// outString += produceCode(needleObj, place, depthAdjustment, durations);
+				// if (handleFirstPlace) {
+				// 	outString += handlePreCode(commandObj, place, depthAdjustment, durations);
+				// }
+				// outString += produceCode(commandObj, place, depthAdjustment, durations, false);
+
+
+				commandObjs.forEach(function (cmdObj) {
+					if (cmdObj.preCode && handleFirstPlace) {
+						outString += handlePreCode(cmdObj, place, depthAdjustment, durations);
+					}
+					outString += produceCode(cmdObj, place, depthAdjustment, durations, false);
+				});
+
 			}
 		}
 		else {
@@ -114,15 +132,31 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 						if ((Math.abs(pattern[patternPlace]) > 0.5)) { // Only if the pattern actually connects to something
 							if (mod((i - pattern[patternPlace]), pattern.length) == patternIndex)  { // Check if it connects to the current point
 								// outString += commandObj.skipGCode;
-								if (place.handled == false) {
-									outString += produceCode(needleObj, place, depthAdjustment, durations);
-									place.handled = true;
-								}
-								if (handleFirstPlace) {
-									outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
-								}
-								outString += produceCode(commandObj, place, depthAdjustment, durations, true);
+
+								commandObjs.forEach(function (cmdObj) {
+									if (cmdObj.needle) {
+										if (place.handled == false) {
+											outString += produceCode(cmdObj, place, depthAdjustment, durations);
+											place.handled = true;
+										}
+									} else {
+										if (cmdObj.preCode && handleFirstPlace) {
+											outString += handlePreCode(cmdObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+										}
+										outString += produceCode(cmdObj, place, depthAdjustment, durations, true);
+									}
+								});
 								break;
+
+								// if (place.handled == false) {
+								// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
+								// 	place.handled = true;
+								// }
+								// if (handleFirstPlace) {
+								// 	outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+								// }
+								// outString += produceCode(commandObj, place, depthAdjustment, durations, true);
+								// break;
 							}
 						}
 					}
@@ -134,19 +168,34 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 			} else if (pattern[patternIndex] == 0.5) {
 				if (((placeCounter+pattern.length) > (placeList.length)) || ((placeCounter-pattern.length) < -1)) {
 					// outString += commandObj.skipGCode;
-					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment, durations);
-						place.handled = true;
-					}
-					if (handleFirstPlace) {
-						outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
-					}
-					outString += produceCode(commandObj, place, depthAdjustment, durations, true);
+					commandObjs.forEach(function (cmdObj) {
+						if (cmdObj.needle) {
+							if (place.handled == false) {
+								outString += produceCode(cmdObj, place, depthAdjustment, durations);
+								place.handled = true;
+							}
+						} else {
+							if (cmdObj.preCode && handleFirstPlace) {
+								outString += handlePreCode(cmdObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+							}
+							outString += produceCode(cmdObj, place, depthAdjustment, durations, true);
+						}
+					});
+					// if (place.handled == false) {
+					// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
+					// 	place.handled = true;
+					// }
+					// if (handleFirstPlace) {
+					// 	outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+					// }
+					// outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 				}
 
 			} else { 
 				
-				if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+				// if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
+				console.log({negativeCheck:pattern[patternIndex] < 0, fitsCheck:placeIndex-pattern[patternIndex] > placeList.length, patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+				if (pattern[patternIndex] > lastPlace.length || (pattern[patternIndex] < 0 && placeIndex-pattern[patternIndex] >= placeList.length)) { // No place saved yet, can't connect here, so add skip-gcode // TODO-Done?: This only makes sense in "forward" direction though, otherwise will end up with skip code in addition to the actual? 
 					let noOut = true;
 					for (let i = patternIndex; i < (patternIndex+pattern.length); i++) { // check whole pattern
 						const patternPlace = mod(i, pattern.length);
@@ -155,50 +204,87 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 						}
 					}
 					if (noOut)  {
-						// outString += commandObj.skipGCode;
-						if (place.handled == false) {
-							outString += produceCode(needleObj, place, depthAdjustment, durations);
-							place.handled = true;
-						}
-						if (handleFirstPlace) {
-							outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
-						}
-						outString += produceCode(commandObj, place, depthAdjustment, durations, true);
+						commandObjs.forEach(function (cmdObj) {
+							if (cmdObj.needle) {
+								if (place.handled == false) {
+									outString += produceCode(cmdObj, place, depthAdjustment, durations);
+									place.handled = true;
+								}
+							} else {
+								if (cmdObj.preCode && handleFirstPlace) {
+									outString += handlePreCode(cmdObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+								}
+								outString += produceCode(cmdObj, place, depthAdjustment, durations, true);
+							}
+						});
+
+						// // outString += commandObj.skipGCode;
+						// if (place.handled == false) {
+						// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
+						// 	place.handled = true;
+						// }
+						// if (handleFirstPlace) {
+						// 	outString += handlePreCode(commandObj, place, depthAdjustment, durations); // TODO: handling skip and preCode together?
+						// }
+						// outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 					}
 				}
-				// else if () {
-	
-				// }
-	
+
 				// "Default" outcome (for rotation variant patterns)
 				
 				else {
-					if (place.handled == false) {
-						outString += produceCode(needleObj, place, depthAdjustment, durations);
-						place.handled = true;
-					}
-					if (lastPlace[lastPlace.length-pattern[patternIndex]].handled == false) {
-						outString += produceCode(needleObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment, durations);
-						lastPlace[lastPlace.length-pattern[patternIndex]].handled = true;
-					}
-					if (handleFirstPlace) {
-						outString += handlePreCode(commandObj, lastPlace[lastPlace.length-pattern[patternIndex]], depthAdjustment, durations); // first target place should be the actual first hole
-					}
-					outString += produceCode(commandObj, place, depthAdjustment, durations, false, true); // only aim
-					outString += getCodeWRetraction(aimGCodePart(place, lastPlace[lastPlace.length-pattern[patternIndex]], commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
+					let fromLocation = placeListLocal[placeIndex - pattern[patternIndex]];
+					console.log({patternTargeting:pattern[patternIndex], fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+
+					commandObjs.forEach(function (cmdObj) {
+						if (cmdObj.needle) {
+							if (place.handled == false) {
+								outString += produceCode(cmdObj, place, depthAdjustment, durations);
+								place.handled = true;
+							}
+							if (fromLocation.handled == false) {
+								outString += produceCode(cmdObj, fromLocation, depthAdjustment, durations);
+								fromLocation.handled = true;
+							}
+						} else {
+							if (cmdObj.preCode && handleFirstPlace) {
+								outString += handlePreCode(cmdObj, place, depthAdjustment, durations); // first target place should be the actual first hole
+							}
+							outString += produceCode(cmdObj, place, depthAdjustment, durations, false, true); // only aim
+							outString += getCodeWRetraction(aimGCodePart(place, fromLocation, cmdObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
+
+						}
+					});
+
+					// if (place.handled == false) {
+					// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
+					// 	place.handled = true;
+					// }
+					// if (fromLocation.handled == false) {
+					// 	outString += produceCode(needleObj, fromLocation, depthAdjustment, durations);
+					// 	fromLocation.handled = true;
+					// }
+					// if (handleFirstPlace) {
+					// 	outString += handlePreCode(commandObj, fromLocation, depthAdjustment, durations); // first target place should be the actual first hole
+					// }
+					// outString += produceCode(commandObj, place, depthAdjustment, durations, false, true); // only aim
+					// outString += getCodeWRetraction(aimGCodePart(place, fromLocation, commandObj), chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate); // rotate and add aimed plug&play G-Code
 				}
 			}
 		}
 
-
+		placeIndex += 1;
 		patternIndex += 1;
 		if (patternIndex >= pattern.length) patternIndex = 0;
 
 		lastPlace.push(place);
 		placeCounter += 1;
 
-		if (commandObj.duration) durations.durationEstimate -= commandObj.duration;
-		if (needleObj.duration) durations.durationEstimate -= needleObj.duration;
+		commandObjs.forEach(function (cmdObj) {
+			if (cmdObj.duration) durations.durationEstimate -= cmdObj.duration;
+		});
+		// if (commandObj.duration) durations.durationEstimate -= commandObj.duration;
+		// if (needleObj.duration) durations.durationEstimate -= needleObj.duration;
 		durations.durationEstimate -= switchMoveDuration*2;
 		if (durations.durationEstimate < 0) {
 			durations.durationEstimate = 0;
@@ -207,9 +293,15 @@ function addGCodePartsC(inString, params, placeList, commandObjs, depthAdjustmen
 	}
 	// // console.log("outStringAdded: " + outString.length);
 
-	if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
-		outString += produceCode(commandObj, lastPlace[lastPlace.length-1], depthAdjustment, durations, false, false, true);
-	}
+	commandObjs.forEach(function (cmdObj) {
+		if (cmdObj.postCode && lastPlace.length > 0) {
+			outString += produceCode(cmdObj, lastPlace[lastPlace.length-1], depthAdjustment, durations, false, false, true);
+		}
+	});
+
+	// if (commandObj.postCode && lastPlace.length > 0) { // TODO: This assumes the last place is actually used, which is only true for patterns that use all holes
+	// 	outString += produceCode(commandObj, lastPlace[lastPlace.length-1], depthAdjustment, durations, false, false, true);
+	// }
 
 	let targetTemp = 215;
 	if (params["printing temperature"]) { 

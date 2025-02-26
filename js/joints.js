@@ -1404,8 +1404,8 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	}
 	console.log({svgHoleList:svgHoleList, svgBHoleList:svgBHoleList});
 	let durations = {durationEstimate: 0, toComeEstimate: 0, durationEstimateTotal: 0};
-	addGCodePart("", param, svgHoleList, commandObj.base, 0, 0, durations, false, placeConnectionList); // Just getting the order reference
-	addGCodePart("", param, svgBHoleList, commandObj.top, 0, 0, durations, true, placeBConnectionList);
+	addGCodePartsC("", param, svgHoleList, [commandObj.base], commandObj.base, 0, 0, durations, false, placeConnectionList); // Just getting the order reference
+	addGCodePartsC("", param, svgBHoleList, [commandObj.top], commandObj.top, 0, 0, durations, true, placeBConnectionList);
 	// console.log({placeConnectionList:placeConnectionList, placeBConnectionList:placeBConnectionList, svgBHoleList:svgBHoleList, svgHoleList:svgHoleList});
 
 	var placeConnLists = [placeConnectionList, placeBConnectionList];
@@ -4534,7 +4534,7 @@ function exportProjectNow() {
 								}
 							else // console.log({Warning:"Server marker data unavailable"});
 
-							GCODE += addGCodePart(GCODE, output.usedParam, output.holeList, output.G91.base, localHeight, output.print_Offset_X);
+							GCODE += addGCodePartsC(GCODE, output.usedParam, output.holeList, [output.G91.base], output.G91.base, localHeight, output.print_Offset_X);
 						}
 					}
 				}

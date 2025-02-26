@@ -967,6 +967,7 @@
         "y": 0.0
       },
       "directional":false,
+      "needle":true,
       "pattern":[1],
       "duration":12
     },
@@ -983,6 +984,7 @@
         "y": 0.0
       },
       "directional":false,
+      "needle":true,
       "pattern":[1],
       "duration":10
     },
@@ -999,6 +1001,7 @@
         "y": 0.0
       },
       "directional":false,
+      "needle":true,
       "pattern":[1],
       "duration":13
     },
@@ -1015,6 +1018,7 @@
         "y": 0.0
       },
       "directional":false,
+      "needle":true,
       "pattern":[1],
       "duration":10
     },
@@ -1030,6 +1034,7 @@
         "y": 0.0
       },
       "directional":false,
+      "needle":true,
       "pattern":[1],
       "duration":8
     },
@@ -1045,6 +1050,7 @@
       "y": 0.0
     },
     "directional":false,
+    "needle":true,
     "pattern":[1],
     "duration":5
     },
@@ -1060,6 +1066,7 @@
       "y": 0.0
     },
     "directional":false,
+    "needle":true,
     "pattern":[1],
     "duration":5
     }
