@@ -17,6 +17,15 @@ const laserWidth = 0.1;
 const laserColorDone = '#933';
 const printColor = '#05D';
 const printColorDone = '#339';
+const aMarkerColor = '#02B';
+const bMarkerColor = '#003';
+const aPrintColor = '#F1D';
+const bPrintColor = '#504';
+const aLineColor = '#580';
+const bLineColor = '#240';
+const aMarkerLineColor = '#F1D';
+const bMarkerLineColor = '#504';
+
 var noColor;
 const debug = true;
 
@@ -1265,30 +1274,87 @@ function refreshShapeDisplay() {
 }
 
 function grayOutShapes() {
-	console.log('grayOutShapes');
+	console.log('grayOutShapes: All');
+	console.log(shape);
 	for (i in shape) {
 		for (j in shape[i].children) {
 			shape[i].children[j].strokeWidth = 0.1;
 			shape[i].children[j].strokeCap = 'round';
 			if (shape[i].children[j].className=='Group') {
 				if (shape[i].children[j].children['print']) {
-					shape[i].children[j].children['print'].opacity = 0.25;
-					shape[i].children[j].children['print'].strokeWidth = 0.5;
-					shape[i].children[j].children['print'].fillColor = '#BBB';
-					shape[i].children[j].children['print'].strokeColor = '#999';
-				} else if (shape[i].children[j].children['laser']) {
-					shape[i].children[j].children['laser'].strokeColor = laserColorDone;
 
+					for (printChild of shape[i].children[j].children.print.children) {
+						printChild.opacity = 0.5;
+						printChild.strokeWidth = 0.5;
+						printChild.fillColor = '#BBB';
+						printChild.strokeColor = '#999';
+					}
+				} else if (shape[i].children[j].children['laser']) {
+					for (laserChild of shape[i].children[j].children.laser.children) {
+						laserChild.strokeColor = laserColorDone;
+						laserChild.opacity = 0.5;
+					}
 				}
 			}
 		}
-
 	}
 	// paper.view.draw();
 }
 
-function colorForLaser(thisShape) {
-	console.log("colorForLaser");
+function grayOutPrint(print) {
+	console.log("grayOutPrint: ");
+	console.log({print});
+	for (let printJob of print.printJobs) {
+		// combine a and b of renderRef
+		console.log({printJob:printJob});
+		let counter = 0;
+		let lineCounter = 0;
+		for (let printOutline of printJob.renderRef.a.printAreaOutlines) {
+			counter++;
+			console.log({printOutline:printOutline});
+			printOutline.opacity = 0.25;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			if (printOutline.name == 'printedMarker') {
+				printOutline.strokeColor = aMarkerColor;
+				printOutline.fillColor = aMarkerLineColor;
+				
+			} else {
+				printOutline.strokeColor = printColorDone;
+				printOutline.fillColor = printColorDone;
+			}
+		}
+		for (let printOutline of printJob.renderRef.b.printAreaOutlines) {
+			counter++;
+			printOutline.opacity = 0.25;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			if (printOutline.name == 'printedMarker') {
+				printOutline.strokeColor = bMarkerColor;
+				printOutline.fillColor = bMarkerLineColor
+			} else {
+				printOutline.strokeColor = printColorDone;
+				printOutline.fillColor = printColorDone;
+			}
+		}
+		for (let printOutline of printJob.renderRef.a.printLines) {
+			lineCounter++;
+			printOutline.opacity = 0.25;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			printOutline.strokeColor = printColorDone;
+
+		}
+		for (let printOutline of printJob.renderRef.b.printLines) {
+			lineCounter++;
+			printOutline.opacity = 0.25;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			printOutline.strokeColor = printColorDone;
+		}
+		console.log({counter:counter, lineCounter:lineCounter});
+	}
+}
+
+function colorForLaser(thisShape, forCutting=true) {
+	if (forCutting) console.log("colorForLaserCutting");
+	else console.log("colorForLaser Preview");
 	for (j in thisShape.children) {
 		if (thisShape.children[j].className=='Group') {
 			if (thisShape.children[j].children['laser']) {
@@ -1296,28 +1362,32 @@ function colorForLaser(thisShape) {
 				// thisShape.children[j].children['laser'].strokeColor = '#FF0';
 				thisShape.children[j].children['laser'].strokeWidth = laserWidth;
 			}
-			for (child of thisShape.children[j].children) {
-				// child.strokeWidth = laserWidth;
-			}
+			// for (child of thisShape.children[j].children) {
+			// 	// child.strokeWidth = laserWidth;
+			// }
 
-			for (laserChild of thisShape.children[j].children.laser.children) {
-				if (laserChild.name == 'cut') {
-					laserChild.strokeColor = laserColor;
-				}
-				else {
-					laserChild.strokeColor = laserColorLate;
+			if (forCutting) {
+				for (laserChild of thisShape.children[j].children.laser.children) {
+					if (laserChild.name == 'cut') {
+						laserChild.strokeColor = laserColor;
+					}
+					else {
+						laserChild.strokeColor = laserColorLate;
+					}
 				}
 			}
 		} else if (thisShape.children[j].className=='Path') {
 			thisShape.children[j].strokeWidth = laserWidth;
-			thisShape.children[j].strokeColor = laserColorLate;
+			if (forCutting) {
+				thisShape.children[j].strokeColor = laserColorLate;
+			}
 		}
 	}
 }
 
 
-function colorForPreview(thisShape) {
-	console.log("colorForPreview");
+function colorLaserlinesForPreview(thisShape) {
+	console.log("colorLaserlinesForPreview");
 	for (j in thisShape.children) {
 		if (thisShape.children[j].className=='Group') {
 			if (thisShape.children[j].children['laser']) {
@@ -1331,6 +1401,54 @@ function colorForPreview(thisShape) {
 		} else if (thisShape.children[j].className=='Path') {
 			thisShape.children[j].strokeWidth = laserWidth;
 		}
+	}
+}
+
+function colorPrintsForPreview(print) {
+	console.log("colorPrintsForPreview");
+	for (let printJob of print.printJobs) {
+		// combine a and b of renderRef
+		console.log({printJob:printJob});
+		let counter = 0;
+		let lineCounter = 0;
+		for (let printOutline of printJob.renderRef.a.printAreaOutlines) {
+			counter++;
+			printOutline.opacity = 1;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			if (printOutline.name == 'printedMarker') {
+				printOutline.strokeColor = aMarkerColor;
+				printOutline.fillColor = aMarkerLineColor;
+				
+			} else {
+				printOutline.strokeColor = aPrintColor;
+				printOutline.fillColor = aLineColor;
+			}
+		}
+		for (let printOutline of printJob.renderRef.b.printAreaOutlines) {
+			counter++;
+			printOutline.opacity = 1;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			if (printOutline.name == 'printedMarker') {
+				printOutline.strokeColor = bMarkerColor;
+				printOutline.fillColor = bMarkerLineColor
+			} else {
+				printOutline.strokeColor = bPrintColor;
+				printOutline.fillColor = bLineColor;
+			}
+		}
+		for (let printOutline of printJob.renderRef.a.printLines) {
+			lineCounter++;
+			printOutline.opacity = 1;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			printOutline.strokeColor = aLineColor;
+		}
+		for (let printOutline of printJob.renderRef.b.printLines) {
+			lineCounter++;
+			printOutline.opacity = 1;
+			printOutline.strokeWidth = printOutline.renderWidth;
+			printOutline.strokeColor = bLineColor;
+		}
+		console.log({counter:counter, lineCounter:lineCounter});
 	}
 }
 

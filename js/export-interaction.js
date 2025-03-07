@@ -328,20 +328,29 @@ function updateNextStep() {
 //     return [orderList, flatList];
 // }
 
-function makeImage(imageData, width=200, height=150) {
-    var blob = new Blob([imageData.svgString], {type: 'image/svg+xml'});
+function makeImage(imageData, width=null, height=null) {
+	var blob = new Blob([imageData.svgString], {type: 'image/svg+xml'});
 
-    const url = URL.createObjectURL(blob);
-    const image = document.createElement('img');
-    image.addEventListener('load', () => URL.revokeObjectURL(url), {once: true});
-    image.src = url;
-    // image.width = width;
-	image.style.width = "100%";
-    image.style.maxWidth = width.toString()+"px";
-	image.style.height = "100%";
-    image.style.maxHeight = height.toString()+"px";
-    $("#TestDiv").append(image);
-    return image.outerHTML;
+	const url = URL.createObjectURL(blob);
+	const image = document.createElement('img');
+	image.addEventListener('load', () => URL.revokeObjectURL(url), {once: true});
+	image.src = url;
+	image.classList.add('responsive-image');
+	
+	// image.width = width;
+	// if (width !== null) {
+    // 	image.style.maxWidth = width.toString()+"px";
+	// }
+	// if (height !== null) {
+    // 	image.style.maxHeight = height.toString()+"px";
+	// }
+
+	const container = document.createElement('div');
+	container.classList.add('responsive-image-container');
+	container.appendChild(image);
+
+	$("#TestDiv").append(container);
+	return container.outerHTML;
 }
 
 function makeButton(id, text, onclick, groupOnclick = null) {
@@ -589,7 +598,7 @@ function addParallelCuts(cutObj, showNr, status, completed=false) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
 			html += '<span>'+imageType+'</span><br />';
-			let image = makeImage(imageData);
+			let image = makeImage(imageData, 1000);
 			html += image;
 			html += '<br />';
 		}
@@ -1213,12 +1222,13 @@ document.onkeydown = function(e) {
 }
 
 $( window ).resize(function() {
-	if (initialized) {
-		$('#paperCanvas').css({'width':window.innerWidth, 'height':window.innerHeight});
-		$('#bgCanvas').attr({'width':window.innerWidth, 'height':window.innerHeight});
-		paper.view.viewSize = new Size(window.innerWidth, window.innerHeight);
-	}
-	drawGrid();
+	// Paper js not used
+	// if (initialized) {
+	// 	$('#paperCanvas').css({'width':window.innerWidth, 'height':window.innerHeight});
+	// 	$('#bgCanvas').attr({'width':window.innerWidth, 'height':window.innerHeight});
+	// 	paper.view.viewSize = new Size(window.innerWidth, window.innerHeight);
+	// }
+	// drawGrid();
 });
 
 $(document).bind('keydown', function(e) {

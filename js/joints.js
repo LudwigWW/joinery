@@ -6,6 +6,7 @@ var jointProfileCount = 0;
 var chosenPrinter = {};
 var chosenLaser = {};
 var requestCounter = 0;
+var receivedCounter = 0;
 var markerGCodes = [];
 var printCounter = 1; // Starts at A
 
@@ -19,7 +20,7 @@ const defaultTPUTemp = 230;
 
 const switchMoveDuration = 1;
 
-const verbose = true;
+const verbose = false;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
@@ -789,7 +790,7 @@ function generateJoint(index) {
 				case 'printed strong running stitch':
 						
 						var G91 = {base:printTemplate.G91Commands.alternatingLineStrong, 
-							spikes:printTemplate.G91Commands.spikes, 
+							spikes:printTemplate.G91Commands.spikesTall, 
 							spikesTop:printTemplate.G91Commands.spikesTop, 
 							top:printTemplate.G91Commands.alternatingLineStrongTop
 						};
@@ -1414,7 +1415,6 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 	returnRef = job.renderRef.a;
 	console.log({placeConnLists:placeConnLists});
 
-
 	let baseRenderDetails = null;
 	if (commandObj.base.renderDetails) {	
 		baseRenderDetails = commandObj.base.renderDetails;
@@ -1438,7 +1438,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
-						returnRef.printOutlines.push(renderPath);
+						returnRef.printAreaOutlines.push(renderPath);
 						break;
 					case "line":
 						const deltaX = connection.to.x - connection.from.x;
@@ -1508,7 +1508,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
-						returnRef.printOutlines.push(renderPath);
+						returnRef.printAreaOutlines.push(renderPath);
 						// // console.log({rCircle:renderPath});
 						break;
 					case "line":
@@ -1516,7 +1516,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
-						returnRef.printOutlines.push(renderPath);
+						returnRef.printAreaOutlines.push(renderPath);
 						// // console.log({rCircle:renderPath});
 						break;
 				}
@@ -1537,9 +1537,10 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				// renderPath.renderWidth = 10;
 				// renderPath.strokeColor = '#F03';
 				returnList.push(renderPath);
-				returnRef.printOutlines.push(renderPath);
+				returnRef.printAreaOutlines.push(renderPath);
 			}
 		}
+		console.log(job.renderRef.a);
 		returnList = returnBPrint;
 		returnRef = job.renderRef.b;
 	}
@@ -1679,7 +1680,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 		var returnObj = {details:markerDetails, sourceObj:markerObj, serverData:undefined};
 	
 		let markerHeight = param['marker height'];
-		if (!markerHeight) markerHeight = 3;
+		if (!markerHeight) markerHeight = 0.8;
 		axios.post('http://127.0.0.1:5505/exportMarkersSTL.cmd', {
 			points: markerDetails.pointArray,
 			ID: currentID,
@@ -1694,6 +1695,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 			markerGCodes.push(markerGCode);
 	
 			returnObj.serverData = markerGCode;
+			receivedCounter += 1;
 	
 		}).catch(function (error) {
 			console.log(error);
@@ -1790,8 +1792,9 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 
 			var ouputClone = clonePath.clone();
 			ouputClone.name = 'printedMarker';
+			ouputClone.renderWidth = 0;
 			returnABPrint.push(ouputClone); // Add printed area to display output
-			renderRefAB.printOutlines.push(ouputClone);	
+			renderRefAB.printAreaOutlines.push(ouputClone);	
 		} else {
 			console.warn("Marker did not cross path twice");
 			console.log({crossings:crossings, marker:marker, edgeAB:edgeAB});
@@ -2503,7 +2506,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 		// pathsGroup.rotate(30, rotP); // Just a debug test?
 		// Separate into print jobs
-		var renderRef1 = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
+		var renderRef1 = {a:{laserLines:[], printLines:[], printAreaOutlines:[]}, b:{laserLines:[], printLines:[], printAreaOutlines:[]}};
 		var jobs = [{path:laserPointsPath, renderRef:renderRef1, laserHoles:[], offset:0, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:edgeACopy, originSourceOffset:0, originSourcePartOffset:0, jointShapeList:shapeList}];
 		console.log({jobs:jobs});
 		while (startIndex < (laserHoleList.length-1)) {
@@ -2557,7 +2560,7 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 				var originSourcePathPart = lastJob.originSourcePathPart.split(originSourcePartSplitPL);//lastJob.originSourcePathPart.getLocationOf(originSourcePartSplitPL));
 
 				// returnAFold.push(originSourcePathPart);
-				var renderRef = {a:{laserLines:[], printLines:[], printOutlines:[]}, b:{laserLines:[], printLines:[], printOutlines:[]}};
+				var renderRef = {a:{laserLines:[], printLines:[], printAreaOutlines:[]}, b:{laserLines:[], printLines:[], printAreaOutlines:[]}};
 
 				jobs.push({path:newJobPath, renderRef:renderRef, laserHoles:[], offset:newOffset, originPath:refLineA, originSourcePath:edgeA, originSourcePathPart:originSourcePathPart, originSourceOffset:originSourceSplitPL, originSourcePartOffset:originSourcePartSplitPL, jointShapeList:shapeList});
 
@@ -4240,6 +4243,7 @@ function getAlphaID(number) {
 }
 
 function calcBounds(relevantShapes) {
+	console.log({relevantShapes:relevantShapes});
 	var localBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};
 	if (relevantShapes.length > 0) {
 		var corners = [];
@@ -4280,10 +4284,17 @@ function getPrintPreview(relevantShapes) {
 	localBounds = calcBounds(relevantShapes);
 	// console.log({localBounds:localBounds});
 	var localSVG = $(project.exportSVG({bounds:'content'})).html();
-	localBounds.minX -= 5;
-	localBounds.minY -= 5;
-	const localWidth = localBounds.maxX-localBounds.minX+5;
-	const localHeight = localBounds.maxY-localBounds.minY+5;
+	localBounds.minY -= 50;
+	localBounds.minX -= 50;
+	const localHeight = localBounds.maxY-localBounds.minY+10;
+	let localWidth = localBounds.maxX-localBounds.minX+10;
+	// Make square if height is larger than width
+	if (localBounds.maxY-localBounds.minY > localBounds.maxX-localBounds.minX) {
+		localBounds.minX -= (localBounds.maxY-localBounds.minY-(localBounds.maxX-localBounds.minX))/2;
+		localWidth = localBounds.maxY-localBounds.minY+10;
+	}
+	// localBounds.minX -= 10;
+	// const localWidth = localBounds.maxX-localBounds.minX+10;
 	var localSvgString = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+localWidth+'mm" height="'+localHeight+'mm" viewBox="'+localBounds.minX+' '+localBounds.minY+' '+localWidth+' '+localHeight+'">'+localSVG+'</svg>';
 	var blob = new Blob([localSvgString], {type: 'image/svg+xml'});
 	const imageData = {blob:blob, width:localWidth, height:localHeight, svgString:localSvgString};
@@ -4398,9 +4409,17 @@ function is_server() {
 function exportProject() {
 	setMessage('<b>Opening Control Panel. Please wait.</b>', '#393');
 	// refreshShapeDisplay();
-	setTimeout(function() {
-		exportProjectNow();
-	}, 5); // TODO wait for server responses. Make list of open requests and check if all are done before exporting
+	const checkAndExport = () => {
+		if (receivedCounter === requestCounter) {
+			exportProjectNow();
+		} else {
+			console.log('Waiting for all data to be received...');
+			console.log({receivedCounter:receivedCounter, requestCounter:requestCounter});
+			setTimeout(checkAndExport, 50); // Check again after 50ms
+		}
+	};
+
+	checkAndExport();
 }
 
 function exportProjectNow() {
@@ -4719,7 +4738,7 @@ function exportProjectNow() {
 				let theShape = shape[shapeID];
 
 				const typeObj = {detail:0, string:"Lasercut"};
-				shape[shapeID].imageData.imageType = 'cutSVG for bucket';
+				shape[shapeID].imageData.imageType = 'cutSVG preview for bucket';
 				var imageDataList = [shape[shapeID].imageData];
 				var cutObj = {bucketStep:bucket.bucketOrder, type:typeObj, imageDatas:imageDataList, cutSVG:shape[shapeID].cutSVGdata, shape:shape[shapeID], fabricated:false};
 				// if it doesn't have an order number yet
@@ -4772,6 +4791,7 @@ function exportProjectNow() {
 
 
 		// add printing preview images to bucket prints
+		console.log("Coloring buckets");
 		for (let bucket of jobBucketsByShape) {
 			for (let printSet of bucket.printSets) {
 				for (let print of printSet.singlePrints) {
@@ -4779,33 +4799,26 @@ function exportProjectNow() {
 					var threadList = [];
 					var shapeImages = [];
 					for (let printedThread of print.printedThreads) {
-						printList.push(printedThread.output.laserHolesRefPath);
+						printList.push(printedThread.output.laserHolesRefPath); // The path of laser holes itself
+						for (printLine of printedThread.output.renderRef.a.printLines) {
+							printList.push(printLine); // The lines between laser holes
+						}
+						for (printArea of printedThread.output.renderRef.a.printAreaOutlines) {
+							printList.push(printArea); // The areas printed, like markers
+						}
 						threadList.push(printedThread);
 					}
 					
-					for (let printJob of print.printJobs) {
-						for (let printOutline of printJob.renderRef.a.printOutlines) {
-							printOutline.strokeColor = '#02B';
-							printOutline.strokeWidth = 0;
-							printOutline.fillColor = '#F1D';
-							printOutline.opacity = 0.25;
-						}
-						for (let printOutline of printJob.renderRef.b.printOutlines) {
-							printOutline.strokeColor = '#02B';
-							printOutline.strokeWidth = 0;
-							printOutline.fillColor = '#F1D';
-							printOutline.opacity = 0.25;
-						}
-					}
-		
+					colorPrintsForPreview(print);
+
 					// TODO: Make all the color mods, then get picture of relevantShapes (laserPreview)
 		
 					for (let thisShape of print.relevantShapes) {
 						// console.log({thisShape:thisShape});
 						console.log({shape:thisShape.shape});
-						colorForLaser(thisShape.shape);
+						colorForLaser(thisShape.shape, false);
 						const shapeList = [thisShape.shape];
-						var imageData = getLaserPreview(shapeList);
+						var imageData = getLaserPreview(shapeList, false);
 						imageData.imageType = 'laserPreview for print';
 						console.log("got laser preview");
 						shapeImages.push(imageData);
@@ -4829,47 +4842,40 @@ function exportProjectNow() {
 					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, parentShape:currentObj.parentShape, relevantShapes:theRelevantShapes, print:printRef};
 					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, shape:shape};
 
-					grayOutShapes();
-		
+					grayOutPrint(print);
 				}
 			}
+			// grayOutShapes();
 		}
 
 
-
+		console.log("Coloring prints");
 		for (let print of prints) {
 			var printList = [];
 			var threadList = [];
 			var shapeImages = [];
 			for (let printedThread of print.printedThreads) {
-				printList.push(printedThread.output.laserHolesRefPath);
+				printList.push(printedThread.output.laserHolesRefPath); // The path of laser holes itself
+				for (printLine of printedThread.output.renderRef.a.printLines) {
+					printList.push(printLine); // The lines between laser holes
+				}
+				for (printArea of printedThread.output.renderRef.a.printAreaOutlines) {
+					printList.push(printArea); // The areas printed, like markers
+				}
 				threadList.push(printedThread);
 			}
 			
-			
-
-			for (let printJob of print.printJobs) {
-				for (let printOutline of printJob.renderRef.a.printOutlines) {
-					printOutline.strokeColor = '#02B';
-					printOutline.strokeWidth = 0;
-					printOutline.fillColor = '#F1D';
-					printOutline.opacity = 0.25;
-				}
-				for (let printOutline of printJob.renderRef.b.printOutlines) {
-					printOutline.strokeColor = '#02B';
-					printOutline.strokeWidth = 0;
-					printOutline.fillColor = '#F1D';
-					printOutline.opacity = 0.25;
-				}
-			}
+			colorPrintsForPreview(print);
 
 			// TODO: Make all the color mods, then get picture of relevantShapes (laserPreview)
 
+			
 			for (let thisShape of print.relevantShapes) {
 				// console.log({thisShape:thisShape});
-				colorForLaser(thisShape.shape);
+				colorForLaser(thisShape.shape, false);
 				const shapeList = [thisShape.shape];
-				var imageData = getLaserPreview(shapeList);
+				var imageData = getLaserPreview(shapeList, false);
+				imageData.imageType = 'Straight Prints: Preview (for prints?)';
 				console.log("got laser preview for print");
 				shapeImages.push(imageData);
 			}
@@ -4884,7 +4890,7 @@ function exportProjectNow() {
 			// console.log({shapeImages:shapeImages});
 			// console.log({printList:printList, threadList:threadList, prints:prints});
 
-			grayOutShapes();
+			// grayOutShapes();
 
 		}
 
