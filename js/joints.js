@@ -1786,7 +1786,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 				splitMarker.lastCurve._segment2._handleIn._y = 0;
 			}
 
-			clonePath.name = 'cut';
+			clonePath.name = 'markerHole';
 			returnAB.push(clonePath);
 			renderRefAB.laserLines.push(clonePath);
 
@@ -1833,7 +1833,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		var arrowPath = new Path(arrowPoints);
 		// arrowPath.color = new Color(1, 0, 0);
 		// arrowPath.strokeColor = '#F00';
-		arrowPath.name = 'mark';
+		arrowPath.name = 'engravedMarking';
 		returnAB.push(arrowPath);
 
 
@@ -2215,11 +2215,11 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 		var offsetPA = new Path({segments:pinkingPathA, closed:false});
 		var offsetPB = new Path({segments:pinkingPathB, closed:false});
-		pinkedA.name = 'cut';
-		pinkedB.name = 'cut';
-		pinkedA.strokeColor = laserColor;
+		pinkedA.name = 'pinking';
+		pinkedB.name = 'pinking';
+		pinkedA.strokeColor = laserColorAlt;
 		pinkedA.strokeWidth = laserWidth;
-		pinkedB.strokeColor = laserColor;
+		pinkedB.strokeColor = laserColorAlt;
 		pinkedB.strokeWidth = laserWidth;
 		pinkedA.fillColor = noColor;
 		pinkedB.fillColor = noColor;
@@ -2376,8 +2376,8 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 						circleB = new Path.Circle(ptB, param['hole diameter']/2);
 						circleA.name = 'cut';
 						circleB.name = 'cut';
-						circleA.strokeColor = laserColor;
-						circleB.strokeColor = laserColor;
+						circleA.strokeColor = laserColorAlt;
+						circleB.strokeColor = laserColorAlt;
 						circleA.strokeWidth = laserWidth;
 						circleB.strokeWidth = laserWidth;
 						circleA.fillColor = noColor;
@@ -4284,8 +4284,8 @@ function getPrintPreview(relevantShapes) {
 	localBounds = calcBounds(relevantShapes);
 	// console.log({localBounds:localBounds});
 	var localSVG = $(project.exportSVG({bounds:'content'})).html();
-	localBounds.minY -= 50;
-	localBounds.minX -= 50;
+	localBounds.minY -= 10;
+	localBounds.minX -= 10;
 	const localHeight = localBounds.maxY-localBounds.minY+10;
 	let localWidth = localBounds.maxX-localBounds.minX+10;
 	// Make square if height is larger than width
@@ -4450,14 +4450,20 @@ function exportProjectNow() {
 				if (shape[i].children[j].className=='Path') {
 					if (shape[i].children[j].name=='joint') {
 						if (shape[i].children[j].printJobs) {
-							shape[i].children[j].strokeWidth = 1.0;
-							shape[i].children[j].strokeColor = '#0F0';
+							shape[i].children[j].strokeWidth = 0;
+							shape[i].children[j].strokeColor = noColor;
+							// shape[i].children[j].strokeWidth = 1.0;
+							// shape[i].children[j].strokeColor = '#0F0';
 						} else {
-							shape[i].children[j].strokeWidth = 1.0;
-							shape[i].children[j].strokeColor = '#F00';
+							shape[i].children[j].strokeWidth = 0;
+							shape[i].children[j].strokeColor = noColor;
+							// shape[i].children[j].strokeWidth = 1.0;
+							// shape[i].children[j].strokeColor = '#F00';
 						}
 					} else {
-						shape[i].children[j].strokeColor = shapeColor[i][j];
+						shape[i].children[j].strokeWidth = 0;
+						shape[i].children[j].strokeColor = noColor;
+						// shape[i].children[j].strokeColor = shapeColor[i][j];
 					}
 				} else if (shape[i].children[j].className=='Group') {
 					var shapeName = shape[i].children[j].name;
@@ -4468,17 +4474,23 @@ function exportProjectNow() {
 						// console.log({shapeName:shapeName});
 						var shapeNameStr = shapeName.split('_');
 						if (shapeNameStr[shapeNameStr.length-1] == 'joint') {
-							shape[i].children[j].strokeWidth = 1.0;
-							shape[i].children[j].strokeColor = '#00F';
+							shape[i].children[j].strokeWidth = 0;
+							shape[i].children[j].strokeColor = noColor;
+							// shape[i].children[j].strokeWidth = 1.0;
+							// shape[i].children[j].strokeColor = '#00F';
 							if (shape[i].children[j].children['folds']) {
-								shape[i].children[j].children['folds'].strokeColor = '#0FF';
+								shape[i].children[j].children['folds'].strokeColor = noColor;
+								shape[i].children[j].children['folds'].strokeWidth = 0.0;
+								// shape[i].children[j].children['folds'].strokeColor = '#0FF';
 								if (shape[i].children[j].printJobs) {
-									shape[i].children[j].strokeColor = '#FF0';
+									shape[i].children[j].strokeColor = noColor;
+									// shape[i].children[j].strokeColor = '#F0F';
 								} 
 							}
 							
 						} else {
-							//shape[i].children[j].strokeColor = '#F0F';
+							// shape[i].children[j].strokeColor = '#F0F';
+							shape[i].children[j].strokeColor = noColor;
 						}
 					}
 				}
@@ -4600,9 +4612,6 @@ function exportProjectNow() {
 		}
 		console.log({jobBucketsByShape:jobBucketsByShape});
 
-		
-
-
 		// var text = new PointText(new Point(projectBounds.minX, projectBounds.minY));
 		// text.fillColor = 'black';
 		// text.content = projectBounds.minX + ' ' + projectBounds.minY;
@@ -4615,6 +4624,7 @@ function exportProjectNow() {
 		for (shapeID of allShapeIDs) {
 			const shapeList = [shape[shapeID]];
 			// console.log({shapeID:shapeID, shapeList:shapeList});
+			colorShapes(false, shapeList, false, true); // color one shape for SVG laser cutting
 			var imageData = getLaserPreview(shapeList);
 			laserObjects.push({ID:shapeID, imageData:imageData});
 			shape[shapeID].imageData = imageData;
@@ -4622,7 +4632,7 @@ function exportProjectNow() {
 		}
 
 		let nesting = false; 
-		if (nesting) {
+		if (false) {
 			// console.log({laserObjects:laserObjects});
 			svgFilesToNest = [];
 			boxList = [];
@@ -4630,7 +4640,8 @@ function exportProjectNow() {
 
 			// Export svg with only the laser paths
 			for (shapeID of allShapeIDs) {
-				colorForLaser(shape[shapeID]);
+				let shapeList = [shape[shapeID]];
+				colorShapes(false, shapeList, false, true); // color one shape fur SVG laser cutting
 				var laserSVGImageData = getLaserSVG(shapeID);
 				// console.log('laserSVG: ', laserSVG);
 				shape[shapeID].cutSVGdata = laserSVGImageData;
@@ -4640,16 +4651,12 @@ function exportProjectNow() {
 				boxList.push(minimizeBB(shape[shapeID], margin));
 				// console.log('boxList: ', boxList);
 			}
-
-
-
 			var laserArea = [{x: 0, y: 0, w: chosenLaser.width, h: chosenLaser.height}];
 			var arrangement = packboxes(boxList, laserArea);
 			// console.log({arrangement:arrangement});
 
 			// console.log('window: ', window);
 			// console.log('window: ', window.Fit);
-
 
 			let bins = [
 			// array of 2D Bins
@@ -4671,7 +4678,6 @@ function exportProjectNow() {
 				]
 			),
 			]
-			
 			
 			let packer = new window.Fit.Packer()
 			
@@ -4718,7 +4724,8 @@ function exportProjectNow() {
 			// packer.stop() // Stop a process
 		} else {
 			for (shapeID of allShapeIDs) {
-				colorForLaser(shape[shapeID]);
+				let shapeList = [shape[shapeID]];
+				colorShapes(false, shapeList, false, true); // color one shape for SVG laser cutting
 				console.log({type: "SVG for cutting", shape:shape[shapeID]});
 				console.log({shapeID:shapeID});
 				var laserSVGImageData = getLaserSVG(shapeID);
@@ -4787,8 +4794,8 @@ function exportProjectNow() {
 
 		console.log({jobBucketsByShape:jobBucketsByShape});
 
-		grayOutShapes();
-
+		console.log('Gray out all before print previews');
+		colorShapes(); // gray out all
 
 		// add printing preview images to bucket prints
 		console.log("Coloring buckets");
@@ -4816,7 +4823,11 @@ function exportProjectNow() {
 					for (let thisShape of print.relevantShapes) {
 						// console.log({thisShape:thisShape});
 						console.log({shape:thisShape.shape});
-						colorForLaser(thisShape.shape, false);
+						// colorShapes(false, [thisShape.shape], false);
+
+						// colorShapes(false, [thisShape.shape], false, false); // marking, instead of neither graying or cutting 
+						// colorPrintsForPreview(print);
+
 						const shapeList = [thisShape.shape];
 						var imageData = getLaserPreview(shapeList, false);
 						imageData.imageType = 'laserPreview for print';
@@ -4842,14 +4853,16 @@ function exportProjectNow() {
 					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, parentShape:currentObj.parentShape, relevantShapes:theRelevantShapes, print:printRef};
 					// var flatObj = {listID:stepNr, type:typeObj, imageDatas:imageDataList, shape:shape};
 
-					grayOutPrint(print);
+					colorPrintsForPreview(print, true); // gray print out again
+
+					// colorShapes(true, null, true); // gray out shapes again
+					// colorPrintsForPreview(print, true); // gray print out again
 				}
 			}
-			// grayOutShapes();
+			// colorShapes();
 		}
 
-
-		console.log("Coloring prints");
+		console.log("Coloring prints"); // TODO: UPDATE to match bucket approach...
 		for (let print of prints) {
 			var printList = [];
 			var threadList = [];
@@ -4872,7 +4885,7 @@ function exportProjectNow() {
 			
 			for (let thisShape of print.relevantShapes) {
 				// console.log({thisShape:thisShape});
-				colorForLaser(thisShape.shape, false);
+				// colorShapes(false, [thisShape.shape], false);
 				const shapeList = [thisShape.shape];
 				var imageData = getLaserPreview(shapeList, false);
 				imageData.imageType = 'Straight Prints: Preview (for prints?)';
@@ -4890,7 +4903,7 @@ function exportProjectNow() {
 			// console.log({shapeImages:shapeImages});
 			// console.log({printList:printList, threadList:threadList, prints:prints});
 
-			// grayOutShapes();
+			// colorShapes();
 
 		}
 

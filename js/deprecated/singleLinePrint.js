@@ -90,7 +90,7 @@ function generateSingleLinePrint(index, shapeA, pathA, shapeB, pathB, param, G91
 
 			let cutCircle = new Path.Circle(ptA, param['hole diameter']/2)
 			// cutCircle.strokeColor = new Color(1, 0, 0);
-			cutCircle.strokeColor = '#F00';
+			cutCircle.strokeColor = laserColor;
 
 			returnA.push(cutCircle);
 			returnB.push(new Path.Circle(ptB, param['hole diameter']/2));

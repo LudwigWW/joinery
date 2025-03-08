@@ -638,8 +638,9 @@ function addParallelJobs(print, id, status, completed=false) {
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')', 'groupExport(\'print_'+id.toString()+'\')');
 	html += '<br />';
-	if (imageDatas.length > 0) {
-		for (let imageData of imageDatas) {
+
+	if (print.shapeImages.length > 0) {
+		for (let imageData of print.shapeImages) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
 			html += '<span>'+imageType+'</span><br />';
@@ -649,8 +650,8 @@ function addParallelJobs(print, id, status, completed=false) {
 		}
 	}
 
-	if (print.shapeImages.length > 0) {
-		for (let imageData of print.shapeImages) {
+	if (imageDatas.length > 0) {
+		for (let imageData of imageDatas) {
 			let imageType = '';
 			if (imageData.imageType) imageType = imageData.imageType;
 			html += '<span>'+imageType+'</span><br />';
