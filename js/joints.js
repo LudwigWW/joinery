@@ -21,7 +21,7 @@ const defaultTPUTemp = 230;
 
 const switchMoveDuration = 1;
 
-const verbose = true;
+const verbose = false;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
@@ -430,12 +430,12 @@ var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste
 var jointProfileList = [];
 
 var featureTypes = [
-	{ type: 'none', order: 20 },
-	{ type: 'internal feature', order: 5 },
-	{ type: 'outside shell', order: 4 },
-	{ type: 'opening and fastenings', order: 3 },
-	{ type: 'finishings', order: 2 },
-	{ type: 'hem', order: 1 }
+	{ type: 'none', order: 20, assemblyNote: ' '},
+	{ type: 'internal feature', order: 5, assemblyNote: 'Place feature part facing outwards.'},
+	{ type: 'outside shell', order: 4, assemblyNote: 'Place pieces with face sides touching (first piece: face side up. second piece: wrong side up).'},
+	{ type: 'opening and fastenings', order: 3, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong side up).'},
+	{ type: 'finishings', order: 2, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).'},
+	{ type: 'hem', order: 1, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).' }
 ];
 
 function createJointProfile(n) {
@@ -4421,17 +4421,32 @@ function is_server() {
 function exportProject() {
 	setMessage('<b>Opening Control Panel. Please wait.</b>', '#393');
 	// refreshShapeDisplay();
+	// Ping server to check if it is online
+
 	const checkAndExport = () => {
+		// Check if all data has been received
 		if (receivedCounter === requestCounter) {
 			exportProjectNow();
 		} else {
 			console.log('Waiting for all data to be received...');
 			console.log({receivedCounter:receivedCounter, requestCounter:requestCounter});
-			setTimeout(checkAndExport, 50); // Check again after 50ms
+			setTimeout(checkAndExport, 100); // Check again after 100ms
 		}
 	};
-
-	checkAndExport();
+	axios.get('http://127.0.0.1:5505/ping')
+	.then((response) => {
+		if (response.data === 'pong') {	
+			console.log('Server is online');
+			// If server is online, export project after all data has been received
+			checkAndExport();
+		} else {
+			console.warn('Server sent unexpected response');
+			exportProjectNow();
+		}
+	}).catch((error) => {
+		console.warn('Server is offline');
+		exportProjectNow();
+	});
 }
 
 function exportProjectNow() {

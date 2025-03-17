@@ -17,7 +17,7 @@ var request = require('request-promise');
 // const svelteApp = require('./App.svelte').default;
 
 
-const debug = true;
+const debug = false;
 
 // // Initialize OctoPrint client
 // const octoPrintClient = new OctoPrintClient({
@@ -162,6 +162,11 @@ function send_error_response(res, err) {
 
 app.use(cors({ origin: true }));
 app.use(express.json());
+
+app.get('/ping', (_, res) => {
+    console.log('ping');
+    res.send('pong');
+});
 
 app.get('/machines.json', (req, res) => {
     fs.readFile('machines.json', 'utf8', (err, data) => {
