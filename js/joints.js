@@ -7,6 +7,7 @@ var chosenPrinter = {};
 var chosenLaser = {};
 var requestCounter = 0;
 var receivedCounter = 0;
+var orderNr = -50;
 var markerGCodes = [];
 var printCounter = 1; // Starts at A
 
@@ -20,7 +21,7 @@ const defaultTPUTemp = 230;
 
 const switchMoveDuration = 1;
 
-const verbose = false;
+const verbose = true;
 
 const defaultLineCommandObj = {
 	gCodeOptions: [
@@ -1431,12 +1432,16 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 		console.log({placeConnL:placeConnL});
 		for (let connection of placeConnL) {
 			// console.log(connection.to !== null);
+			let orderNrThickness = 0;
+			if (verbose) {
+				orderNrThickness = connection.orderNr*0.1;
+			}
 			if (connection.to !== null && connection.from !== null) {
 				switch (baseRenderDetails.type) { // TODO differentiate between base and top
 					case "circle":
 						var renderPath = new Path.Circle(connection.from, baseRenderDetails.diameter/2);
 						renderPath.name = 'printedCircle';
-						renderPath.renderWidth = 0;
+						renderPath.renderWidth = orderNrThickness;
 						returnList.push(renderPath);
 						returnRef.printAreaOutlines.push(renderPath);
 						break;
@@ -1482,7 +1487,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 							path.strokeWidth = 0;
 							path.fillColor = 'black';
 							path.name = 'printedTriangle';
-							path.renderWidth = baseWidth/12;
+							path.renderWidth = baseWidth/12 + orderNrThickness;
 
 							returnList.push(path);
 							returnRef.printLines.push(path);
@@ -1493,7 +1498,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 							renderPath.name = 'printedLine';
 							const outWidth = (connection.from.getDistance(connection.to) / bestOption.dLength) * bestOption.dWidth;
 							// // console.log({dist:connection.from.getDistance(connection.to)});
-							renderPath.renderWidth = outWidth;
+							renderPath.renderWidth = outWidth + orderNrThickness;
 							returnList.push(renderPath);
 							returnRef.printLines.push(renderPath);
 							// // console.log({renderPath:renderPath});
@@ -1502,9 +1507,10 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				}
 			} 
 			else if (connection.from !== null) {
+				console.warn('Rendering without to point');
 				switch (baseRenderDetails.type) {
 					case "circle":
-						var renderPath = new Path.Circle(connection.from, baseRenderDetails.diameter/2);
+						var renderPath = new Path.Circle(connection.from, baseRenderDetails.diameter/2 + orderNrThickness);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
@@ -1512,7 +1518,7 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						// // console.log({rCircle:renderPath});
 						break;
 					case "line":
-						var renderPath = new Path.Circle(connection.from, baseRenderDetails.skipDiameter/2);
+						var renderPath = new Path.Circle(connection.from, baseRenderDetails.skipDiameter/2 + orderNrThickness);
 						renderPath.name = 'printedCircle';
 						renderPath.renderWidth = 0;
 						returnList.push(renderPath);
@@ -1520,14 +1526,15 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 						// // console.log({rCircle:renderPath});
 						break;
 				}
-			} else if (connection.to !== null) {
-				console.warn('Rendering from unknown point');
+			} 
+			else if (connection.to !== null) {
+				console.warn('Rendering without from point');
 				console.log({connection:connection});
-				let diam = 50; // 
+				let diam = 50 + orderNrThickness; 
 				if (baseRenderDetails.type === "circle") {
-					diam = baseRenderDetails.diameter/2;
+					diam = baseRenderDetails.diameter/2 + orderNrThickness;
 				} else if (baseRenderDetails.type === "line") {
-					diam = baseRenderDetails.skipDiameter/2;
+					diam = baseRenderDetails.skipDiameter/2 + orderNrThickness;
 				} else {
 					console.warn('Unknown render type, rendering huge circle');
 				}
@@ -1538,11 +1545,16 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 				// renderPath.strokeColor = '#F03';
 				returnList.push(renderPath);
 				returnRef.printAreaOutlines.push(renderPath);
+				console.log({rCircle:renderPath});
+				console.log({diam:diam, baseRenderDetails:baseRenderDetails});
+			} 
+			else {
+				console.warn('No line or skipDot to render?');
 			}
 		}
 		console.log(job.renderRef.a);
 		returnList = returnBPrint;
-		returnRef = job.renderRef.b;
+		returnRef = job.renderRef.b; // Switching to B side for second iteration
 	}
 }
 
