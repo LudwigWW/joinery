@@ -176,7 +176,7 @@ var printedRivets = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'anti-overlap spacing': 5,
 		'printing temperature': 215,
@@ -195,7 +195,7 @@ var printedRunning = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 215,
 	}
@@ -213,7 +213,7 @@ var printedRunningStrong = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 215,
 	}
@@ -232,7 +232,7 @@ var printedOverlapping = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'anti-overlap spacing': 2,
 		'printing temperature': 215,
@@ -251,7 +251,7 @@ var printedBaste = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 215,
 	}
@@ -269,7 +269,7 @@ var printedBastePull = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 215,
 	}
@@ -288,7 +288,7 @@ var printedWhip = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 230,
 	}
@@ -306,7 +306,7 @@ var printedZigZag = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 230,
 	}
@@ -324,7 +324,7 @@ var printedFlex = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 230,
 	}
@@ -343,11 +343,12 @@ var printedCross = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 230,
 	}
 };
+
 var printedDecorative = {
 	'name':'printed decorative stitch',
 	'profile':'',
@@ -360,7 +361,26 @@ var printedDecorative = {
 		'skip # holes': 0,
 		'printing area width': 250,
 		'printing area depth': 210,
-		'marker height': 3,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+var printedTest = {
+	'name':'printed test stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 5,
+		'seam pattern width': 30,
+		'hole diameter': 1.25,
+		'hole spacing': 3.33,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
 		'pinking cut': false,
 		'printing temperature': 215,
 	}
@@ -424,7 +444,7 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, printedRunningStrong, noneJoint];
+var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -790,15 +810,26 @@ function generateJoint(index) {
 					
 				case 'printed strong running stitch':
 						
-						var G91 = {base:printTemplate.G91Commands.alternatingLineStrong, 
-							spikes:printTemplate.G91Commands.spikesTall, 
-							spikesTop:printTemplate.G91Commands.spikesTop, 
-							top:printTemplate.G91Commands.alternatingLineStrongTop
-						};
-	
-						handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
-						
-						break;
+					var G91 = {base:printTemplate.G91Commands.alternatingLineStrong, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.alternatingLineStrongTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed test stitch':
+					var G91 = {base:printTemplate.G91Commands.uistLine, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.uistLineTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
 
 				case 'printed running stitch':
 					// var printTemplate = template;
@@ -2066,11 +2097,12 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 		patternLocations = G91Obj.base.patternLocations;
 		for (let i = 0; i < patternLocations.length; i++) { // get total pattern width 
 			let parsedPL = parsePatternLocation(patternLocations[i]);
-			if (parsedPL.hem) {
+			if (parsedPL.hem) { // TODO: Why only regard hem lines for pattern width? 
 				if (parsedPL.dist > maxLineDistance) maxLineDistance = parsedPL.dist;
 				if (parsedPL.dist < minLineDistance) minLineDistance = parsedPL.dist;
 			}
 		}
+		console.log({maxLineDistance:maxLineDistance, minLineDistance:minLineDistance});
 	}
 
 	let widthFactor = 1
@@ -2089,6 +2121,8 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 			patternLocations[i] = patternLocations[i]*widthFactor;
 		}
 	}
+
+	console.log({rescaledPattern:patternLocations, widthFactor:widthFactor, targetPatternWidth:targetPatternWidth});
 
 
 	var mOrF = false;
@@ -2410,12 +2444,19 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 							circleB.fillColor = noColor;
 							returnA.push(circleA);
 							returnB.push(circleB);
+							console.warn({message:"Outside hole", ptA:ptA, ptB:ptB});
 						}
 					}
 
 					patternIndex += 1;
 					if (patternIndex >= holePattern.length) patternIndex = 0;
 				}
+				else {
+					if (debug) {
+						console.warn('Close to other prints');
+						console.log({ptA:ptA, ptB:ptB});
+					}
+				}	
 			}
 		}
 

@@ -303,7 +303,7 @@ function exportPreviousGcode(GCODE, addedOutputs, addedShapes, addedPrintJobs, c
 		durations.durationEstimateTotal = outputContainer.duration;
         // console.log('output: ', outputContainer);
         GCODE += outputContainer.output.G91.spikes.precode;
-        GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, [outputContainer.output.G91.spikes], outputContainer.output.G91.spikes, outputContainer.heightUsed, outputContainer.print_Offset_X, durations);
+        GCODE = addGCodePartsC(GCODE, outputContainer.usedParam, outputContainer.output.holeList, [outputContainer.output.G91.spikes], outputContainer.output.G91.base, outputContainer.heightUsed, outputContainer.print_Offset_X, durations);
 		console.log("+Spikes GCode in exportPreviousGcode");
 		// console.log(GCODE);
     }
