@@ -45,6 +45,7 @@ function init() {
 	}
 	paper.install(window);
 	printingCommands = getJSONs("test.json");
+	console.log({printingCommands:printingCommands});
 	var canvas = document.getElementById('paperCanvas');
 	var exportCanvas = document.getElementById('exportCanvas');
 	$('#paperCanvas').css({'width':window.innerWidth, 'height':window.innerHeight});
@@ -96,8 +97,10 @@ var majorLineCol = "#DADADA";
 
 function getJSONs(jsonName) {
 	$.getJSON(jsonName, function(data){
-		console.log("🚀 ~ file: main.js:44 ~ $.getJSON ~ data", data)
-		return data;
+		console.log("🚀 ~ file: main.js:44 ~ $.getJSON ~ data", data);
+		let resolvedData = resolveRef(data, data);
+		console.log("🚀 ~ file: main.js:44 ~ $.getJSON ~ data", resolvedData);
+		return resolvedData;
 	}).fail(function(){
 		console.error("Failed to load JSON template.");
 		return;
