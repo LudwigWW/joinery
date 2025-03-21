@@ -177,6 +177,9 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 	let durations = {durationEstimate: timingsLists[currentTimings].durationEstimate, toComeEstimate: timingsLists[currentTimings].toComeEstimate, durationEstimateTotal: timingsLists[currentTimings].durationEstimateTotal};
 	console.log("Handle Jobs. Duration estimate: " + timingsLists[currentTimings].durationEstimate + " toComeEstimate: " + timingsLists[currentTimings].toComeEstimate + " total: " + timingsLists[currentTimings].durationEstimateTotal);
 
+
+	console.log({printJobs:printJobs, shape_i:shape_i, allShapeIDs:allShapeIDs, addedPrintJobs:addedPrintJobs, addedShapes:addedShapes, addedOutputs:addedOutputs, prints:prints});
+
 	for (let output of printJobs) {
         if (true || output.handled2 === false) {
             output.handled2 = true;
@@ -215,9 +218,25 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             let localHeight = heightUsed - output.relativeHeight.min + 20;
             heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
             addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam, duration:durations.durationEstimateTotal});
-            addedShapes.push({shape: shape[shape_i], ID:shape_i});
+            // addedShapes.push({shape: shape[shape_i], ID:shape_i});
+			// allShapeIDs.add(shape_i);
+			for (let relevantShapeID of output.printShapeList) {
+				// Add shape if not already added to addedShapes
+				shapeIsNew = true;
+				for (let addedShape of addedShapes) {
+					if (addedShape.ID == relevantShapeID) {
+						shapeIsNew = false;
+						break;
+					}
+				}
+				if (shapeIsNew) {
+					addedShapes.push({shape: shape[relevantShapeID], ID:relevantShapeID});
+					allShapeIDs.add(relevantShapeID);
+				}
+			}
             addedPrintJobs.push(output);
-            allShapeIDs.add(shape_i);
+            
+			
             // console.log({allShapeIDs:allShapeIDs, i:shape_i});
 
 			// TODO Add duration estimate for markers to total (and subtract later)
@@ -365,6 +384,9 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 	// commandObj = commandObjs[0];
 	// needleObj = commandObjs[1];
 
+	console.log({msg:"skipGCode", skipGCode:guidingCmdObj.skipGCode});
+
+
 	function handlePreCode(commandObj, place, depthAdjustment, durations) {
 		let preCodeString = `G1 Z${commandObj.zClearing} F3000\n`; // Safety lift
 		preCodeString += `G1 X${(place.x + print_Offset_X + commandObj.offset.x).toFixed(3)} Y${(place.y + depthAdjustment + commandObj.offset.y).toFixed(3)} F7200\n`; // XY positioning
@@ -470,7 +492,7 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 
 
 	// debug output for the hole handling and order
-	console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
+	if (verbose) console.log({reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
 
 	// This puts it before the needle...
 	// if (placeListLocal.length > 0 && commandObj.preCode) { // TODO: This assumes the first place is actually used, which is only true for patterns that use all holes
@@ -484,13 +506,13 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 
 	function checkForConnection(i, indexInExtendedPattern, direction) {
 		const patternPlace = mod(i, extendedPattern.length);
-		console.log({checkForConnection:direction, i:i, indexInExtendedPattern:indexInExtendedPattern, patternPlace:patternPlace, extendedPattern:extendedPattern});
+		if (verbose) console.log({checkForConnection:direction, i:i, indexInExtendedPattern:indexInExtendedPattern, patternPlace:patternPlace, extendedPattern:extendedPattern});
 		if ((Math.abs(extendedPattern[patternPlace]) !== 0.5) && (Math.abs(extendedPattern[patternPlace]) !== 0)) { // If it is a connection
-			console.log("connection");
-			console.log({positiveCheck:extendedPattern[patternPlace] > 0, positiveFoundCheck:mod((i - extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern, negativeFoundCheck:mod((i + extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern});
+			if (verbose) console.log("connection");
+			if (verbose) console.log({positiveCheck:extendedPattern[patternPlace] > 0, positiveFoundCheck:mod((i - extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern, negativeFoundCheck:mod((i + extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern});
 			if ((extendedPattern[patternPlace] > 0 && mod((i - extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern) || (extendedPattern[patternPlace] < 0 && mod((i - extendedPattern[patternPlace]), extendedPattern.length) == indexInExtendedPattern)) { // If it connects to this place from within the seam length
-				console.warn({message:"Found a connection while searching "+direction});
-				console.log({orderNr:orderNr, placeIndex:placeIndex, selectedCommand:extendedPattern[patternPlace], patternPlace:patternPlace, patternIndex:patternIndex, extendedPatternIndex:extendedPatternIndex, indexInExtendedPattern:indexInExtendedPattern, i:i, pattern:pattern, extendedPattern:extendedPattern});
+				if (verbose) console.warn({message:"Found a connection while searching "+direction});
+				if (verbose) console.log({orderNr:orderNr, placeIndex:placeIndex, selectedCommand:extendedPattern[patternPlace], patternPlace:patternPlace, patternIndex:patternIndex, extendedPatternIndex:extendedPatternIndex, indexInExtendedPattern:indexInExtendedPattern, i:i, pattern:pattern, extendedPattern:extendedPattern});
 				return true;
 			}
 		}
@@ -519,7 +541,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 					outString += produceCode(cmdObj, place, depthAdjustment, durations, false);
 				});
 				memoryList.push({orderNr:orderNr, from:place, to:null});
-				orderNr += 1; console.log("orderNr: "+orderNr+" non-directional");
+				orderNr += 1; 
+				if (verbose) console.log("orderNr: "+orderNr+" non-directional");
 			}
 		}
 		else {
@@ -549,7 +572,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 								}
 							});
 							memoryList.push({orderNr:orderNr, from:place, to:null});
-							orderNr += 1; console.log("orderNr: "+orderNr+" connection to empty location (from ahead)");
+							orderNr += 1; 
+							if (verbose) console.log("orderNr: "+orderNr+" connection to empty location (from ahead)");
 							keepChecking = false;
 							// console.warn({message:"Found a connection that attaches to this empty location searching forward. Adding skip code"});
 							// console.log({orderNr:orderNr, placeIndex:placeIndex, selectedCommand:extendedPattern[patternPlace], patternPlace:patternPlace, patternIndex:patternIndex, extendedPatternIndex:extendedPatternIndex, indexInExtendedPattern:indexInExtendedPattern, i:i, pattern:pattern, extendedPattern:extendedPattern});
@@ -571,11 +595,11 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 					}
 					if (keepChecking) {
 						// Also search backwards
-						console.log("Checking backwards at empty location");
+						if (verbose) console.log("Checking backwards at empty location");
 						for (let i = indexInExtendedPattern; i > (indexInExtendedPattern-maxCheckLength); i--) {  // check pattern beyond seam length bounds
-							console.log("check bw index: ", i);
+							if (verbose) console.log("check bw index: ", i);
 							// const patternPlace = mod(i, extendedPattern.length);
-							console.log({beforeLineStartCheck:placeCounter+i-indexInExtendedPattern});
+							if (verbose) console.log({beforeLineStartCheck:placeCounter+i-indexInExtendedPattern});
 							if (((placeCounter+i-indexInExtendedPattern) < 0)) { // only parts of the pattern that would come after line ends 
 								if (checkForConnection(i, indexInExtendedPattern, "backward; at empty location")) {
 									commandObjs.forEach(function (cmdObj) {
@@ -592,10 +616,11 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 										}
 									});
 									memoryList.push({orderNr:orderNr, from:place, to:null});
-									orderNr += 1; console.log("orderNr: "+orderNr+" connection to empty location (from behind)");
+									orderNr += 1; 
+									if (verbose) console.log("orderNr: "+orderNr+" connection to empty location (from behind)");
 									break;
 								} else {
-									console.log("No connection found at empty location");
+									if (verbose) console.log("No connection found at empty location");
 								}
 							}
 						}
@@ -622,7 +647,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 						}
 					});
 					memoryList.push({orderNr:orderNr, from:place, to:null});
-					orderNr += 1; console.log("orderNr: "+orderNr+" planned skip dot location");
+					orderNr += 1; 
+					if (verbose) console.log("orderNr: "+orderNr+" planned skip dot location");
 					// if (place.handled == false) {
 					// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
 					// 	place.handled = true;
@@ -632,17 +658,17 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 					// }
 					// outString += produceCode(commandObj, place, depthAdjustment, durations, true);
 				} else {
-					console.log("skip location, but omitted since pattern extends beyond seam length");
+					if (verbose) console.log("skip location, but omitted since pattern extends beyond seam length");
 				}
 
 			} else { 
 				
 				// if (pattern[patternIndex] > lastPlace.length) { // No place saved yet, can't connect here, so add skip-gcode
-				console.log({negativeCheck:pattern[patternIndex] < 0, fitsCheck:placeIndex-pattern[patternIndex] > placeList.length, patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+				if (verbose) console.log({negativeCheck:pattern[patternIndex] < 0, fitsCheck:placeIndex-pattern[patternIndex] > placeList.length, patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
 				
 				if ((pattern[patternIndex] < 0 && placeIndex-(-pattern[patternIndex]) < 0))  {
-					console.log({negativeCheck:pattern[patternIndex] < 0, negativeBefore:placeIndex-(-pattern[patternIndex]) < 0, patternCmd:pattern[patternIndex], patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
-					console.log({fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, Pattern: pattern, reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
+					if (verbose) console.log({negativeCheck:pattern[patternIndex] < 0, negativeBefore:placeIndex-(-pattern[patternIndex]) < 0, patternCmd:pattern[patternIndex], patternIndex:patternIndex, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+					if (verbose) console.log({fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, Pattern: pattern, reverse:reverse, OffsetPattern:pattern, placeListLocal:placeListLocal, patternOffset:reversePatternOffsetLength});
 				}
 				
 				
@@ -696,7 +722,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 							}
 						});
 						memoryList.push({orderNr:orderNr, from:null, to:place});
-						orderNr += 1; console.log("orderNr: "+orderNr+" skip added, since connection goes beyond seam length");
+						orderNr += 1; 
+						if (verbose) console.log("orderNr: "+orderNr+" skip added, since connection goes beyond seam length");
 						// 
 
 						// // outString += commandObj.skipGCode;
@@ -715,7 +742,7 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 				
 				else {
 					let fromLocation = placeListLocal[placeIndex - pattern[patternIndex]];
-					console.log({patternTargeting:pattern[patternIndex], fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
+					if (verbose) console.log({patternTargeting:pattern[patternIndex], fromLocation:placeIndex - pattern[patternIndex], lastPlacesLength:lastPlace.length, placeIndex:placeIndex, placeCounter:placeCounter, placeListLength:placeList.length});
 
 					commandObjs.forEach(function (cmdObj) {
 						if (cmdObj.needle) {
@@ -737,7 +764,8 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 						}
 					});
 					memoryList.push({orderNr:orderNr, from:fromLocation, to:place});
-					orderNr += 1; console.log("orderNr: "+orderNr+" normal connection");
+					orderNr += 1; 
+					if (verbose) console.log("orderNr: "+orderNr+" normal connection");
 
 					// if (place.handled == false) {
 					// 	outString += produceCode(needleObj, place, depthAdjustment, durations);
@@ -756,7 +784,7 @@ function addGCodePartsC(inString, params, placeList, commandObjs, guidingCmdObj,
 			}
 		}
 
-		console.log("next place");
+		if (verbose) console.log("next place");
 
 		placeIndex += 1;
 		patternIndex += 1;
@@ -959,7 +987,7 @@ function mod(n, m) {
 
 
 function aimGCodePart(startPlace, endPlace, commandObj) {
-	console.log({startPlace:startPlace, endPlace:endPlace});
+	if (verbose) console.log({startPlace:startPlace, endPlace:endPlace});
 	var outGCode = '\n';
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;

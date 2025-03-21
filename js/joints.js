@@ -451,9 +451,9 @@ var jointProfileList = [];
 
 var featureTypes = [
 	{ type: 'none', order: 20, assemblyNote: ' '},
-	{ type: 'internal feature', order: 5, assemblyNote: 'Place feature part facing outwards.'},
-	{ type: 'outside shell', order: 4, assemblyNote: 'Place pieces with face sides touching (first piece: face side up. second piece: wrong side up).'},
-	{ type: 'opening and fastenings', order: 3, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong side up).'},
+	{ type: 'internal feature', order: 5, assemblyNote: 'Place pieces with wrong-sides touching. (first piece: wrong-side up. second piece: face-side up).'},
+	{ type: 'outside shell', order: 4, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong-side up).'},
+	{ type: 'opening and fastenings', order: 3, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong-side up).'},
 	{ type: 'finishings', order: 2, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).'},
 	{ type: 'hem', order: 1, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).' }
 ];
@@ -1497,10 +1497,10 @@ function renderThreads(job, commandObj, returnAPrint, returnBPrint, param) {
 							bestOption = commandObj.base.renderDetails;
 						}
 						// Log which option was chosen based on what input data
-						console.log('Chosen render option:', bestOption);
-						console.log('Input data:', { length });
+						if (verbose) console.log('Chosen render option:', bestOption);
+						if (verbose) console.log('Input data:', { length });
 
-						if (verbose) {
+						if (verbose) { // triangle lines to show direction in render
 							const baseWidth = bestOption.dWidth;
 							// Calculate the points for the rounded triangle
 							const angle = connection.from.subtract(connection.to).angle + 90;
@@ -1643,7 +1643,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 
     for (let randomOffset of markerOffsets) {
 		if (groupType === "mixed") {
-			const shapes = ["circle", "rectangle", "hexagon"];
+			const shapes = ["circle", "rectangle", "star"];
 			markerParams.type = shapes[Math.floor(Math.random() * shapes.length)];
 		}
 
@@ -1754,7 +1754,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 	return markers;
 }
 
-function generateMarkerShape(markerParams, ptAB, edgeAB, offset) {
+function generateMarkerShape(markerParams, ptAB, edgeAB, offset, isA) {
 	let marker;
 	if (markerParams.type == "circle") {
 		marker = new Path.Circle(ptAB, markerParams.size);
@@ -1765,8 +1765,17 @@ function generateMarkerShape(markerParams, ptAB, edgeAB, offset) {
             size: [rectSize, rectSize],
             rotation: edgeAB.getTangentAt(offset).angle
         });
-	} else if (markerParams.type == "hexagon") {
-		marker = new Path.RegularPolygon(ptAB, 6, markerParams.size);
+	} else if (markerParams.type == "star") {
+		marker = new Path.Star({
+			center: ptAB,
+			points: 5,
+			radius1: markerParams.size,
+			radius2: markerParams.size / 2
+		});
+		const tangentAngle = edgeAB.getTangentAt(offset).angle;
+		const flipAngle = isA ? 0 : 180;
+		const normalAngle = tangentAngle + flipAngle;
+		marker.rotate(normalAngle, ptAB);
 	} 
 	return marker;
 }
@@ -1787,8 +1796,8 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 	}
 
 
-	if (markerParams.type == "circle" || markerParams.type == "rectangle" || markerParams.type == "hexagon") {
-		var marker = generateMarkerShape(markerParams, ptAB, edgeAB, offset);
+	if (markerParams.type == "circle" || markerParams.type == "rectangle" || markerParams.type == "star") {
+		var marker = generateMarkerShape(markerParams, ptAB, edgeAB, offset, isA);
 
 		var crossings = marker.getCrossings(edgeAB);
 
@@ -1844,7 +1853,7 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		}
 
 		if (isA && rotPath.length > (rotOffset+markerParams.size)) {
-			var marker2 = generateMarkerShape(markerParams, ptAB2, edgeAB, rotOffset);
+			var marker2 = generateMarkerShape(markerParams, ptAB2, edgeAB, rotOffset, isA);
 			markerSTLOutlines.push(marker2); // Add print output
 		}
 	}
@@ -4295,13 +4304,13 @@ function getAlphaID(number) {
 	return alpha;
 }
 
-function calcBounds(relevantShapes) {
-	console.log({relevantShapes:relevantShapes});
+function calcBounds(shapesToBound) {
+	console.log({ShapesInImageBounds:shapesToBound});
 	var localBounds = {'minX':0, 'maxX':0, 'minY':0, 'maxY':0, 'x':0, 'y':0};
-	if (relevantShapes.length > 0) {
+	if (shapesToBound.length > 0) {
 		var corners = [];
-		for (i in relevantShapes) {
-			var rect = relevantShapes[i].bounds;
+		for (i in shapesToBound) {
+			var rect = shapesToBound[i].bounds;
 			corners.push({'x':rect.x, 'y':rect.y});
 			corners.push({'x':rect.x+rect.width, 'y':rect.y+rect.height});
 		}
@@ -4485,7 +4494,8 @@ function exportProject() {
 			exportProjectNow();
 		}
 	}).catch((error) => {
-		console.warn('Server is offline');
+		console.warn('Server is offline, or export error');
+		console.error(error);
 		exportProjectNow();
 	});
 }
@@ -4513,7 +4523,7 @@ function exportProjectNow() {
 		var addedPrintJobs = [];
 		var GCODE = "";
 		for (i in shape) {
-			// console.log({theshape:shape[i]});
+			console.log({theshape:shape[i], shape:shape});
 			for (j in shape[i].children) {
 				if (shape[i].children[j].className=='Path') {
 					if (shape[i].children[j].name=='joint') {
@@ -4597,9 +4607,24 @@ function exportProjectNow() {
 							let localHeight = heightUsed - output.relativeHeight.min + 20;
 							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
 							addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam});
-							addedShapes.push({shape: shape[i], ID:i});
+							// addedShapes.push({shape: shape[i], ID:i});
+							// allShapeIDs.add(i);
+							for (let relevantShapeID of output.printShapeList) {
+								// Add shape if not already added to addedShapes
+								shapeIsNew = true;
+								for (let addedShape of addedShapes) {
+									if (addedShape.ID == relevantShapeID) {
+										shapeIsNew = false;
+										break;
+									}
+								}
+								if (shapeIsNew) {
+									addedShapes.push({shape: shape[relevantShapeID], ID:relevantShapeID});
+									allShapeIDs.add(relevantShapeID);
+								}
+							}
 							addedPrintJobs.push(output);
-							allShapeIDs.add(i);
+							
 							// console.log({allShapeIDs:allShapeIDs, i:i});
 
 							// Add "Inject here" G-Code flag for printed markers?  
@@ -4689,14 +4714,17 @@ function exportProjectNow() {
 
 		// make preview image that provides context for the manual interactions 
 		var laserObjects = [];
-		for (shapeID of allShapeIDs) {
+		for (let shapeID = 0; shapeID<shape.length; shapeID++) {
+		// for (shapeID of allShapeIDs) {
 			const shapeList = [shape[shapeID]];
-			// console.log({shapeID:shapeID, shapeList:shapeList});
+			
 			colorShapes(false, shapeList, false, true); // color one shape for SVG laser cutting
 			var imageData = getLaserPreview(shapeList);
 			laserObjects.push({ID:shapeID, imageData:imageData});
 			shape[shapeID].imageData = imageData;
 			shape[shapeID].ID = shapeID;
+			console.log("laser images per shape:")
+			console.log({shapeID:shapeID, shapeList:shapeList, imageData:imageData, shape:shape[shapeID], laserObjects:laserObjects, allShapeIDs:allShapeIDs});
 		}
 
 		let nesting = false; 
@@ -4791,7 +4819,8 @@ function exportProjectNow() {
 			setTimeout(() => { packer.stop() }, 10);
 			// packer.stop() // Stop a process
 		} else {
-			for (shapeID of allShapeIDs) {
+			for (let shapeID = 0; shapeID<shape.length; shapeID++) {
+			// for (shapeID of allShapeIDs) {
 				let shapeList = [shape[shapeID]];
 				colorShapes(false, shapeList, false, true); // color one shape for SVG laser cutting
 				console.log({type: "SVG for cutting", shape:shape[shapeID]});
@@ -5000,6 +5029,9 @@ function exportProjectNow() {
 		var urlString = url.substring(5);
 		var imgHtml = "<img source=\""+urlString+"\" target=\"_BLANK\">";
 		$("#TestDiv").append(image);
+
+		console.log({jobBucketsByShape:jobBucketsByShape, prints:prints, laserObjects:laserObjects, allShapeIDs:allShapeIDs, svgContent:svgContent});
+
 		exportWindow = window.open("pages/export-status.html?"+"none", "Export", "width=800,height=600");// "width=200,height=100");
 		exportWindow.prints = prints;
 		exportWindow.laserObjects = laserObjects;
