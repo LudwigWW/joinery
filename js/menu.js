@@ -511,6 +511,7 @@ function createJointProfileMenu(i, ic, id) {
 		}
 		$('#'+id).remove();
 		
+		hashN.nn = hashNStartnn + 0;
 		for (j in joints) {
 			generateJoint(j);
 		}
@@ -621,6 +622,7 @@ function setJointValue(idString) {
 	$('#'+idString+' input').css('color', '#000');
 	$('#'+idString+' input').parent().css('background-color', 'transparent');		
 	
+	hashN.nn = hashNStartnn + 0;
 	for (j in joints) {
 		generateJoint(j);
 	}

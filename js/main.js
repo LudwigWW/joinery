@@ -288,6 +288,7 @@ function updateSVG() {
 }
 
 function updateSVGShape(e) {
+	hashN.nn = hashNStartnn + 0;
 	var pathCount = 0;
 	for (j in shape[shapeToReplace].children) {
 		if (shape[shapeToReplace].children[j].className=='Path' && !isNaN(j)) {
@@ -434,6 +435,7 @@ function updateSVGShape(e) {
 
 
 function processProject(e) {
+	hashN.nn = hashNStartnn + 0;
     var file = e.target.result,
         results;
     if (file && file.length) {

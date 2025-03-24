@@ -10,6 +10,8 @@ var receivedCounter = 0;
 var orderNr = -50;
 var markerGCodes = [];
 var printCounter = 1; // Starts at A
+const hashNStartnn = 0;
+var hashN = {hn:1989, nn:hashNStartnn+0}; // hn = random seed hash number, nn = incrementing counter
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
@@ -1613,7 +1615,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
 
     // Calculate the maximum number of markers that can fit without overlapping
     const maxMarkers = Math.floor(partLength / (markerSize + minDist));
-    const numMarkers = Math.min(Math.floor(Math.random() * 3) + 3, maxMarkers);
+    const numMarkers = Math.min(Math.floor(randomZeroToOne(hashN) * 3) + 3, maxMarkers);
 
     if (numMarkers === 0) {
         console.warn('Path is too short for markers');
@@ -1627,7 +1629,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
         let randomOffset;
         let validOffset = false;
         while (!validOffset) {
-            randomOffset = Math.floor(Math.random() * (partLength - markerSize)) + markerSize / 2;
+            randomOffset = Math.floor(randomZeroToOne(hashN) * (partLength - markerSize)) + markerSize / 2;
             validOffset = true;
             for (let offset of markerOffsets) {
                 if (Math.abs(randomOffset - offset) < markerSize + minDist) {
@@ -1644,7 +1646,7 @@ function doMarkers(job, index, edgeA, edgeB, returnALaser, returnBLaser, returnA
     for (let randomOffset of markerOffsets) {
 		if (groupType === "mixed") {
 			const shapes = ["circle", "rectangle", "star"];
-			markerParams.type = shapes[Math.floor(Math.random() * shapes.length)];
+			markerParams.type = shapes[Math.floor(randomZeroToOne(hashN) * shapes.length)];
 		}
 
         let markerOffset = job.originSourceOffset + randomOffset; // From start
