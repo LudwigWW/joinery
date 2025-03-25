@@ -7,7 +7,6 @@ var chosenPrinter = {};
 var chosenLaser = {};
 var requestCounter = 0;
 var receivedCounter = 0;
-var orderNr = -50;
 var markerGCodes = [];
 var printCounter = 1; // Starts at A
 const hashNStartnn = 0;
@@ -608,7 +607,7 @@ function generateJoint(index) {
 	
 	var req = $.getJSON('test.json');
 
-	req.success(function(response){
+	req.success(function(responseRaw){
 		// // console.log({response:response});
 		
 		// for (let printer of response.printerList) {
@@ -616,6 +615,7 @@ function generateJoint(index) {
 		// 		chosenPrinter = printer;
 		// 	}
 		// }
+		let response = resolveRef(responseRaw, responseRaw);
 
 		for (let laser of response.laserList) {
 			if (laser.name === "default") {

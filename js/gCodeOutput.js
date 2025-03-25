@@ -1,5 +1,6 @@
 // const { get } = require("request-promise");
-
+const markerWipeAmount = 1.425; // compensate for marker wipe moves
+var orderNr = 0;
 
 function calculateDurationEstimate(printJobs, simulatedHeight, types, remainingPrintJobs=null) {
 	// parse types string, split by ;
@@ -257,19 +258,27 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
                 }
             }
 
-            if (output.markers[0].serverData)
+            if (output.markers[0].serverData) {
+				let firstMarker = true;
                 for (let marker of output.markers) {
-
+					
                     // console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
 
                     let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
                     outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + output.print_Offset_X).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
-                    outString += `G1 Z${0.2} F3000\n`; // Z positioning
+                    if (!firstMarker) {
+						outString += `G1 Z${0.2} E${markerWipeAmount} F3000\n`; // Z positioning with added wipe compensation
+					}
+					else {
+						outString += `G1 Z${0.2} F3000\n`; // Z positioning
+						firstMarker = false;
+					}
 
                     GCODE += outString;
 
 					GCODE += getCodeWRetraction(marker.serverData.markerGC, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
                 }
+			}
             else {
 				console.log({Warning:"Server marker data unavailable"}); 
 			}

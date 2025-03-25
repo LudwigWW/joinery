@@ -21,6 +21,8 @@ let currentPrintObj = null;
 
 let switchMoveDuration;
 
+let verbose = false;
+
 window.onbeforeunload = null;
 
 window.addEventListener('beforeunload', function(event) {
