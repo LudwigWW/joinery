@@ -885,7 +885,7 @@ function downloadFile(e) {
 		for (let bucket of jobBucketsByShape) {
 			for (let cut of bucket.cutObjs) {
 				if (cut.cutOrder == id) {
-					// download cut gcode
+					// download cut svg
 					var d = new Date();
 					saveAs(cut.cutSVG.blob, 'joinery_cut_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'_'+d.getHours()+'.'+d.getMinutes()+'.'+d.getSeconds()+'.svg');
 					cut.fabricated = true;

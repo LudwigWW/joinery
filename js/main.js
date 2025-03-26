@@ -1365,6 +1365,7 @@ function colorShapes(all=true, inputShapes=[], makeGray=true, forCutting=false) 
 				} if (theShape[i].children[j].children['laser']) {
 					theShape[i].children[j].children['laser'].opacity = groupOpacity;
 					for (laserChild of theShape[i].children[j].children.laser.children) {
+						// console.log(laserChild.name);
 						laserChild.opacity = laserOpacity;
 						laserChild.strokeWidth = laserWidth;
 						if (laserChild.name == 'cut') {

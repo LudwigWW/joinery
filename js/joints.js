@@ -4392,7 +4392,33 @@ function getLaserSVG(selectedShapeID) {
 						var newGroup;
 						if (selectedShape.children[i].children['laser']) {
 							newGroup = selectedShape.children[i].children['laser'].clone({deep:true});
+							newGroup.strokeColor = laserCuttingColorLate;
+							
+							// TODO: Figure out why we need to run this again here, colorShape should handle it already // Is it because cloning deletes colors of the group or children?
+							for (laserChild of newGroup.children) {
+								laserChild.strokeWidth = laserWidth;
+								let namePart = laserChild.name.split(/[\s_]+/)[0]; // Clonings adds " 1" to the name?
+								if (namePart == 'cut') {
+									laserChild.strokeColor = laserCuttingColor;
+									laserChild.fillColor = noColor; 
+								}
+								else if (namePart == 'markerHole') {
+									laserChild.strokeColor = laserCuttingColor;
+								}
+								else if (namePart == 'engravedMarking') {
+									laserChild.strokeColor = laserCuttingColorMark;
+								} 
+								else if (namePart == 'pinking') {
+									laserChild.strokeColor = laserCuttingColorLate;
+								}
+								else {
+									// laserChild.strokeColor = "#0F0";
+								}
+							}
+
 						} else { // Fallback to fail gracefully
+							console.warn('No laser group found, adding: ', selectedShape.children[i].name);
+							// console.log({foundJoints:foundJoints, i:i, name:selectedShape.children[i].name, id:selectedShape.children[i].id, selectedShape:selectedShape});
 							newGroup = selectedShape.children[i].clone({deep:true});
 						} 
 						newGroup.name = selectedShape.children[i].name;
@@ -4405,19 +4431,38 @@ function getLaserSVG(selectedShapeID) {
 			}
 		}
 	}
-
 	for (let i in selectedShape.children) {
 		if (selectedShape.children[i].className == 'Path') {
 			if (foundJoints.includes(i) || selectedShape.children[i].name) {
 				// pass
+				// console.log('Found joint or name, skipping: ', selectedShape.children[i].name);
+				// console.log({foundJoints:foundJoints, i:i, name:selectedShape.children[i].name, id:selectedShape.children[i].id, selectedShape:selectedShape});
+
+				// // Try adding original shape...
+				// var newPath = selectedShape.children[i].clone({deep:true});
+				// // change color based on whether first split of the name is a joint, path, or line
+				// var pathType = selectedShape.children[i].name.split(/[\s_]+/)[0];
+				// if (pathType == 'joint') {
+				// 	newPath.strokeColor = '#0F0';
+				// } else if (pathType == 'path') {
+				// 	newPath.strokeColor = '#00F';
+				// } else if (pathType == 'line') {
+				// 	newPath.strokeColor = '#F00';
+				// }
+				// laserShape.addChild(newPath);
+
 			} else {
 				var newPath = selectedShape.children[i].clone({deep:true});
+				console.warn('Found path, adding: ', selectedShape.children[i].name);
+				console.log({foundJoints:foundJoints, i:i, name:selectedShape.children[i].name, id:selectedShape.children[i].id, selectedShape:selectedShape});
 				laserShape.addChild(newPath);
 			}
 		}
 
 		if (selectedShape.children[i].className == 'Shape') {
 			// TODO Check if we need to handle shapes separately
+			// console.log('Found shape, skipping: ', selectedShape.children[i].name);
+			// console.log({foundJoints:foundJoints, i:i, name:selectedShape.children[i].name, id:selectedShape.children[i].id, selectedShape:selectedShape});
 		}
 	}
 
@@ -4720,7 +4765,7 @@ function exportProjectNow() {
 		// for (shapeID of allShapeIDs) {
 			const shapeList = [shape[shapeID]];
 			
-			colorShapes(false, shapeList, false, true); // color one shape for SVG laser cutting
+			colorShapes(false, shapeList, false, true); // color one shape for SVG laser preview
 			var imageData = getLaserPreview(shapeList);
 			laserObjects.push({ID:shapeID, imageData:imageData});
 			shape[shapeID].imageData = imageData;
