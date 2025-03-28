@@ -17,7 +17,8 @@ var request = require('request-promise');
 // const svelteApp = require('./App.svelte').default;
 
 
-const debug = false;
+const debug = true;
+const verbose = false;
 
 // // Initialize OctoPrint client
 // const octoPrintClient = new OctoPrintClient({
@@ -44,7 +45,7 @@ async function execAsync(command, res, callback) {
             send_error_response(res, stderr);
             // return -1; // failure state
         } else {
-            if(debug) console.log('stdout:', stdout);
+            if(debug && verbose) console.log('stdout:', stdout);
             callback();
         }
     } catch (e) {
@@ -163,12 +164,13 @@ function send_error_response(res, err) {
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-app.get('/ping', (_, res) => {
-    console.log('ping');
-    res.send('pong');
+app.get('/hb', (_, res) => {
+    console.log('Received ping request');
+    res.send('beating');
 });
 
 app.get('/machines.json', (req, res) => {
+    console.log('Received machines.json request');
     fs.readFile('machines.json', 'utf8', (err, data) => {
         if (err) {
             res.status(500).send('Error reading file');
@@ -179,6 +181,7 @@ app.get('/machines.json', (req, res) => {
 });
 
 app.post('/updateMachines.cmd', (req, res) => {
+    console.log('Received updateMachines.cmd request');
     if (req.body) {
         fs.writeFile('machines.json', JSON.stringify(req.body, null, 2), 'utf8', (err) => {
             if (err) {
@@ -420,7 +423,7 @@ app.post('/exportMarkersSTL.cmd', (req, res) => {
     if(debug) console.log('exportMarkersSTL');
 
     const testD = req.body;
-    if (debug) console.log('Data received:', testD);
+    if (debug && verbose) console.log('Data received:', testD);
 
     
 

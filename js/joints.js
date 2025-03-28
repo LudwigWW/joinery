@@ -68,7 +68,9 @@ var paramAngle = [
 
 var paramBool = [
 	'do not cut outline',
-	'pinking cut'
+	'pinking cut',
+	'skip at seam start',
+	'skip at seam end'
 ];
 
 var loopInsert = {
@@ -212,6 +214,8 @@ var printedRunningStrong = {
 		'hole diameter': 1.25,
 		'hole spacing': 10,
 		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
 		'printing area width': 250,
 		'printing area depth': 210,
 		'marker height': 0.4,
@@ -503,8 +507,9 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 	var req2 = $.getJSON('examples/testrivets.json');
 	var testGCode = '';
 
+	// Sending code to printer directly debug test
 	req2.success(function(response){
-		if (true) {
+		if (false) {
 			// console.log({response:response});
 			testGCode = response.text;
 
@@ -1855,7 +1860,14 @@ function setPrintedMarkers(offset, rotOffset, markerParams, fabID, index, edgeAB
 		}
 
 		if (isA && rotPath.length > (rotOffset+markerParams.size)) {
-			var marker2 = generateMarkerShape(markerParams, ptAB2, edgeAB, rotOffset, isA);
+			// var marker2 = generateMarkerShape(markerParams, ptAB2, edgeAB, rotOffset, isA);
+			var marker2 = generateMarkerShape(markerParams, ptAB2, rotPath, rotOffset, isA);
+			// rotate by angle different between edgeAB and rotPath at offset location
+			// let angle = edgeAB.getTangentAt(offset).angle*-1 + rotPath.getTangentAt(rotOffset).angle;
+			// console.log({angle:angle, edgeAB:edgeAB.getTangentAt(offset), rotPath:rotPath.getTangentAt(rotOffset)});
+			// marker2.rotate(angle, ptAB2);
+			
+			
 			markerSTLOutlines.push(marker2); // Add print output
 		}
 	}
@@ -2073,6 +2085,8 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	var returnAPrint = [];
 	var G91Obj = G91;
 	var skipHoles = Math.floor(param['skip # holes']);
+	var skipHoleAtStart = true;
+	var skipHoleAtEnd = true;
 
 	// Handling for simple case (non-)patterns
 	let targetPatternWidth;
@@ -2082,6 +2096,16 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 	let maxLineDistance = 0;
 	let minLineDistance = 0;
 
+	if (param['skip at seam start'] == undefined) {
+		skipHoleAtStart = true;
+	} else {
+		skipHoleAtStart = param['skip at seam start'];
+	}
+	if (param['skip at seam end'] == undefined) {
+		skipHoleAtEnd = true;
+	} else {
+		skipHoleAtEnd = param['skip at seam end'];
+	}
 	if (param['seam pattern width'] == undefined) {
 		targetPatternWidth = 0.001;
 	} else {
@@ -2411,12 +2435,18 @@ function generateDoubleLinePrint(featureType, index, shapeA, pathA, shapeB, path
 
 			// check whether the points are close to other prints (within minDist) through shape
 
+			let skipThisHole = false;
 			if (skipHoles >= 1) {
+				if (skipHoleAtStart) {
+					skipThisHole = true;
+				}
 				skipHoles -= 1;
 			} else if (i >= holesMinusSkipped){
-				// pass
+				if (skipHoleAtEnd) {
+					skipThisHole = true;
+				}
 			}
-			else {
+			if (!skipThisHole) {
 				var closeToOtherPrints = checkMinDist(ptA, ptB, minDist);
 				// console.log('closeToOtherPrints: ', closeToOtherPrints);
 				if (!closeToOtherPrints) {
@@ -4519,6 +4549,7 @@ function exportProject() {
 	setMessage('<b>Opening Control Panel. Please wait.</b>', '#393');
 	// refreshShapeDisplay();
 	// Ping server to check if it is online
+	console.log('Pinging server for export');
 
 	const checkAndExport = () => {
 		// Check if all data has been received
@@ -4530,9 +4561,9 @@ function exportProject() {
 			setTimeout(checkAndExport, 100); // Check again after 100ms
 		}
 	};
-	axios.get('http://127.0.0.1:5505/ping')
+	axios.get('http://127.0.0.1:5505/hb', { timeout: 15000 })
 	.then((response) => {
-		if (response.data === 'pong') {	
+		if (response.data === 'beating') {	
 			console.log('Server is online');
 			// If server is online, export project after all data has been received
 			checkAndExport();
@@ -4542,8 +4573,8 @@ function exportProject() {
 		}
 	}).catch((error) => {
 		console.warn('Server is offline, or export error');
-		console.error(error);
-		exportProjectNow();
+		console.error(error.message || error);
+		exportProjectNow(); // Fallback to export without markers from server 
 	});
 }
 
