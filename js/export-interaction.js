@@ -652,6 +652,8 @@ function addParallelJobs(print, id, status, completed=false) {
 
 	html += '" style="width:16px">';
 	html += makeButton(id, "Download", 'downloadFile(\'print_'+id.toString()+'\')', 'groupExport(\'print_'+id.toString()+'\')');
+	const buttonHTML = '<div class="buttonExport"> \n <label for="export2" class="button2" onclick="fabricateNow()" style="width:120px; margin-left:5px">or Start printing!</label>\n \n </div>\n'
+	html += buttonHTML;
 	html += '<br />';
 
 	if (print.shapeImages.length > 0) {
