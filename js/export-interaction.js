@@ -361,7 +361,7 @@ function makeButton(id, text, onclick, groupOnclick = null) {
 	if (groupOnclick != null) {
 		//htmlString += '<span class="extraHigh">';
 		htmlString += '<div class="buttonExport"><label for="groupExport';
-		htmlString += id.toString() + '" class="button2" onclick="' + groupOnclick + '">' + "Group DL" + '</label></div>';
+		htmlString += id.toString() + '" class="button2" onclick="' + groupOnclick + '">' + "Download all selected" + '</label></div>';
 		htmlString += '<input id="'+ id.toString() + '_groupDL" class="checkbox" type="checkbox">';
 	}  
 	
@@ -614,6 +614,19 @@ function addParallelJobs(print, id, status, completed=false) {
 	let type = print.type;
 	let imageDatas = print.imageDatas;
 	let html = '<div id="step'+id.toString()+'box" class="stepholder"';
+	let assemblyNote = "";
+	let firstNote = true;
+	for (let printJob of print.printJobs) {
+		console.log({printJob:printJob});
+		if (printJob.featureType.assemblyNote) {
+			if (!firstNote) {
+				assemblyNote += "\n";
+			}
+			assemblyNote += printJob.featureType.assemblyNote;
+			firstNote = false;
+		}
+	}
+	console.log({assemblyNote:assemblyNote, print:print});
 	
 	html += makeColorStyle(status);
 
@@ -661,6 +674,10 @@ function addParallelJobs(print, id, status, completed=false) {
 			html += image;
 			html += '<br />';
 		}
+	}
+
+	if (assemblyNote) {
+		html += '<span>'+assemblyNote+'</span><br />';
 	}
 
 	html += '</div>';

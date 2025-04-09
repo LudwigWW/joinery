@@ -1,6 +1,7 @@
 // const { get } = require("request-promise");
 const markerWipeAmount = 1.425; // compensate for marker wipe moves
 var orderNr = 0;
+const printNoMarkers = true;
 
 function calculateDurationEstimate(printJobs, simulatedHeight, types, remainingPrintJobs=null) {
 	// parse types string, split by ;
@@ -216,8 +217,8 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 
             // console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
             
-            let localHeight = heightUsed - output.relativeHeight.min + 20;
-            heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
+            let localHeight = heightUsed - output.relativeHeight.min + distBetweenPrints;
+            heightUsed = heightUsed + outputHeight + distBetweenPrints*2; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
             addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam, duration:durations.durationEstimateTotal});
             // addedShapes.push({shape: shape[shape_i], ID:shape_i});
 			// allShapeIDs.add(shape_i);
@@ -259,24 +260,28 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
             }
 
             if (output.markers[0].serverData) {
-				let firstMarker = true;
-                for (let marker of output.markers) {
-					
-                    // console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
+				if (printNoMarkers) {
+					console.log({message:"No markers, skipping marker GCode"});
+				} else {
+					let firstMarker = true;
+					for (let marker of output.markers) {
+						
+						// console.log({firstP: output.holeList[0], relV:marker.serverData.relVector});
 
-                    let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
-                    outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + output.print_Offset_X).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
-                    if (!firstMarker) {
-						outString += `G1 Z${0.2} E${markerWipeAmount} F3000\n`; // Z positioning with added wipe compensation
+						let outString = `G1 Z${marker.serverData.height+10} F3000\n`; // Safety lift
+						outString += `G1 X${(output.holeList[0].x + marker.serverData.relVector.x + output.print_Offset_X).toFixed(3)} Y${(marker.serverData.relVector.y + localHeight).toFixed(3)} F7200\n`; // XY positioning
+						if (!firstMarker) {
+							outString += `G1 Z${0.2} E${markerWipeAmount} F3000\n`; // Z positioning with added wipe compensation
+						}
+						else {
+							outString += `G1 Z${0.2} F3000\n`; // Z positioning
+							firstMarker = false;
+						}
+
+						GCODE += outString;
+
+						GCODE += getCodeWRetraction(marker.serverData.markerGC, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
 					}
-					else {
-						outString += `G1 Z${0.2} F3000\n`; // Z positioning
-						firstMarker = false;
-					}
-
-                    GCODE += outString;
-
-					GCODE += getCodeWRetraction(marker.serverData.markerGC, chosenPrinter, durations.durationEstimate, durations.durationEstimateTotal, durations.toComeEstimate);
                 }
 			}
             else {
@@ -996,7 +1001,7 @@ function mod(n, m) {
 
 
 function aimGCodePart(startPlace, endPlace, commandObj) {
-	if (verbose) console.log({startPlace:startPlace, endPlace:endPlace});
+	if (debug) console.log({startPlace:startPlace, endPlace:endPlace});
 	var outGCode = '\n';
 	var deltaX = endPlace.x - startPlace.x;
 	var deltaY = endPlace.y - startPlace.y;
@@ -1007,7 +1012,7 @@ function aimGCodePart(startPlace, endPlace, commandObj) {
 
 	if (commandObj.gCodeOptions) {
 		// Get best option from gCodeOptions in commandObj that is closest to the length
-		if (verbose) console.log({length:length, commandObj:commandObj});
+		if (debug) console.log({length:length, commandObj:commandObj});
 		let bestOption = commandObj.gCodeOptions[0];
 		let closestLength = Math.abs(length - bestOption.defaultLength);
 		for (let option of commandObj.gCodeOptions) {
@@ -1025,7 +1030,7 @@ function aimGCodePart(startPlace, endPlace, commandObj) {
 	}
 	
 	lengthFactor = length / patternDefaultLength;
-	// console.log({length:length, lengthFactor:lengthFactor});
+	console.log({length:length, lengthFactor:lengthFactor});
 	var rad = Math.atan2(deltaY, deltaX); // In radians
 	// if (Math.abs(rad) > 0.001) {
 	if (true) {

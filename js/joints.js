@@ -11,6 +11,7 @@ var markerGCodes = [];
 var printCounter = 1; // Starts at A
 const hashNStartnn = 0;
 var hashN = {hn:1989, nn:hashNStartnn+0}; // hn = random seed hash number, nn = incrementing counter
+let distBetweenPrints = 90;
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
@@ -224,6 +225,89 @@ var printedRunningStrong = {
 	}
 };
 
+var printedLockStrong = {
+	'name':'printed lockstitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+var printedStrongZigZag = {
+	'name':'printed zigzag strong stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'seam pattern width': 5,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+var printedDiagonalRunning = {
+	'name':'printed diagonal running stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'seam pattern width': 5,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+var printedOverstitch = {
+	'name':'printed overstitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'seam pattern width': 5,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
 var printedOverlapping = {
 	'name':'printed continuous',
 	'profile':'',
@@ -295,7 +379,7 @@ var printedWhip = {
 		'printing area depth': 210,
 		'marker height': 0.4,
 		'pinking cut': false,
-		'printing temperature': 230,
+		'printing temperature': 215,
 	}
 };
 var printedZigZag = {
@@ -313,7 +397,7 @@ var printedZigZag = {
 		'printing area depth': 210,
 		'marker height': 0.4,
 		'pinking cut': false,
-		'printing temperature': 230,
+		'printing temperature': 215,
 	}
 };
 var printedFlex = {
@@ -449,18 +533,20 @@ var noneJoint = {
 
 var template = undefined;
 
-var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, noneJoint];
+var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, 
+	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, noneJoint,
+	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
 
 var featureTypes = [
 	{ type: 'none', order: 20, assemblyNote: ' '},
-	{ type: 'internal feature', order: 5, assemblyNote: 'Place pieces with wrong-sides touching. (first piece: wrong-side up. second piece: face-side up).'},
-	{ type: 'outside shell', order: 4, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong-side up).'},
-	{ type: 'opening and fastenings', order: 3, assemblyNote: 'Place pieces with face-sides touching (first piece: face-side up. second piece: wrong-side up).'},
-	{ type: 'finishings', order: 2, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).'},
-	{ type: 'hem', order: 1, assemblyNote: 'Place pieces with wrong-sides touching (first piece: wrong-side up. second piece: face-side up).' }
+	{ type: 'internal feature', order: 5, assemblyNote: 'Place face-side of the feature touching the wrong-side of the main piece.'},
+	{ type: 'outside shell', order: 4, assemblyNote: 'Place pieces with face-sides touching.\n(bottom piece: face-side up. upper piece: wrong-side up.)'},
+	{ type: 'opening and fastenings', order: 3, assemblyNote: 'Place pieces with face-sides touching.\n(bottom piece: face-side up. upper piece: wrong-side up.)'},
+	{ type: 'finishings', order: 2, assemblyNote: 'Place pieces with wrong-sides touching.\n(bottom piece: wrong-side up. upper piece: face-side up.)'},
+	{ type: 'hem', order: 1, assemblyNote: 'Place pieces with wrong-sides touching.\n(bottom piece: wrong-side up. upper piece: face-side up.)' }
 ];
 
 function createJointProfile(n) {
@@ -818,7 +904,7 @@ function generateJoint(index) {
 				case 'printed strong running stitch':
 						
 					var G91 = {base:printTemplate.G91Commands.alternatingLineStrong, 
-						spikes:printTemplate.G91Commands.spikesTall, 
+						spikes:printTemplate.G91Commands.spikesTall08, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.alternatingLineStrongTop
 					};
@@ -838,11 +924,56 @@ function generateJoint(index) {
 					
 					break;
 
+				case 'printed lockstitch':
+					var G91 = {base:printTemplate.G91Commands.overlappingLine4mm, 
+						spikes:printTemplate.G91Commands.spikes08, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.overlappingLine4mmTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed zigzag strong stitch':
+					var G91 = {base:printTemplate.G91Commands.zigzag, 
+						spikes:printTemplate.G91Commands.spikesTall08, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.zigzagTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed diagonal running stitch':
+						var G91 = {base:printTemplate.G91Commands.diagonalRunning, 
+							spikes:printTemplate.G91Commands.spikesTall08, 
+							spikesTop:printTemplate.G91Commands.spikesTop, 
+							top:printTemplate.G91Commands.diagonalRunningTop
+						};
+	
+						handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+						
+						break;
+
+				case 'printed overstitch':
+					var G91 = {base:printTemplate.G91Commands.overstitchzigzag, 
+						spikes:printTemplate.G91Commands.spikes08, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.overstitchzigzagTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+	
+
 				case 'printed running stitch':
 					// var printTemplate = template;
 					
 					var G91 = {base:printTemplate.G91Commands.alternatingLine, 
-						spikes:printTemplate.G91Commands.spikes, 
+						spikes:printTemplate.G91Commands.spikes08, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.alternatingLineTop
 					};
@@ -4682,8 +4813,8 @@ function exportProjectNow() {
 
 							// console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
 							
-							let localHeight = heightUsed - output.relativeHeight.min + 20;
-							heightUsed = heightUsed + outputHeight + 40; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
+							let localHeight = heightUsed - output.relativeHeight.min + distBetweenPrints;
+							heightUsed = heightUsed + outputHeight + distBetweenPrints*2; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
 							addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam});
 							// addedShapes.push({shape: shape[i], ID:i});
 							// allShapeIDs.add(i);
@@ -4920,7 +5051,7 @@ function exportProjectNow() {
 				let theShape = shape[shapeID];
 
 				const typeObj = {detail:0, string:"Lasercut"};
-				shape[shapeID].imageData.imageType = 'cutSVG preview for bucket';
+				shape[shapeID].imageData.imageType = 'Fabric cut-out pattern:';
 				var imageDataList = [shape[shapeID].imageData];
 				var cutObj = {bucketStep:bucket.bucketOrder, type:typeObj, imageDatas:imageDataList, cutSVG:shape[shapeID].cutSVGdata, shape:shape[shapeID], fabricated:false};
 				// if it doesn't have an order number yet
@@ -5005,14 +5136,14 @@ function exportProjectNow() {
 
 						const shapeList = [thisShape.shape];
 						var imageData = getLaserPreview(shapeList, false);
-						imageData.imageType = 'laserPreview for print';
+						imageData.imageType = 'Fabric piece preview:';
 						console.log("got laser preview");
 						shapeImages.push(imageData);
 					}
 		
 		
 					var imageData = getPrintPreview(printList);
-					imageData.imageType = 'printPreview for print';
+					imageData.imageType = 'Printed seam preview:';
 					// laserObjects.push({ID:"5", imageData:imageData});
 		
 					print.imageData = imageData;
@@ -5120,6 +5251,7 @@ function exportProjectNow() {
 		exportWindow.chosenLaser = chosenLaser;
 		exportWindow.shape = shape;
 		exportWindow.switchMoveDuration = switchMoveDuration;
+		exportWindow.distBetweenPrints = distBetweenPrints;
 
 		exportWindow["myVar"] = "Hello World";
 		
