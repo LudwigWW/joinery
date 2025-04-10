@@ -11,7 +11,7 @@ var markerGCodes = [];
 var printCounter = 1; // Starts at A
 const hashNStartnn = 0;
 var hashN = {hn:1989, nn:hashNStartnn+0}; // hn = random seed hash number, nn = incrementing counter
-let distBetweenPrints = 90;
+let distBetweenPrints = 20;
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
@@ -173,9 +173,9 @@ var printedRivets = {
 	'notes': 'notes',
 	'param': {
 		'do not cut outline': false,
-		'hem offset': 8,
+		'hem offset': 10,
 		'hole diameter': 1.25,
-		'seam pattern width': 0,
+		'seam pattern width': 8,
 		'hole spacing': 10,
 		'skip # holes': 0,
 		'printing area width': 250,
@@ -475,6 +475,49 @@ var printedTest = {
 	}
 };
 
+var printedExtending = {
+	'name':'printed extending stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'seam pattern width': 5,
+		'hole spacing': 12,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+var printedTwoLine = {
+	'name':'printed two line stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'hole diameter': 1.25,
+		'seam pattern width': 5,
+		'hole spacing': 12,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
+
 var tabInsertJoint = {
 	'name':'tab insert',
 	'profile':'',
@@ -535,7 +578,7 @@ var template = undefined;
 
 var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, 
 	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, noneJoint,
-	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag];
+	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -918,6 +961,29 @@ function generateJoint(index) {
 						spikes:printTemplate.G91Commands.spikesTall, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.uistLineTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed two line stitch':
+						
+					var G91 = {base:printTemplate.G91Commands.TwoLineRunning, 
+						spikes:printTemplate.G91Commands.spikesTall08, 
+						spikesTop:printTemplate.G91Commands.spikesTopOld, 
+						top:printTemplate.G91Commands.TwoLineRunningTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed extending stitch':
+					var G91 = {base:printTemplate.G91Commands.extendCurve, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.extendCurveTop
 					};
 
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
