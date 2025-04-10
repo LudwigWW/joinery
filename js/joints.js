@@ -475,6 +475,25 @@ var printedTest = {
 	}
 };
 
+var printedLetters = {
+	'name':'printed letters stitch',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 8,
+		'seam pattern width': 30,
+		'hole diameter': 1.25,
+		'hole spacing': 3.33,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
 var printedExtending = {
 	'name':'printed extending stitch',
 	'profile':'',
@@ -577,8 +596,8 @@ var noneJoint = {
 var template = undefined;
 
 var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, 
-	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, noneJoint,
-	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine];
+	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, printedLetters,
+	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -957,10 +976,21 @@ function generateJoint(index) {
 					break;
 
 				case 'printed test stitch':
-					var G91 = {base:printTemplate.G91Commands.uistLine, 
+					var G91 = {base:printTemplate.G91Commands.sewfabLine, 
 						spikes:printTemplate.G91Commands.spikesTall, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
-						top:printTemplate.G91Commands.uistLineTop
+						top:printTemplate.G91Commands.sewfabLineTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed letters stitch':
+					var G91 = {base:printTemplate.G91Commands.sewfabLine, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.sewfabLineTop
 					};
 
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
