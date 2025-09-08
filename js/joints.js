@@ -11,7 +11,7 @@ var markerGCodes = [];
 var printCounter = 1; // Starts at A
 const hashNStartnn = 0;
 var hashN = {hn:1989, nn:hashNStartnn+0}; // hn = random seed hash number, nn = incrementing counter
-let distBetweenPrints = 20;
+let distBetweenPrints = 10;
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const constXShift = 5;
@@ -311,7 +311,7 @@ var printedOverstitch = {
 var printedOverlapping = {
 	'name':'printed continuous',
 	'profile':'',
-	'notes': 'Seam is great for applying patches or to sue with flexible filament.',
+	'notes': 'Seam is great for applying patches or to sew with flexible filament.',
 	'param': {
 		'do not cut outline': false,
 		'hem offset': 8,
@@ -324,7 +324,7 @@ var printedOverlapping = {
 		'marker height': 0.4,
 		'pinking cut': false,
 		'anti-overlap spacing': 2,
-		'printing temperature': 215,
+		'printing temperature': 200,
 	}
 };
 
@@ -494,6 +494,46 @@ var printedLetters = {
 	}
 };
 
+var printedSnapsF = {
+	'name':'printed snaps F',
+	'profile':'',
+	'notes': 'snaps on fabric that allow locking and unlocking fabric by snapping them together',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 20,
+		'hole diameter': 1.75,
+		'seam pattern width': 8,
+		'hole spacing': 60,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 20,
+		'printing temperature': 200,
+	}
+};
+
+var printedSnapsM = {
+	'name':'printed snaps M',
+	'profile':'',
+	'notes': 'snaps on fabric that allow locking and unlocking fabric by snapping them together',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 20,
+		'hole diameter': 1.75,
+		'seam pattern width': 8,
+		'hole spacing': 60,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 20,
+		'printing temperature': 200,
+	}
+};
+
 var printedExtending = {
 	'name':'printed extending stitch',
 	'profile':'',
@@ -597,7 +637,7 @@ var template = undefined;
 
 var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, 
 	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, printedLetters,
-	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine, noneJoint];
+	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine, printedSnapsM, printedSnapsF, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -758,7 +798,7 @@ function handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, path
 
 function generateJoint(index) {
 	
-	var req = $.getJSON('test.json');
+	var req = $.getJSON('stitchConfig.json');
 
 	req.success(function(responseRaw){
 		// // console.log({response:response});
@@ -943,6 +983,28 @@ function generateJoint(index) {
 					
 					break;
 
+				case 'printed snaps M':
+					var G91 = {base:printTemplate.G91Commands.dots, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.snapsMTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed snaps F':
+					var G91 = {base:printTemplate.G91Commands.dots, 
+						spikes:printTemplate.G91Commands.spikesTall, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.snapsFTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
 				case 'printed continuous':
 					// var printTemplate = template;
 					
@@ -954,7 +1016,8 @@ function generateJoint(index) {
 
 					var G91 = {base:printTemplate.G91Commands.zigzagOverlap, 
 						spikes:printTemplate.G91Commands.spikesTall08, 
-						spikesTop:printTemplate.G91Commands.spikesTopMergeH30, 
+						// spikesTop:printTemplate.G91Commands.spikesTopMergeH30,
+						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.zigzagTopOverlap
 					};
 

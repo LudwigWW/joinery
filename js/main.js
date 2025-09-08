@@ -44,7 +44,7 @@ function init() {
 		initForms();
 	}
 	paper.install(window);
-	printingCommands = getJSONs("test.json");
+	printingCommands = getJSONs("stitchConfig.json");
 	console.log({printingCommands:printingCommands});
 	var canvas = document.getElementById('paperCanvas');
 	var exportCanvas = document.getElementById('exportCanvas');

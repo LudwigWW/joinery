@@ -55,7 +55,7 @@ function init() {
 		order = window.order; //tempO;
 		flat = window.flat; //tempF
 	}
-	// printingCommands = getJSONs("test.json");
+	// printingCommands = getJSONs("stitchConfig.json");
     paper.install(window);
 	cursorPt = new Point(-1, -1);
 	pcursorPt = new Point(-1, -1);
