@@ -7,5 +7,7 @@ Remove empty lines
 
 
 Explicit newlines in string
-\n -->  \\n
+\n 
+-->  
+\\n
 

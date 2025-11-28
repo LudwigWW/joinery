@@ -217,7 +217,7 @@ function handlePrintJobs(printJobs, GCODE, prints, heightUsed, addedOutputs, add
 
             // console.log({relHeight:output.relativeHeight, heightUsed:heightUsed});
             
-            let localHeight = heightUsed - output.relativeHeight.min + distBetweenPrints;
+            let localHeight = heightUsed - output.relativeHeight.min + distBetweenPrints + 0;
             heightUsed = heightUsed + outputHeight + distBetweenPrints*2; // Make safety spacing (Y and X) based on bounding box of drag&drop GCode
             addedOutputs.push({output:output, heightUsed:localHeight, print_Offset_X:output.print_Offset_X, usedParam:output.usedParam, duration:durations.durationEstimateTotal});
             // addedShapes.push({shape: shape[shape_i], ID:shape_i});

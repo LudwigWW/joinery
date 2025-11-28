@@ -225,6 +225,26 @@ var printedRunningStrong = {
 	}
 };
 
+var printedTasselsRunning = {
+	'name':'printed tassels running',
+	'profile':'',
+	'notes': 'notes',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 5,
+		'hole diameter': 1.25,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'skip at seam start': true,
+		'skip at seam end': true,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'printing temperature': 215,
+	}
+};
+
 var printedLockStrong = {
 	'name':'printed lockstitch',
 	'profile':'',
@@ -494,6 +514,147 @@ var printedLetters = {
 	}
 };
 
+var printedZippR = {
+	'name':'printed Zipp R',
+	'profile':'',
+	'notes': 'UIST demo parametric zipper that allow locking and unlocking fabric by zipping them together',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 3,
+		'hole diameter': 3,
+		'seam pattern width': 0,
+		'hole spacing': 20,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 20,
+		'printing temperature': 200,
+	}
+};
+
+var printedZippL = {
+	'name':'printed Zipp L',
+	'profile':'',
+	'notes': 'UIST demo parametric zipper that allow locking and unlocking fabric by zipping them together',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 3,
+		'hole diameter': 3,
+		'seam pattern width': 0,
+		'hole spacing': 20,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 20,
+		'printing temperature': 200,
+	}
+};
+
+var regularZipp = {
+	'name':'printed zipper regular',
+	'profile':'',
+	'notes': '3D printed regular zipper',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 4.6,
+		'hole diameter': 2,
+		'seam pattern width': 0,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
+		'printing temperature': 200,
+	}
+};
+
+var regularZippR = {
+	'name':'printed zipper regular R',
+	'profile':'',
+	'notes': '3D printed regular zipper',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 4.6,
+		'hole diameter': 2,
+		'seam pattern width': 0,
+		'hole spacing': 10,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
+		'printing temperature': 200,
+	}
+};
+
+var buttonLogo = {
+	'name':'printed button',
+	'profile':'',
+	'notes': '3D printed button with logo',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 10,
+		'hole diameter': 4.5,
+		'seam pattern width': 0,
+		'hole spacing': 40,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
+		'printing temperature': 200,
+	}
+};
+
+
+var buttonInlay = {
+	'name':'printed button inlay',
+	'profile':'',
+	'notes': '3D printed button with logo',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 10,
+		'hole diameter': 4.5,
+		'seam pattern width': 0,
+		'hole spacing': 40,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
+		'printing temperature': 200,
+	}
+};
+
+var spikeRivets = {
+	'name':'printed spike rivets',
+	'profile':'',
+	'notes': '3D printed rivets',
+	'param': {
+		'do not cut outline': false,
+		'hem offset': 10,
+		'hole diameter': 4,
+		'seam pattern width': 0,
+		'hole spacing': 40,
+		'skip # holes': 0,
+		'printing area width': 250,
+		'printing area depth': 210,
+		'marker height': 0.4,
+		'pinking cut': false,
+		'anti-overlap spacing': 2,
+		'printing temperature': 200,
+	}
+};
+
 var printedSnapsF = {
 	'name':'printed snaps F',
 	'profile':'',
@@ -637,7 +798,7 @@ var template = undefined;
 
 var jointType = [printedRivets, printedRunning, printedOverlapping, printedBaste, printedBastePull, printedWhip, printedZigZag, 
 	printedCross, printedFlex, printedDecorative, printedRunningStrong, printedTest, printedLetters,
-	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine, printedSnapsM, printedSnapsF, noneJoint];
+	printedLockStrong, printedDiagonalRunning, printedOverstitch, printedStrongZigZag, printedExtending, printedTwoLine, printedSnapsM, printedSnapsF, buttonLogo, buttonInlay, printedZippR, regularZipp, spikeRivets, printedTasselsRunning, noneJoint];
 	//  loopInsert, loopInsertH, loopInsertSurface, hemJoint, interlockingJoint, fingerJoint, fingerJointA, tabInsertJoint, flapJoint, noneJoint];
 
 var jointProfileList = [];
@@ -1005,6 +1166,83 @@ function generateJoint(index) {
 					
 					break;
 
+				case 'printed Zipp R':
+					var G91 = {base:printTemplate.G91Commands.UISTZipperR, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.dotsTopZipp
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed Zipp L':
+					var G91 = {base:printTemplate.G91Commands.UISTZipperL, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.dotsTopZipp
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed zipper regular':
+					var G91 = {base:printTemplate.G91Commands.zipper, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.zipperTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed button':
+					var G91 = {base:printTemplate.G91Commands.buttonBotLogo, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.buttonTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed spike rivets':
+					var G91 = {base:printTemplate.G91Commands.rivetsBot, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.rivetsTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+					
+				case 'printed button inlay':
+					var G91 = {base:printTemplate.G91Commands.buttonBotInlay, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.buttonTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed zipper regular R':
+					var G91 = {base:printTemplate.G91Commands.zipperR, 
+						spikes:printTemplate.G91Commands.spikesNone, 
+						spikesTop:printTemplate.G91Commands.spikesTopNone, 
+						top:printTemplate.G91Commands.zipperRTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
 				case 'printed continuous':
 					// var printTemplate = template;
 					
@@ -1032,6 +1270,18 @@ function generateJoint(index) {
 						spikes:printTemplate.G91Commands.spikesTall08, 
 						spikesTop:printTemplate.G91Commands.spikesTop, 
 						top:printTemplate.G91Commands.alternatingLineStrongTop
+					};
+
+					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
+					
+					break;
+
+				case 'printed tassels running':
+						
+					var G91 = {base:printTemplate.G91Commands.tasselsLine, 
+						spikes:printTemplate.G91Commands.spikes08, 
+						spikesTop:printTemplate.G91Commands.spikesTop, 
+						top:printTemplate.G91Commands.tasselsLineTop
 					};
 
 					handleFabricationJoints(featureType, index, shapeA, pathA, shapeB, pathB, param, G91);
